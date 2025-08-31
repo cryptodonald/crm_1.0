@@ -1,15 +1,25 @@
-# CRM 1.0 - Enterprise Scalable Architecture
+# 🚀 CRM 1.0 - Enterprise CRM with Advanced API Key Management
 
-A modern, enterprise-grade CRM system built with Next.js 15, TypeScript, and scalable architecture patterns.
+A modern, enterprise-grade CRM system built with Next.js 15, TypeScript, featuring a complete **API Key Management System** with hybrid encryption and advanced UI.
 
-## 🚀 **Features**
+## 🌟 **Latest Features - API Key Management System**
 
-- **Modern Tech Stack**: Next.js 15.4.6, React 19, TypeScript strict mode
+- **🔐 Complete API Keys Dashboard**: Full CRUD operations with advanced UI
+- **🔒 Hybrid Encryption**: Support for legacy and modern key formats with safe previews
+- **📊 Usage Analytics**: Real-time statistics, tracking, and monitoring
+- **🛡️ Permission System**: Granular access control (Read, Write, Delete, Admin)
+- **⚡ Advanced UI**: Data tables, dialogs, copy-to-clipboard with visual feedback
+- **🔧 Key Management**: IP whitelisting, expiration dates, active/inactive states
+- **📋 Legacy Migration**: Seamless migration from old encryption formats
+
+## 🏢 **Core Enterprise Features**
+
+- **Modern Tech Stack**: Next.js 15.5.2, React 19, TypeScript strict mode
 - **Enterprise Architecture**: Scalable, maintainable, and type-safe
-- **Advanced Data Layer**: Airtable integration with robust error handling and retry logic
+- **Advanced Data Layer**: Upstash KV + Airtable integration with robust error handling
 - **Multiple Integrations**: GitHub, Google Places API, Vercel Blob Storage
-- **Security First**: Webhook signature verification, input validation, environment variable security
-- **Developer Experience**: ESLint, Prettier, Vitest, comprehensive TypeScript support
+- **Security First**: Encrypted storage, webhook verification, input validation
+- **Developer Experience**: shadcn/ui, ESLint, comprehensive TypeScript support
 - **Production Ready**: Vercel deployment optimized with performance headers
 
 ## 🏗️ **Architecture Overview**
@@ -62,6 +72,34 @@ src/
    ```
 
 4. **Open your browser** to [http://localhost:3000](http://localhost:3000)
+
+5. **Access API Keys Dashboard**: Visit [http://localhost:3000/developers/api-keys](http://localhost:3000/developers/api-keys)
+
+## 🔑 **API Key Management System**
+
+### Dashboard Features
+- **📊 Statistics Overview**: Total keys, active keys, usage metrics
+- **🗂️ Data Table**: Sortable and filterable key list with actions
+- **➕ Create Keys**: Full form with permissions and security settings
+- **✏️ Edit Keys**: Update with "Show Current Value" functionality
+- **👁️ View Details**: Comprehensive information display
+- **🔗 Copy Function**: Secure clipboard operations with visual feedback
+
+### Security Features
+- **🔐 Hybrid Encryption**: Modern `ENC:` format + legacy support
+- **🛡️ Safe Previews**: Partial display (`d4fa...b946`) without full decryption
+- **🔒 Permission Control**: Read, Write, Delete, Admin levels
+- **📍 IP Whitelisting**: Restrict usage by IP address/range
+- **⏰ Expiration Dates**: Automatic key expiration
+- **📈 Usage Tracking**: Monitor API key usage and statistics
+
+### API Endpoints
+- `GET /api/api-keys` - List all keys with pagination
+- `POST /api/api-keys` - Create new API key
+- `GET /api/api-keys/[id]` - Get specific key details
+- `PUT /api/api-keys/[id]` - Update existing key
+- `DELETE /api/api-keys/[id]` - Delete key
+- `GET /api/api-keys/stats` - Usage statistics
 
 ## 📋 **Environment Variables**
 
