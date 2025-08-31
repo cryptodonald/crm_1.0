@@ -12,6 +12,9 @@
     },
     "src/app/api/airtable/**/route.ts": {
       "maxDuration": 20
+    },
+    "src/app/api/api-keys/**/route.ts": {
+      "maxDuration": 15
     }
   },
 
@@ -48,6 +51,11 @@
     "GITHUB_TOKEN",
     "GITHUB_WEBHOOK_SECRET",
     "GOOGLE_PLACES_API_KEY",
-    "VERCEL_BLOB_READ_WRITE_TOKEN"
+    "VERCEL_BLOB_READ_WRITE_TOKEN",
+    "KV_REST_API_URL",
+    "KV_REST_API_TOKEN",
+    "ENCRYPTION_MASTER_KEY",
+    "CURRENT_USER_ID",
+    "CURRENT_TENANT_ID"
   ]
 }
