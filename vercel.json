@@ -1,0 +1,53 @@
+{
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "devCommand": "npm run dev -- --port $PORT",
+  
+  "functions": {
+    "src/app/api/webhooks/**/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/integrations/**/route.ts": {
+      "maxDuration": 15
+    },
+    "src/app/api/airtable/**/route.ts": {
+      "maxDuration": 20
+    }
+  },
+
+  "headers": [
+    {
+      "source": "/api/webhooks/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://api.github.com"
+        },
+        {
+          "key": "Access-Control-Allow-Methods", 
+          "value": "POST, GET, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-Hub-Signature-256, X-GitHub-Event, X-GitHub-Delivery, Content-Type, Authorization"
+        }
+      ]
+    }
+  ],
+
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "/api/health"
+    }
+  ],
+
+  "env": [
+    "AIRTABLE_API_KEY",
+    "AIRTABLE_BASE_ID",
+    "GITHUB_TOKEN",
+    "GITHUB_WEBHOOK_SECRET",
+    "GOOGLE_PLACES_API_KEY",
+    "VERCEL_BLOB_READ_WRITE_TOKEN"
+  ]
+}
