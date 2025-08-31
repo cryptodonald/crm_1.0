@@ -5,13 +5,6 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable optimized package imports
     optimizePackageImports: ["lucide-react", "@radix-ui/react-icons"],
-    // Enable server components logging
-    logging: {
-      level: 'verbose',
-      fetches: {
-        fullUrl: true,
-      },
-    },
   },
 
   // Build configuration
