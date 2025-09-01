@@ -93,6 +93,39 @@ src/
 - **⏰ Expiration Dates**: Automatic key expiration
 - **📈 Usage Tracking**: Monitor API key usage and statistics
 
+### 🚨 **CRITICAL: API Keys Usage Guidelines**
+
+**❌ NEVER use `process.env` directly in API routes**
+**✅ ALWAYS use the API Key Service**
+
+```typescript
+// ❌ BAD - Never do this
+const apiKey = process.env.AIRTABLE_API_KEY;
+
+// ✅ GOOD - Always do this
+import { getAirtableKey, getAirtableBaseId } from '@/lib/api-keys-service';
+
+const apiKey = await getAirtableKey();
+const baseId = await getAirtableBaseId();
+```
+
+#### Available API Key Helpers:
+- `getAirtableKey()` - Main Airtable API key
+- `getAirtableBaseId()` - Airtable base ID
+- `getAirtableLeadsTableId()` - Leads table ID
+- `getAirtableUsersTableId()` - Users table ID
+- `getAirtableActivitiesTableId()` - Activities table ID
+- `getAirtableOrdersTableId()` - Orders table ID
+- `getAirtableProductsTableId()` - Products table ID
+- `getAirtableAutomationsTableId()` - Automations table ID
+- `getGitHubToken()` - GitHub API token
+- `getGoogleMapsKey()` - Google Maps API key
+- `getNextAuthSecret()` - NextAuth secret
+- `getBlobToken()` - Vercel Blob storage token
+- `getDatabaseUrl()` - Database connection string
+
+#### All API keys and table IDs are stored in KV database, not environment variables.
+
 ### API Endpoints
 - `GET /api/api-keys` - List all keys with pagination
 - `POST /api/api-keys` - Create new API key
@@ -173,6 +206,29 @@ npm run validate         # Run all checks (type, lint, test)
 - **TypeScript Strict**: Maximum type safety
 - **ESLint + Prettier**: Code consistency
 - **Testing**: Vitest with React Testing Library
+
+### 4. **UI Components Guidelines**
+
+#### 🚨 **CRITICAL: shadcn/ui Component Modification Rules**
+
+**❌ NEVER modify original shadcn/ui components directly in `/src/components/ui/`**
+**✅ ALWAYS create custom copies for modifications**
+
+```typescript
+// ❌ BAD - Never modify original components
+// Editing /src/components/ui/dropdown-menu.tsx directly
+
+// ✅ GOOD - Create custom components
+// Create /src/components/ui/custom-dropdown-menu.tsx
+// Import and extend the original component
+```
+
+#### Component Modification Best Practices:
+1. **Create Custom Components**: For any modifications, create a new file with `custom-` prefix
+2. **Preserve Originals**: Keep original shadcn/ui components untouched for updates
+3. **Document Changes**: Add comments explaining why custom version was needed
+4. **Maintain Compatibility**: Ensure custom components follow same API patterns
+5. **Version Control**: Track custom components separately from library updates
 
 ---
 

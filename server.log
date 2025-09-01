@@ -1,0 +1,1227 @@
+
+> crm_1.0@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.80:3000
+   - Environments: .env.local, .env.development
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 1195ms
+ ✓ Compiled /api/leads in 408ms (305 modules)
+ GET /api/leads?maxRecords=3 200 in 4840ms
+ ○ Compiling /leads ...
+ ✓ Compiled /leads in 2.4s (2952 modules)
+ GET /leads 200 in 2780ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 2916ms
+ GET /api/leads?maxRecords=1000 200 in 2985ms
+ ○ Compiling /developers/api-keys ...
+ ✓ Compiled /developers/api-keys in 666ms (3019 modules)
+ GET /developers/api-keys 200 in 738ms
+ ✓ Compiled /api/api-keys/stats in 400ms (3025 modules)
+ GET /api/api-keys 200 in 675ms
+ GET /api/api-keys 200 in 103ms
+ GET /api/api-keys/stats 200 in 1795ms
+ GET /api/api-keys/stats 200 in 1237ms
+ ✓ Compiled /api/api-keys/[id] in 427ms (3020 modules)
+ GET /api/api-keys/TF0vHPiWDejIs90PuRezx 200 in 924ms
+ PUT /api/api-keys/TF0vHPiWDejIs90PuRezx 200 in 312ms
+ ✓ Compiled /api/leads in 200ms (1599 modules)
+ GET /api/leads?maxRecords=2 200 in 4482ms
+ ✓ Compiled in 494ms (3005 modules)
+ GET /developers/api-keys 200 in 87ms
+ ✓ Compiled /api/leads in 140ms (1599 modules)
+ GET /developers/api-keys 200 in 98ms
+ GET /api/leads?maxRecords=2 200 in 1192ms
+ GET /api/leads?maxRecords=1 200 in 556ms
+ GET /api/leads?maxRecords=1 200 in 196ms
+ GET /api/leads?maxRecords=1 200 in 223ms
+ ✓ Compiled in 351ms (3005 modules)
+ GET /developers/api-keys 200 in 100ms
+ ✓ Compiled /api/leads in 170ms (1599 modules)
+ GET /developers/api-keys 200 in 127ms
+ GET /api/leads?maxRecords=2 200 in 4635ms
+ ✓ Compiled /api/api-keys/stats in 332ms (1603 modules)
+ ✓ Compiled (1605 modules)
+ GET /api/api-keys 200 in 802ms
+ GET /api/api-keys/stats 200 in 2011ms
+ GET /developers/api-keys 200 in 309ms
+ GET /api/api-keys 200 in 369ms
+ GET /api/api-keys/stats 200 in 1744ms
+ GET /api/api-keys 200 in 149ms
+ GET /api/api-keys/stats 200 in 1510ms
+ GET /leads 200 in 49ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 3115ms
+ GET /api/leads?maxRecords=1000 200 in 3203ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 243ms
+ GET /api/leads?maxRecords=1000 200 in 270ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 659ms
+ GET /api/leads?maxRecords=1000 200 in 676ms
+ GET /api/leads?search=l&maxRecords=1000 200 in 695ms
+ GET /api/leads?search=lu&maxRecords=25&sortField=Data&sortDirection=desc 200 in 667ms
+ GET /api/leads?search=l&maxRecords=25&sortField=Data&sortDirection=desc 200 in 830ms
+ GET /api/leads?search=lu&maxRecords=1000 200 in 784ms
+ GET /api/leads?search=luc&maxRecords=25&sortField=Data&sortDirection=desc 200 in 614ms
+ GET /api/leads?search=luc&maxRecords=1000 200 in 657ms
+ GET /api/leads?search=luci&maxRecords=1000 200 in 305ms
+ GET /api/leads?search=luci&maxRecords=25&sortField=Data&sortDirection=desc 200 in 266ms
+ GET /api/leads?search=lucia&maxRecords=1000 200 in 253ms
+ GET /api/leads?search=lucia&maxRecords=25&sortField=Data&sortDirection=desc 200 in 232ms
+ GET /api/leads?maxRecords=1000 200 in 637ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 657ms
+ ✓ Compiled in 899ms (3033 modules)
+ ✓ Compiled in 0ms (1599 modules)
+ ✓ Compiled in 0ms (1599 modules)
+ ✓ Compiled in 0ms (1599 modules)
+ GET /developers/api-keys 200 in 473ms
+ GET /leads 200 in 474ms
+ GET /api/leads?maxRecords=1000 200 in 3635ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 3680ms
+ GET /api/leads?provenienza=Meta&maxRecords=25&sortField=Data&sortDirection=desc 200 in 2955ms
+ GET /api/leads?provenienza=Meta&maxRecords=1000 200 in 2982ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 225ms
+ GET /api/leads?maxRecords=1000 200 in 270ms
+ ✓ Compiled in 610ms (3031 modules)
+ GET /developers/api-keys 200 in 106ms
+ GET /leads 200 in 109ms
+ GET /leads 200 in 331ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 3098ms
+ GET /api/leads?maxRecords=1000 200 in 3148ms
+ ✓ Compiled in 209ms (1433 modules)
+ GET /developers/api-keys 200 in 31ms
+ GET /leads 200 in 31ms
+ GET /leads 200 in 17ms
+ GET /api/leads?stato=Cliente&maxRecords=25&sortField=Data&sortDirection=desc 200 in 705ms
+ GET /api/leads?stato=Cliente&maxRecords=1000 200 in 736ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 600ms
+ GET /api/leads?maxRecords=1000 200 in 631ms
+ GET /leads 200 in 130ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 652ms
+ GET /api/leads?maxRecords=1000 200 in 698ms
+ ✓ Compiled in 240ms (1433 modules)
+ GET /developers/api-keys 200 in 29ms
+ GET /leads 200 in 28ms
+ ⨯ ./src/components/leads/leads-data-table.tsx
+Error: 
+
+Caused by:
+    0: Failed to read source code from /Users/matteoeusebi/Desktop/crm_1.0/src/components/leads/leads-data-table.tsx
+    1: No such file or directory (os error 2)
+
+Import trace for requested module:
+./src/components/leads/leads-data-table.tsx
+./src/app/leads/page.tsx
+ ✓ Compiled in 524ms (3031 modules)
+ GET /leads 200 in 113ms
+ GET /developers/api-keys 200 in 113ms
+ GET /leads 200 in 249ms
+ GET /api/leads?maxRecords=1000 200 in 3008ms
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 3032ms
+ ✓ Compiled in 144ms (1433 modules)
+ GET /developers/api-keys 200 in 39ms
+ GET /leads 200 in 40ms
+ GET /leads 200 in 20ms
+ ✓ Compiled in 390ms (3003 modules)
+ GET /leads 200 in 132ms
+ GET /developers/api-keys 200 in 132ms
+ GET /leads 200 in 11ms
+ GET /leads 200 in 254ms
+ ✓ Compiled /api/leads in 249ms (1598 modules)
+ GET /api/leads?maxRecords=25&sortField=Data&sortDirection=desc 200 in 3288ms
+ GET /api/leads?maxRecords=1000 200 in 3336ms
+ ✓ Compiled in 456ms (3003 modules)
+ GET /leads 200 in 161ms
+ GET /developers/api-keys 200 in 163ms
+ GET /leads 200 in 21ms
+ ✓ Compiled in 216ms (1433 modules)
+ GET /developers/api-keys 200 in 31ms
+ GET /leads 200 in 31ms
+ ✓ Compiled in 406ms (3003 modules)
+ GET /developers/api-keys 200 in 98ms
+ GET /leads 200 in 98ms
+ ✓ Compiled in 189ms (3003 modules)
+ GET /leads 200 in 97ms
+ GET /developers/api-keys 200 in 97ms
+ GET /leads 200 in 292ms
+ ✓ Compiled /api/leads in 230ms (1598 modules)
+ GET /leads 200 in 162ms
+ GET /developers/api-keys 200 in 162ms
+🔄 Loading ALL leads from Airtable...
+🔄 Loading ALL leads from Airtable...
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 4838ms
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 6198ms
+ ✓ Compiled in 273ms (3031 modules)
+ GET /developers/api-keys 200 in 131ms
+ GET /leads 200 in 131ms
+ ✓ Compiled in 267ms (3031 modules)
+ GET /leads 200 in 86ms
+ GET /developers/api-keys 200 in 86ms
+ ✓ Compiled in 378ms (3003 modules)
+ GET /developers/api-keys 200 in 139ms
+ GET /leads 200 in 139ms
+ ✓ Compiled in 218ms (1433 modules)
+ GET /developers/api-keys 200 in 24ms
+ GET /leads 200 in 24ms
+ GET /leads 200 in 280ms
+ ✓ Compiled /api/leads in 338ms (1598 modules)
+ GET /leads 200 in 192ms
+ GET /developers/api-keys 200 in 192ms
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 4846ms
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 6246ms
+ GET /leads 200 in 281ms
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 625ms
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 744ms
+ GET /leads 200 in 128ms
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 614ms
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 660ms
+ ✓ Compiled in 515ms (3031 modules)
+ GET /developers/api-keys 200 in 106ms
+ GET /leads 200 in 106ms
+ GET /leads 200 in 275ms
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+ GET /leads 200 in 150ms
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 2482ms
+ GET /api/leads?loadAll=true 200 in 2481ms
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ ✓ Compiled /favicon.ico in 296ms (1600 modules)
+ GET /favicon.ico 200 in 418ms
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 2595ms
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 2651ms
+ ✓ Compiled in 327ms (3033 modules)
+ GET /developers/api-keys 200 in 86ms
+ GET /leads 200 in 87ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 2987ms
+ GET /leads 200 in 242ms
+ GET /leads 200 in 153ms
+ GET /favicon.ico 200 in 18ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 633ms
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 702ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 572ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 652ms
+   ▲ Next.js 15.5.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.80:3000
+   - Environments: .env.local, .env.development
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 1332ms
+ ○ Compiling /leads ...
+ ✓ Compiled /leads in 1146ms (2138 modules)
+ GET /leads 200 in 1485ms
+ ✓ Compiled in 89ms (994 modules)
+ ✓ Compiled /api/leads in 324ms (1161 modules)
+ ✓ Compiled in 263ms (995 modules)
+ GET /favicon.ico 200 in 832ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 3678ms
+📦 Request 1: Received 100 records
+📊 Total records so far: 100, no more pages
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 3714ms
+ ✓ Compiled in 518ms (2183 modules)
+ GET /leads 200 in 53ms
+   ▲ Next.js 15.5.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.80:3000
+   - Environments: .env.local, .env.development
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 1170ms
+ ○ Compiling /leads ...
+ ✓ Compiled /leads in 2.7s (2170 modules)
+ GET /leads 200 in 2999ms
+ ✓ Compiled /api/leads in 199ms (1161 modules)
+ ✓ Compiled in 279ms (1009 modules)
+ GET /favicon.ico 200 in 643ms
+ GET /leads 200 in 135ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔗 Airtable URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=100
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔗 Airtable URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=100
+📦 Request 1: Received 100 records
+🔄 Response has offset: false
+📊 Total records so far: 100
+🔄 Has more records: false
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 3416ms
+📦 Request 1: Received 100 records
+🔄 Response has offset: false
+📊 Total records so far: 100
+🔄 Has more records: false
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 3453ms
+   ▲ Next.js 15.5.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.80:3000
+   - Environments: .env.local, .env.development
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 1290ms
+ ○ Compiling /leads ...
+ ✓ Compiled /leads in 744ms (2138 modules)
+ GET /leads 200 in 1057ms
+ ✓ Compiled /api/leads in 256ms (1161 modules)
+ ✓ Compiled in 423ms (1009 modules)
+ GET /favicon.ico 200 in 854ms
+ GET /leads 200 in 145ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔗 Airtable URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=100
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔗 Airtable URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=100
+📦 Request 1: Received 100 records
+🔄 Response has offset: false
+📊 Total records so far: 100
+🔄 Has more records: false
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 3984ms
+📦 Request 1: Received 100 records
+🔄 Response has offset: false
+📊 Total records so far: 100
+🔄 Has more records: false
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 4007ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔗 Airtable URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=100
+📦 Request 1: Received 100 records
+🔄 Response has offset: false
+📊 Total records so far: 100
+🔄 Has more records: false
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 603ms
+🔧 [API] Request parameters: {
+  loadAll: false,
+  loadAllParam: null,
+  url: 'http://localhost:3000/api/leads'
+}
+ GET /api/leads 200 in 633ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔗 Airtable URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=100
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔗 Airtable URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=100
+📦 Request 1: Received 100 records
+🔄 Response has offset: false
+📊 Total records so far: 100
+🔄 Has more records: false
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 617ms
+📦 Request 1: Received 100 records
+🔄 Response has offset: false
+📊 Total records so far: 100
+🔄 Has more records: false
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 660ms
+ ✓ Compiled in 390ms (2181 modules)
+ GET /leads 200 in 59ms
+ ✓ Compiled in 185ms (2181 modules)
+ GET /leads 200 in 31ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Request 1: Fetching up to 100 records (first page)
+🔗 Airtable URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=100
+📦 Request 1: Received 100 records
+🔄 Response has offset: false
+📊 Total records so far: 100
+🔄 Has more records: false
+✅ Pagination completed: 100 total records loaded in 1 requests
+✅ Loaded 100 leads total
+ GET /api/leads?loadAll=true 200 in 2924ms
+ ✓ Compiled in 288ms (2153 modules)
+ GET /leads 200 in 73ms
+ ✓ Compiled /api/leads in 115ms (1172 modules)
+ GET /leads 200 in 96ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itr08aCdSz...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr08aCdSzXuQ8lVx%2FrecwrvxGPIrUSbm7S
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itr08aCdSz...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr08aCdSzXuQ8lVx%2FrecEIjG7ckSBcWa3j
+📦 Received 30 records
+📊 Total so far: 230, done
+✅ Completed: 230 total records loaded
+✅ Loaded 230 leads total
+ GET /api/leads?loadAll=true 200 in 3638ms
+ GET /leads 200 in 280ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itrvKGbisP...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrvKGbisPMNtctWn%2FrecwrvxGPIrUSbm7S
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itrOGusAUG...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrOGusAUGNBAYeH9%2FrecwrvxGPIrUSbm7S
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itrvKGbisP...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrvKGbisPMNtctWn%2FrecEIjG7ckSBcWa3j
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itrOGusAUG...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrOGusAUGNBAYeH9%2FrecEIjG7ckSBcWa3j
+📦 Received 30 records
+📊 Total so far: 230, done
+✅ Completed: 230 total records loaded
+✅ Loaded 230 leads total
+ GET /api/leads?loadAll=true 200 in 1019ms
+📦 Received 30 records
+📊 Total so far: 230, done
+✅ Completed: 230 total records loaded
+✅ Loaded 230 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 1065ms
+ ✓ Compiled in 217ms (1009 modules)
+ GET /leads 200 in 14ms
+ ✓ Compiled in 1021ms (2920 modules)
+ GET /leads 200 in 121ms
+ ✓ Compiled in 532ms (2920 modules)
+ GET /leads 200 in 83ms
+ ✓ Compiled in 433ms (2920 modules)
+ GET /leads 200 in 83ms
+ ✓ Compiled in 711ms (2922 modules)
+ GET /leads 200 in 86ms
+ GET /leads 200 in 310ms
+ ✓ Compiled /api/leads in 189ms (1556 modules)
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itrOhxpriS...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrOhxpriSb5U0WlL%2FrecITRWeRhnOUUuiD
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itrdLNWKhn...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrdLNWKhnKPYSLLV%2FrecITRWeRhnOUUuiD
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itrOhxpriS...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrOhxpriSb5U0WlL%2FrecHq1klNFV59hs6u
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itrdLNWKhn...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrdLNWKhnKPYSLLV%2FrecHq1klNFV59hs6u
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true 200 in 3790ms
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 3880ms
+ ✓ Compiled in 279ms (2950 modules)
+ GET /leads 200 in 84ms
+ GET /leads 200 in 318ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itr0FQohzv...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr0FQohzvzm6uYpc%2Frec9kU8ftYuRcPD82
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itr3uPhWc9...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr3uPhWc9YSvAOm2%2Frec9kU8ftYuRcPD82
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itr0FQohzv...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr0FQohzvzm6uYpc%2FrecfroPSAiF8TvC8Y
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itr3uPhWc9...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr3uPhWc9YSvAOm2%2FrecfroPSAiF8TvC8Y
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true 200 in 3334ms
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 3382ms
+ GET /leads 200 in 126ms
+ ✓ Compiled in 356ms (1394 modules)
+ GET /leads 200 in 16ms
+ ✓ Compiled in 610ms (2924 modules)
+ GET /leads 200 in 114ms
+ ✓ Compiled in 183ms (1395 modules)
+ GET /leads 200 in 21ms
+ ✓ Compiled in 276ms (2924 modules)
+ GET /leads 200 in 74ms
+ ✓ Compiled in 178ms (2924 modules)
+ GET /leads 200 in 53ms
+ ✓ Compiled in 598ms (2924 modules)
+ GET /leads 200 in 83ms
+ ✓ Compiled in 229ms (2924 modules)
+ GET /leads 200 in 59ms
+ ✓ Compiled in 224ms (2924 modules)
+ GET /leads 200 in 49ms
+ GET /leads 200 in 310ms
+ ✓ Compiled /api/leads in 352ms (1557 modules)
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true&sortField=Data&sortDirection=desc'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itrScdjapB...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrScdjapBX716aHi%2Frec9kU8ftYuRcPD82
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itr8clnZxM...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr8clnZxMlz85LlE%2Frec9kU8ftYuRcPD82
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itrScdjapB...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrScdjapBX716aHi%2FrecfroPSAiF8TvC8Y
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itr8clnZxM...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr8clnZxMlz85LlE%2FrecfroPSAiF8TvC8Y
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true 200 in 8784ms
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true&sortField=Data&sortDirection=desc 200 in 8892ms
+ ✓ Compiled in 379ms (2924 modules)
+ GET /leads 200 in 110ms
+ ⨯ ./src/components/leads/leads-table-columns.tsx
+Error:   [31mx[0m Expected '</', got 'BadgeColor'
+    ,-[[36;1;4m/Users/matteoeusebi/Desktop/crm_1.0/src/components/leads/leads-table-columns.tsx[0m:83:1]
+ [2m80[0m |             {/* Badge Provenienza */}
+ [2m81[0m |             <Badge 
+ [2m82[0m |               variant="secondary" 
+ [2m83[0m |               className={cn("text-xs", getProvenienza BadgeColor(lead.Provenienza))}
+    : [35;1m                                                      ^^^^^^^^^^[0m
+ [2m84[0m |             >
+ [2m85[0m |               {lead.Provenienza}
+ [2m86[0m |             </Badge>
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/components/leads/leads-table-columns.tsx
+./src/components/leads/leads-data-table.tsx
+./src/app/leads/page.tsx
+ ✓ Compiled in 304ms (2924 modules)
+ GET /leads 200 in 114ms
+ ⨯ Error: Could not find the module "/Users/matteoeusebi/Desktop/crm_1.0/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>) {
+  digest: '2227493521'
+}
+ ⨯ Error: Could not find the module "/Users/matteoeusebi/Desktop/crm_1.0/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>)
+    at stringify (<anonymous>) {
+  digest: '1866272081'
+}
+ ⨯ Error: Could not find the module "/Users/matteoeusebi/Desktop/crm_1.0/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>)
+    at stringify (<anonymous>) {
+  digest: '1866272081'
+}
+ ⨯ Error: Could not find the module "/Users/matteoeusebi/Desktop/crm_1.0/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>)
+    at stringify (<anonymous>) {
+  digest: '1866272081'
+}
+ ⨯ Error: Could not find the module "/Users/matteoeusebi/Desktop/crm_1.0/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>) {
+  digest: '2227493521'
+}
+ ⨯ Error: Could not find the module "/Users/matteoeusebi/Desktop/crm_1.0/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>) {
+  digest: '2227493521'
+}
+ ⨯ [TypeError: __webpack_modules__[moduleId] is not a function] {
+  digest: '3293465658'
+}
+ ⨯ Error: Could not find the module "/Users/matteoeusebi/Desktop/crm_1.0/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>) {
+  digest: '2227493521'
+}
+[TypeError: __webpack_modules__[moduleId] is not a function]
+ ⨯ [TypeError: __webpack_modules__[moduleId] is not a function]
+ ⨯ [TypeError: __webpack_modules__[moduleId] is not a function] {
+  page: '/leads'
+}
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 861ms (3250 modules)
+ GET /leads 500 in 2207ms
+ GET /leads 200 in 349ms
+ ✓ Compiled in 757ms (3264 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/5.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/5.pack.gz'
+ ✓ Compiled in 410ms (3264 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 248ms (3264 modules)
+ ✓ Compiled in 333ms (3264 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 345ms (3264 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 472ms (3264 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ⨯ ./src/components/leads/leads-table-columns.tsx
+Error:   [31mx[0m Expected '</', got 'variant'
+     ,-[[36;1;4m/Users/matteoeusebi/Desktop/crm_1.0/src/components/leads/leads-table-columns.tsx[0m:415:1]
+ [2m412[0m |       ) : (
+ [2m413[0m |         {/* Mostra info utente anche se non abbiamo tutti i dati */}
+ [2m414[0m |         <Button
+ [2m415[0m |           variant="ghost"
+     : [35;1m          ^^^^^^^[0m
+ [2m416[0m |           className="h-auto p-1 hover:bg-muted justify-start"
+ [2m417[0m |           onClick={() => onAssigneeClick?.(assegnatarivId)}
+ [2m418[0m |         >
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/components/leads/leads-table-columns.tsx
+./src/components/leads/leads-data-table.tsx
+./src/app/leads/page.tsx
+ ✓ Compiled in 393ms (3264 modules)
+ ✓ Compiled in 514ms (3264 modules)
+ ✓ Compiled in 108ms (1547 modules)
+ ✓ Compiled in 157ms (3250 modules)
+ ✓ Compiled in 138ms (1547 modules)
+ ✓ Compiled in 326ms (3264 modules)
+ ✓ Compiled in 346ms (3264 modules)
+ ✓ Compiled in 489ms (3266 modules)
+ ✓ Compiled in 218ms (3266 modules)
+ ✓ Compiled in 253ms (1548 modules)
+ ○ Compiling /api/users ...
+ ✓ Compiled /api/users in 759ms (3280 modules)
+🔧 [Users API] Starting request
+🔗 Fetching users from: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblUsers
+❌ Airtable API error: 403 Forbidden
+❌ Error fetching users: Error: Airtable API error: 403 Forbidden
+    at fetchAllUsers (src/app/api/users/route.ts:52:15)
+    at async GET (src/app/api/users/route.ts:97:19)
+  50 |       if (!response.ok) {
+  51 |         console.error('❌ Airtable API error:', response.status, response.statusText);
+> 52 |         throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+     |               ^
+  53 |       }
+  54 |
+  55 |       const data = await response.json();
+❌ [Users API] Error: Error: Airtable API error: 403 Forbidden
+    at fetchAllUsers (src/app/api/users/route.ts:52:15)
+    at async GET (src/app/api/users/route.ts:97:19)
+  50 |       if (!response.ok) {
+  51 |         console.error('❌ Airtable API error:', response.status, response.statusText);
+> 52 |         throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+     |               ^
+  53 |       }
+  54 |
+  55 |       const data = await response.json();
+ GET /api/users 500 in 3592ms
+ ✓ Compiled /api/api-keys in 159ms (3284 modules)
+ GET /api/api-keys 200 in 512ms
+ ✓ Compiled in 581ms (3266 modules)
+ ✓ Compiled /api/users in 81ms (1746 modules)
+🔧 [Users API] Starting request
+🔗 Fetching users from: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tbl141xF7ZQskCqGh
+📦 Loaded 1 users, total: 1
+✅ Completed: 1 total users loaded
+✅ [Users API] Returning 1 users
+ GET /api/users 200 in 2975ms
+ ✓ Compiled /api/leads in 262ms (1748 modules)
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itrKsY7tIy...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrKsY7tIyt0UcVde%2Frec9kU8ftYuRcPD82
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itrKsY7tIy...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrKsY7tIyt0UcVde%2FrecfroPSAiF8TvC8Y
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true 200 in 3490ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itr5ssNios...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr5ssNiosNTRKmLs%2Frec9kU8ftYuRcPD82
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itr5ssNios...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itr5ssNiosNTRKmLs%2FrecfroPSAiF8TvC8Y
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true 200 in 988ms
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itrtwUgVoF...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrtwUgVoFQ15o3J0%2Frec9kU8ftYuRcPD82
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itrtwUgVoF...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrtwUgVoFQ15o3J0%2FrecfroPSAiF8TvC8Y
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true 200 in 1105ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/3.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/3.pack.gz'
+ GET /leads 200 in 305ms
+🔧 [Users API] Starting request
+🔗 Fetching users from: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tbl141xF7ZQskCqGh
+📦 Loaded 1 users, total: 1
+✅ Completed: 1 total users loaded
+✅ [Users API] Returning 1 users
+ GET /api/users 200 in 642ms
+ ✓ Compiled /api/api-keys in 254ms (1747 modules)
+ GET /api/api-keys 200 in 634ms
+ POST /api/api-keys 400 in 6ms
+ POST /api/api-keys 400 in 5ms
+ POST /api/api-keys 400 in 3ms
+ POST /api/api-keys 400 in 4ms
+ POST /api/api-keys 400 in 5ms
+ POST /api/api-keys 400 in 4ms
+ POST /api/api-keys 400 in 4ms
+ POST /api/api-keys 201 in 359ms
+ POST /api/api-keys 201 in 172ms
+ POST /api/api-keys 201 in 172ms
+ POST /api/api-keys 201 in 172ms
+ POST /api/api-keys 201 in 178ms
+ POST /api/api-keys 201 in 175ms
+ POST /api/api-keys 201 in 179ms
+ GET /api/api-keys 200 in 347ms
+ ✓ Compiled in 142ms (1548 modules)
+ ✓ Compiled in 209ms (1548 modules)
+ ✓ Compiled in 258ms (1548 modules)
+ ✓ Compiled /api/users in 241ms (1746 modules)
+🔧 [Users API] Starting request
+🔗 Fetching users from: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tbl141xF7ZQskCqGh
+📦 Loaded 1 users, total: 1
+✅ Completed: 1 total users loaded
+✅ [Users API] Returning 1 users
+ GET /api/users 200 in 4697ms
+ ✓ Compiled in 343ms (1548 modules)
+ ✓ Compiled in 229ms (1548 modules)
+🔧 [Users API] Starting request
+🔗 Fetching users from: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tbl141xF7ZQskCqGh
+📦 Loaded 1 users, total: 1
+✅ Completed: 1 total users loaded
+✅ [Users API] Returning 1 users
+ GET /api/users 200 in 577ms
+ ✓ Compiled /api/leads in 280ms (1748 modules)
+🔧 [API] Request parameters: {
+  loadAll: true,
+  loadAllParam: 'true',
+  url: 'http://localhost:3000/api/leads?loadAll=true'
+}
+🔄 Loading ALL leads from Airtable...
+📡 Fetching records (first page)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc
+📦 Received 100 records
+📊 Total so far: 100, more available
+📡 Fetching records (offset: itrXdxVKqE...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrXdxVKqEESYDvq2%2Frec9kU8ftYuRcPD82
+📦 Received 100 records
+📊 Total so far: 200, more available
+📡 Fetching records (offset: itrXdxVKqE...)
+🔗 URL: https://api.airtable.com/v0/app359c17lK0Ta8Ws/tblKIZ9CDjcQorONA?sort%5B0%5D%5Bfield%5D=Data&sort%5B0%5D%5Bdirection%5D=desc&offset=itrXdxVKqEESYDvq2%2FrecfroPSAiF8TvC8Y
+📦 Received 32 records
+📊 Total so far: 232, done
+✅ Completed: 232 total records loaded
+✅ Loaded 232 leads total
+ GET /api/leads?loadAll=true 200 in 3618ms
+ ✓ Compiled /api/api-keys in 84ms (1752 modules)
+ GET /api/api-keys 200 in 412ms
+ ✓ Compiled in 934ms (3266 modules)
+ ✓ Compiled in 231ms (1548 modules)
+ ✓ Compiled in 497ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 319ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 546ms (3268 modules)
+ ✓ Compiled in 307ms (3266 modules)
+ ✓ Compiled in 525ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 460ms (3266 modules)
+ ✓ Compiled in 617ms (3266 modules)
+ ✓ Compiled in 732ms (3266 modules)
+ ✓ Compiled in 493ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 273ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 233ms (3266 modules)
+ ✓ Compiled in 236ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 1044ms (3266 modules)
+ ✓ Compiled in 481ms (3266 modules)
+ ✓ Compiled in 804ms (3266 modules)
+ ✓ Compiled in 255ms (3266 modules)
+ ✓ Compiled in 520ms (3266 modules)
+ ✓ Compiled in 335ms (3266 modules)
+ ✓ Compiled in 755ms (3266 modules)
+ ✓ Compiled in 259ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/2.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/2.pack.gz'
+ ✓ Compiled in 692ms (3266 modules)
+ ✓ Compiled in 232ms (3266 modules)
+ ✓ Compiled in 716ms (3266 modules)
+ ✓ Compiled in 267ms (3266 modules)
+ ✓ Compiled in 775ms (3266 modules)
+ ✓ Compiled in 233ms (3266 modules)
+ ✓ Compiled in 821ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 302ms (1548 modules)
+ ✓ Compiled in 662ms (3266 modules)
+ ✓ Compiled in 145ms (1548 modules)
+ ✓ Compiled in 235ms (3266 modules)
+ ✓ Compiled in 159ms (1548 modules)
+ ✓ Compiled in 149ms (1548 modules)
+ ⨯ ./src/components/ui/dropdown-menu.tsx
+Error: 
+
+Caused by:
+    0: Failed to read source code from /Users/matteoeusebi/Desktop/crm_1.0/src/components/ui/dropdown-menu.tsx
+    1: No such file or directory (os error 2)
+
+Import trace for requested module:
+./src/components/ui/dropdown-menu.tsx
+./src/components/leads/leads-data-table.tsx
+./src/app/leads/page.tsx
+ ⨯ ./src/components/leads/leads-data-table.tsx:20:1
+Module not found: Can't resolve '@/components/ui/dropdown-menu'
+  18 |   SelectValue,
+  19 | } from '@/components/ui/select';
+> 20 | import {
+     | ^
+  21 |   DropdownMenu,
+  22 |   DropdownMenuCheckboxItem,
+  23 |   DropdownMenuContent,
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./src/app/leads/page.tsx
+ ⨯ ./src/components/leads/leads-data-table.tsx:20:1
+Module not found: Can't resolve '@/components/ui/dropdown-menu'
+  18 |   SelectValue,
+  19 | } from '@/components/ui/select';
+> 20 | import {
+     | ^
+  21 |   DropdownMenu,
+  22 |   DropdownMenuCheckboxItem,
+  23 |   DropdownMenuContent,
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./src/app/leads/page.tsx
+ ✓ Compiled in 230ms (3270 modules)
+ ✓ Compiled in 896ms (3270 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ⨯ ./src/components/ui/custom-multi-select-dropdown.tsx
+Error: 
+
+Caused by:
+    0: Failed to read source code from /Users/matteoeusebi/Desktop/crm_1.0/src/components/ui/custom-multi-select-dropdown.tsx
+    1: No such file or directory (os error 2)
+
+Import trace for requested module:
+./src/components/ui/custom-multi-select-dropdown.tsx
+./src/components/leads/leads-data-table.tsx
+./src/app/leads/page.tsx
+ ⨯ ./src/components/ui/custom-multi-select-dropdown.tsx
+Error: 
+
+Caused by:
+    0: Failed to read source code from /Users/matteoeusebi/Desktop/crm_1.0/src/components/ui/custom-multi-select-dropdown.tsx
+    1: No such file or directory (os error 2)
+
+Import trace for requested module:
+./src/components/ui/custom-multi-select-dropdown.tsx
+./src/components/leads/leads-data-table.tsx
+./src/app/leads/page.tsx
+ ✓ Compiled in 296ms (3266 modules)
+ ✓ Compiled in 369ms (3266 modules)
+ ✓ Compiled in 466ms (3266 modules)
+ ✓ Compiled in 836ms (3266 modules)
+ ✓ Compiled in 874ms (3272 modules)
+ ✓ Compiled in 510ms (3272 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/1.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/1.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack failed from /Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development.pack.gz: Error: invalid code lengths set
+ ✓ Compiled in 962ms (3272 modules)
+ ✓ Compiled in 466ms (3272 modules)
+ ✓ Compiled in 284ms (3272 modules)
+ ✓ Compiled in 819ms (3272 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 261ms (3266 modules)
+ ✓ Compiled in 695ms (3266 modules)
+ ✓ Compiled in 448ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 541ms (3266 modules)
+ ✓ Compiled in 401ms (3266 modules)
+ ✓ Compiled in 333ms (3266 modules)
+ ✓ Compiled in 365ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 679ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/server-development/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 337ms (3266 modules)
+ ✓ Compiled in 677ms (3266 modules)
+ ✓ Compiled in 841ms (3266 modules)
+ ⨯ ./src/components/leads/leads-table-columns.tsx
+Error:   [31mx[0m Unterminated string constant
+     ,-[[36;1;4m/Users/matteoeusebi/Desktop/crm_1.0/src/components/leads/leads-table-columns.tsx[0m:183:1]
+ [2m180[0m |             variant="ghost"
+ [2m181[0m |             size="sm"
+ [2m182[0m |             className="h-auto p-1 hover:bg-muted text-foreground justify-start w-full"
+ [2m183[0m | "
+     : [35;1m^[0m
+ [2m184[0m |             onClick={() => handlePhoneClick(lead.Telefono!)}
+ [2m185[0m |           >
+ [2m186[0m |             <Phone className="h-3 w-3 mr-2 text-muted-foreground" />
+     `----
+  [31mx[0m Expected '</', got 'string literal (, ")'
+     ,-[[36;1;4m/Users/matteoeusebi/Desktop/crm_1.0/src/components/leads/leads-table-columns.tsx[0m:183:1]
+ [2m180[0m |             variant="ghost"
+ [2m181[0m |             size="sm"
+ [2m182[0m |             className="h-auto p-1 hover:bg-muted text-foreground justify-start w-full"
+ [2m183[0m | "
+     : [35;1m^[0m
+ [2m184[0m |             onClick={() => handlePhoneClick(lead.Telefono!)}
+ [2m185[0m |           >
+ [2m186[0m |             <Phone className="h-3 w-3 mr-2 text-muted-foreground" />
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/components/leads/leads-table-columns.tsx
+./src/components/leads/leads-data-table.tsx
+./src/app/leads/page.tsx
+ ⨯ ./src/components/leads/leads-table-columns.tsx
+Error:   [31mx[0m Unterminated string constant
+     ,-[[36;1;4m/Users/matteoeusebi/Desktop/crm_1.0/src/components/leads/leads-table-columns.tsx[0m:183:1]
+ [2m180[0m |             variant="ghost"
+ [2m181[0m |             size="sm"
+ [2m182[0m |             className="h-auto p-1 hover:bg-muted text-foreground justify-start w-full"
+ [2m183[0m | "
+     : [35;1m^[0m
+ [2m184[0m |             onClick={() => handlePhoneClick(lead.Telefono!)}
+ [2m185[0m |           >
+ [2m186[0m |             <Phone className="h-3 w-3 mr-2 text-muted-foreground" />
+     `----
+  [31mx[0m Expected '</', got 'string literal (, ")'
+     ,-[[36;1;4m/Users/matteoeusebi/Desktop/crm_1.0/src/components/leads/leads-table-columns.tsx[0m:183:1]
+ [2m180[0m |             variant="ghost"
+ [2m181[0m |             size="sm"
+ [2m182[0m |             className="h-auto p-1 hover:bg-muted text-foreground justify-start w-full"
+ [2m183[0m | "
+     : [35;1m^[0m
+ [2m184[0m |             onClick={() => handlePhoneClick(lead.Telefono!)}
+ [2m185[0m |           >
+ [2m186[0m |             <Phone className="h-3 w-3 mr-2 text-muted-foreground" />
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/components/leads/leads-table-columns.tsx
+./src/components/leads/leads-data-table.tsx
+./src/app/leads/page.tsx
+ ✓ Compiled in 545ms (3266 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/matteoeusebi/Desktop/crm_1.0/.next/cache/webpack/client-development/0.pack.gz'

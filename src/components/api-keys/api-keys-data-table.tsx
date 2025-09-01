@@ -54,6 +54,7 @@ import {
   ChevronsRight
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
+import { it } from 'date-fns/locale';
 
 interface ApiKeysDataTableProps {
   apiKeys: ApiKeyData[];
@@ -166,8 +167,8 @@ export function ApiKeysDataTable({
       return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
     }
     return sortOrder === 'asc' 
-      ? <ArrowUp className="h-4 w-4 text-gray-600" />
-      : <ArrowDown className="h-4 w-4 text-gray-600" />;
+      ? <ArrowUp className="h-4 w-4 text-foreground/70" />
+      : <ArrowDown className="h-4 w-4 text-foreground/70" />;
   };
 
   const handleDeleteClick = (apiKey: ApiKeyData) => {
@@ -399,12 +400,12 @@ export function ApiKeysDataTable({
       {/* Table */}
       <div className="rounded-md border">
         <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow className="hover:bg-gray-50">
-              <TableHead className="font-semibold text-gray-700">
+          <TableHeader>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="font-semibold text-foreground first:rounded-tl-md last:rounded-tr-md">
                 <Button 
                   variant="ghost" 
-                  className="h-auto p-0 font-semibold text-gray-700 hover:text-gray-900 hover:bg-transparent"
+                  className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80 hover:bg-transparent"
                   onClick={() => handleSort('name')}
                 >
                   <span className="flex items-center gap-1">
@@ -413,12 +414,12 @@ export function ApiKeysDataTable({
                   </span>
                 </Button>
               </TableHead>
-              <TableHead className="font-semibold text-gray-700">Categoria</TableHead>
-              <TableHead className="font-semibold text-gray-700">Stato</TableHead>
-              <TableHead className="font-semibold text-gray-700">Permessi</TableHead>
-              <TableHead className="font-semibold text-gray-700">Utilizzo</TableHead>
-              <TableHead className="font-semibold text-gray-700">Creata</TableHead>
-              <TableHead className="font-semibold text-gray-700">Ultimo Uso</TableHead>
+              <TableHead className="font-semibold text-foreground">Categoria</TableHead>
+              <TableHead className="font-semibold text-foreground">Stato</TableHead>
+              <TableHead className="font-semibold text-foreground">Permessi</TableHead>
+              <TableHead className="font-semibold text-foreground">Utilizzo</TableHead>
+              <TableHead className="font-semibold text-foreground">Creata</TableHead>
+              <TableHead className="font-semibold text-foreground">Ultima Attività</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -496,14 +497,14 @@ export function ApiKeysDataTable({
                   <div className="flex items-center space-x-1">
                     <Calendar className="h-3 w-3 text-muted-foreground" />
                     <span className="text-sm">
-                      {format(new Date(apiKey.createdAt), 'MMM d, yyyy')}
+                      {format(new Date(apiKey.createdAt), 'd MMM yyyy', { locale: it })}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell>
                   {apiKey.lastUsed ? (
                     <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(apiKey.lastUsed), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(apiKey.lastUsed), { addSuffix: true, locale: it })}
                     </span>
                   ) : (
                     <span className="text-sm text-muted-foreground">Mai</span>
@@ -520,7 +521,7 @@ export function ApiKeysDataTable({
                       <DropdownMenuLabel>Azioni</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => onView(apiKey)}>
                         <Eye className="mr-2 h-4 w-4" />
-                        Visualizza Dettagli
+                        Dettagli
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEdit(apiKey)}>
                         <Edit2 className="mr-2 h-4 w-4" />

@@ -23,6 +23,7 @@ import {
   User
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { useState } from 'react';
 
 interface ApiKeyDetailsDialogProps {
@@ -109,27 +110,21 @@ export function ApiKeyDetailsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`max-w-2xl ${className || ''}`}>
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Key className="h-5 w-5" />
-            <span>Dettagli Chiave API</span>
-          </DialogTitle>
-          <DialogDescription>
-            Visualizza informazioni dettagliate sulla tua chiave API
-          </DialogDescription>
+          <div className="flex items-center justify-between pr-8">
+            <DialogTitle className="flex items-center space-x-2">
+              <Key className="h-5 w-5" />
+              <span>{apiKey.name}</span>
+            </DialogTitle>
+            {getStatusBadge(apiKey)}
+          </div>
+          {apiKey.description && (
+            <DialogDescription className="mt-2">
+              {apiKey.description}
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{apiKey.name}</h3>
-              {getStatusBadge(apiKey)}
-            </div>
-            
-            {apiKey.description && (
-              <p className="text-muted-foreground">{apiKey.description}</p>
-            )}
-          </div>
 
           <Separator />
 
@@ -193,7 +188,7 @@ export function ApiKeyDetailsDialog({
                   <span className="text-sm text-muted-foreground">Ultimo utilizzo:</span>
                   <span className="text-sm font-medium">
                     {apiKey.lastUsed 
-                      ? formatDistanceToNow(new Date(apiKey.lastUsed), { addSuffix: true })
+                      ? formatDistanceToNow(new Date(apiKey.lastUsed), { addSuffix: true, locale: it })
                       : 'Mai'
                     }
                   </span>
@@ -210,20 +205,20 @@ export function ApiKeyDetailsDialog({
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Creata:</span>
                   <span className="text-sm font-medium">
-                    {format(new Date(apiKey.createdAt), 'dd MMM yyyy')}
+                    {format(new Date(apiKey.createdAt), 'd MMM yyyy', { locale: it })}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Aggiornata:</span>
                   <span className="text-sm font-medium">
-                    {format(new Date(apiKey.updatedAt), 'dd MMM yyyy')}
+                    {format(new Date(apiKey.updatedAt), 'd MMM yyyy', { locale: it })}
                   </span>
                 </div>
                 {apiKey.expiresAt && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Scade:</span>
                     <span className="text-sm font-medium">
-                      {format(new Date(apiKey.expiresAt), 'dd MMM yyyy')}
+                      {format(new Date(apiKey.expiresAt), 'd MMM yyyy', { locale: it })}
                     </span>
                   </div>
                 )}

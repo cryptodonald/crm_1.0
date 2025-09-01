@@ -60,7 +60,7 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
   return (
     <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-4 ${className || ''}`}>
       {/* Total API Keys */}
-      <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200">
+      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Totale Chiavi API</CardTitle>
           <Key className="h-4 w-4 text-muted-foreground" />
@@ -83,7 +83,7 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
       </Card>
 
       {/* Active Keys Progress */}
-      <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200">
+      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Chiavi Attive</CardTitle>
           <Activity className="h-4 w-4 text-muted-foreground" />
@@ -98,7 +98,7 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
       </Card>
 
       {/* Total Usage */}
-      <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200">
+      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Uso Totale</CardTitle>
           {trends && getTrendIcon(usageGrowth)}
@@ -117,7 +117,7 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
       </Card>
 
       {/* Alerts */}
-      <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200">
+      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Avvisi</CardTitle>
           <AlertTriangle className="h-4 w-4 text-muted-foreground" />

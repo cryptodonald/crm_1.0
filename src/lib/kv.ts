@@ -45,7 +45,13 @@ export class KVApiKeyService {
    */
   async storeApiKey(apiKeyData: ApiKeyData): Promise<void> {
     const keyId = `${KV_PREFIXES.API_KEY}${apiKeyData.id}`;
-    await kv.set(keyId, apiKeyData);
+    
+    // Filter out null/undefined values for Redis hset
+    const filteredData = Object.fromEntries(
+      Object.entries(apiKeyData).filter(([_, value]) => value !== null && value !== undefined)
+    );
+    
+    await kv.hset(keyId, filteredData);
     
     // Add to user's API keys list
     const userKeysId = `${KV_PREFIXES.USER_API_KEYS}${apiKeyData.userId}`;
@@ -61,7 +67,7 @@ export class KVApiKeyService {
    */
   async getApiKey(id: string): Promise<ApiKeyData | null> {
     const keyId = `${KV_PREFIXES.API_KEY}${id}`;
-    return await kv.get<ApiKeyData>(keyId);
+    return await kv.hgetall(keyId) as ApiKeyData | null;
   }
 
   /**
@@ -109,8 +115,13 @@ export class KVApiKeyService {
       updatedAt: new Date(),
     };
     
+    // Filter out null/undefined values for Redis hset
+    const filteredUpdated = Object.fromEntries(
+      Object.entries(updated).filter(([_, value]) => value !== null && value !== undefined)
+    );
+    
     const keyId = `${KV_PREFIXES.API_KEY}${id}`;
-    await kv.set(keyId, updated);
+    await kv.hset(keyId, filteredUpdated);
     
     return updated;
   }

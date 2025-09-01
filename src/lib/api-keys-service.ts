@@ -151,6 +151,37 @@ class ApiKeyService {
   }
 
   /**
+   * Airtable table ID helpers
+   */
+  async getAirtableBaseId(): Promise<string | null> {
+    return this.getApiKey('airtable-base-id');
+  }
+
+  async getAirtableLeadsTableId(): Promise<string | null> {
+    return this.getApiKey('airtable-leads-table');
+  }
+
+  async getAirtableUsersTableId(): Promise<string | null> {
+    return this.getApiKey('airtable-users-table');
+  }
+
+  async getAirtableActivitiesTableId(): Promise<string | null> {
+    return this.getApiKey('airtable-activities-table');
+  }
+
+  async getAirtableOrdersTableId(): Promise<string | null> {
+    return this.getApiKey('airtable-orders-table');
+  }
+
+  async getAirtableProductsTableId(): Promise<string | null> {
+    return this.getApiKey('airtable-products-table');
+  }
+
+  async getAirtableAutomationsTableId(): Promise<string | null> {
+    return this.getApiKey('airtable-automations-table');
+  }
+
+  /**
    * Get all WhatsApp related keys at once
    */
   async getWhatsAppKeys(): Promise<{
@@ -295,3 +326,12 @@ export const getNextAuthSecret = () => apiKeyService.getNextAuthSecret();
 export const getDatabaseUrl = () => apiKeyService.getDatabaseUrl();
 export const getWhatsAppKeys = () => apiKeyService.getWhatsAppKeys();
 export const getGitHubKeys = () => apiKeyService.getGitHubKeys();
+
+// Airtable table ID exports
+export const getAirtableBaseId = () => apiKeyService.getAirtableBaseId();
+export const getAirtableLeadsTableId = () => apiKeyService.getAirtableLeadsTableId();
+export const getAirtableUsersTableId = () => apiKeyService.getAirtableUsersTableId();
+export const getAirtableActivitiesTableId = () => apiKeyService.getAirtableActivitiesTableId();
+export const getAirtableOrdersTableId = () => apiKeyService.getAirtableOrdersTableId();
+export const getAirtableProductsTableId = () => apiKeyService.getAirtableProductsTableId();
+export const getAirtableAutomationsTableId = () => apiKeyService.getAirtableAutomationsTableId();

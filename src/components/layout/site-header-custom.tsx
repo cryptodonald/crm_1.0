@@ -8,12 +8,14 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { 
   IconSearch, 
   IconBell, 
-  IconSettings 
+  IconSettings,
+  IconX
 } from "@tabler/icons-react"
 import { ModeToggle } from "@/components/mode-toggle"
 
 export function SiteHeaderCustom() {
   const searchInputRef = React.useRef<HTMLInputElement>(null)
+  const [searchValue, setSearchValue] = React.useState('')
 
   // Handle ⌘K shortcut
   React.useEffect(() => {
@@ -46,16 +48,40 @@ export function SiteHeaderCustom() {
           </div>
           <Input
             ref={searchInputRef}
-            type="search"
+            type="text"
             placeholder="Search..."
-            className="pl-10 pr-12 h-9 rounded-lg bg-background border-input focus:ring-2 focus:ring-primary focus:border-transparent"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className={`pl-10 h-9 rounded-lg bg-background border-input focus:ring-2 focus:ring-primary focus:border-transparent ${
+              searchValue ? 'pr-20' : 'pr-12'
+            }`}
             onKeyDown={(e) => {
-              // Escape to deselect
+              // Escape to deselect and clear
               if (e.key === 'Escape') {
+                setSearchValue('')
                 searchInputRef.current?.blur()
               }
             }}
           />
+          
+          {/* Clear button - only show when there's text */}
+          {searchValue && (
+            <div className="absolute inset-y-0 right-0 pr-12 flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-muted rounded-sm"
+                onClick={() => {
+                  setSearchValue('')
+                  searchInputRef.current?.focus()
+                }}
+              >
+                <IconX className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+          
+          {/* Keyboard shortcut indicator */}
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
             <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
               <span className="text-xs">⌘</span>K

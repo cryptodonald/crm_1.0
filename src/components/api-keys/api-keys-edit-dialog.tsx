@@ -19,6 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { DatePicker } from '@/components/ui/date-picker';
 import { 
   Calendar,
   Shield,
@@ -26,7 +27,9 @@ import {
   Copy,
   CheckCircle,
   AlertTriangle,
-  X
+  X,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -61,10 +64,10 @@ interface ApiKeysEditDialogProps {
 }
 
 const AVAILABLE_PERMISSIONS = [
-  { id: 'read', label: 'Lettura', description: 'Visualizza dati e risorse' },
-  { id: 'write', label: 'Scrittura', description: 'Crea e aggiorna risorse' },
-  { id: 'delete', label: 'Eliminazione', description: 'Elimina risorse' },
-  { id: 'admin', label: 'Amministratore', description: 'Accesso amministrativo completo' },
+  { id: 'read', label: 'read', description: 'Visualizza dati e risorse' },
+  { id: 'write', label: 'write', description: 'Crea e aggiorna risorse' },
+  { id: 'delete', label: 'delete', description: 'Elimina risorse' },
+  { id: 'admin', label: 'admin', description: 'Accesso amministrativo completo' },
 ];
 
 export function ApiKeysEditDialog({
@@ -91,6 +94,7 @@ export function ApiKeysEditDialog({
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [loadingRealValue, setLoadingRealValue] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isEditing = Boolean(apiKey);
 
@@ -392,13 +396,32 @@ export function ApiKeysEditDialog({
                         {loadingRealValue ? 'Caricamento...' : 'Mostra Valore Corrente'}
                       </Button>
                     </div>
-                    <Input
-                      id="newValue"
-                      type="password"
-                      value={formData.value}
-                      onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
-                      placeholder={formData.value ? 'Valore corrente caricato - modifica o cancella per mantenerlo invariato' : 'Lascia vuoto per mantenere il valore corrente, o incolla un nuovo valore'}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="newValue"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.value}
+                        onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
+                        placeholder={formData.value ? 'Valore corrente caricato - modifica o cancella per mantenerlo invariato' : 'Lascia vuoto per mantenere il valore corrente, o incolla un nuovo valore'}
+                        className="pr-10"
+                      />
+                      {formData.value && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                          title={showPassword ? 'Nascondi valore' : 'Mostra valore'}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {formData.value 
                         ? 'Il valore corrente della chiave API è caricato sopra. Modificalo per cambiarlo, o cancella il campo per mantenere invariato il valore esistente.'
@@ -421,31 +444,29 @@ export function ApiKeysEditDialog({
             <Separator />
 
             {/* Permissions */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Permessi *</Label>
-                <div className="grid grid-cols-1 gap-3">
-                  {AVAILABLE_PERMISSIONS.map((permission) => (
-                    <div key={permission.id} className="flex items-start space-x-3">
-                      <Checkbox
-                        id={permission.id}
-                        checked={formData.permissions.includes(permission.id)}
-                        onCheckedChange={() => handlePermissionToggle(permission.id)}
-                      />
-                      <div className="grid gap-1.5 leading-none">
-                        <Label 
-                          htmlFor={permission.id}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {permission.label}
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          {permission.description}
-                        </p>
-                      </div>
+            <div className="space-y-3">
+              <Label>Permessi *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {AVAILABLE_PERMISSIONS.map((permission) => (
+                  <div key={permission.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted/50">
+                    <Checkbox
+                      id={permission.id}
+                      checked={formData.permissions.includes(permission.id)}
+                      onCheckedChange={() => handlePermissionToggle(permission.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <Label 
+                        htmlFor={permission.id}
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        {permission.label}
+                      </Label>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {permission.description}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
               
               {formData.permissions.length === 0 && (
@@ -478,13 +499,17 @@ export function ApiKeysEditDialog({
                 <div className="space-y-4 pl-4 border-l-2 border-muted">
                   {/* Expiration Date */}
                   <div className="space-y-2">
-                    <Label htmlFor="expiresAt">Data di Scadenza</Label>
-                    <Input
-                      id="expiresAt"
-                      type="date"
-                      value={formData.expiresAt}
-                      onChange={(e) => setFormData(prev => ({ ...prev, expiresAt: e.target.value }))}
-                      min={format(new Date(), 'yyyy-MM-dd')}
+                    <Label>Data di Scadenza</Label>
+                    <DatePicker
+                      date={formData.expiresAt ? new Date(formData.expiresAt) : undefined}
+                      onSelect={(date) => {
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          expiresAt: date ? format(date, 'yyyy-MM-dd') : '' 
+                        }));
+                      }}
+                      placeholder="Seleziona data di scadenza"
+                      minDate={new Date()}
                     />
                     <p className="text-xs text-muted-foreground">
                       Lascia vuoto per nessuna scadenza
