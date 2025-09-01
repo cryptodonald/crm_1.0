@@ -1,14 +1,14 @@
-import type { 
-  ApiKey, 
-  ApiKeyWithMetadata, 
-  CreateApiKeyRequest, 
+import type {
+  ApiKey,
+  ApiKeyWithMetadata,
+  CreateApiKeyRequest,
   UpdateApiKeyRequest,
   ApiKeyListResponse,
   ApiKeyStatsResponse,
   ApiKeyHealth,
   ApiKeyMetrics,
   ApiKeyProvider,
-  ApiKeyStatus 
+  ApiKeyStatus,
 } from '@/types/api-keys';
 import { encryptionService } from './encryption';
 import { auditLogger } from './audit-logger';
@@ -30,7 +30,7 @@ export class ApiKeysRepository {
     // For now, return mock data
     return {
       userId: process.env.CURRENT_USER_ID || 'user_mock',
-      tenantId: process.env.CURRENT_TENANT_ID || 'tenant_mock'
+      tenantId: process.env.CURRENT_TENANT_ID || 'tenant_mock',
     };
   }
 
@@ -53,10 +53,12 @@ export class ApiKeysRepository {
   /**
    * Create new API key
    */
-  async createApiKey(request: CreateApiKeyRequest): Promise<ApiKeyWithMetadata> {
+  async createApiKey(
+    request: CreateApiKeyRequest
+  ): Promise<ApiKeyWithMetadata> {
     const { userId, tenantId } = this.getCurrentContext();
     const kv = await this.getKV();
-    
+
     const apiKey: ApiKey = {
       id: encryptionService.generateToken(16),
       name: request.name,
@@ -81,14 +83,14 @@ export class ApiKeysRepository {
     // Store in KV
     const keyPath = this.getCacheKey(`key:${apiKey.id}`);
     await kv.set(keyPath, JSON.stringify(apiKey));
-    
+
     // Add to tenant's key list
     const listKey = this.getCacheKey('list');
     await kv.sadd(listKey, apiKey.id);
-    
+
     // Invalidate cache
     await this.invalidateCache();
-    
+
     // Log audit event
     await auditLogger.logKeyCreated(
       apiKey.id,
@@ -96,7 +98,7 @@ export class ApiKeysRepository {
       request.provider,
       request.scopes
     );
-    
+
     return this.enrichApiKey(apiKey);
   }
 
@@ -106,10 +108,10 @@ export class ApiKeysRepository {
   async getApiKey(id: string): Promise<ApiKeyWithMetadata | null> {
     const kv = await this.getKV();
     const keyPath = this.getCacheKey(`key:${id}`);
-    
+
     const data = await kv.get(keyPath);
     if (!data) return null;
-    
+
     const apiKey = JSON.parse(data as string) as ApiKey;
     return this.enrichApiKey(apiKey);
   }
@@ -138,10 +140,10 @@ export class ApiKeysRepository {
 
     const kv = await this.getKV();
     const listKey = this.getCacheKey('list');
-    
+
     // Get all key IDs for tenant
-    const keyIds = await kv.smembers(listKey) as string[];
-    
+    const keyIds = (await kv.smembers(listKey)) as string[];
+
     // Fetch all keys
     const keys: ApiKey[] = [];
     for (const keyId of keyIds) {
@@ -154,36 +156,40 @@ export class ApiKeysRepository {
 
     // Apply filters
     let filteredKeys = keys;
-    
+
     if (options?.provider) {
       filteredKeys = filteredKeys.filter(k => k.provider === options.provider);
     }
-    
+
     if (options?.status) {
       filteredKeys = filteredKeys.filter(k => k.status === options.status);
     }
-    
+
     if (options?.environment) {
-      filteredKeys = filteredKeys.filter(k => k.environment === options.environment);
+      filteredKeys = filteredKeys.filter(
+        k => k.environment === options.environment
+      );
     }
-    
+
     if (options?.search) {
       const search = options.search.toLowerCase();
-      filteredKeys = filteredKeys.filter(k => 
-        k.name.toLowerCase().includes(search) ||
-        (k.description && k.description.toLowerCase().includes(search))
+      filteredKeys = filteredKeys.filter(
+        k =>
+          k.name.toLowerCase().includes(search) ||
+          (k.description && k.description.toLowerCase().includes(search))
       );
     }
 
     // Sort by creation date (newest first)
-    filteredKeys.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    filteredKeys.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
     // Paginate
     const total = filteredKeys.length;
     const paginatedKeys = filteredKeys.slice(offset, offset + limit);
-    
+
     // Enrich with metadata
     const enrichedKeys = await Promise.all(
       paginatedKeys.map(key => this.enrichApiKey(key))
@@ -199,17 +205,20 @@ export class ApiKeysRepository {
 
     // Cache result
     await this.setCache(cacheKey, result, this.defaultCacheTTL);
-    
+
     return result;
   }
 
   /**
    * Update API key
    */
-  async updateApiKey(id: string, request: UpdateApiKeyRequest): Promise<ApiKeyWithMetadata> {
+  async updateApiKey(
+    id: string,
+    request: UpdateApiKeyRequest
+  ): Promise<ApiKeyWithMetadata> {
     const { userId } = this.getCurrentContext();
     const kv = await this.getKV();
-    
+
     const existing = await this.getApiKey(id);
     if (!existing) {
       throw new Error('API key not found');
@@ -217,7 +226,7 @@ export class ApiKeysRepository {
 
     // Track changes for audit
     const changes: Record<string, { from: any; to: any }> = {};
-    
+
     const updated: ApiKey = {
       ...existing,
       updatedAt: new Date(),
@@ -228,12 +237,21 @@ export class ApiKeysRepository {
       updated.name = request.name;
     }
 
-    if (request.description !== undefined && request.description !== existing.description) {
-      changes.description = { from: existing.description, to: request.description };
+    if (
+      request.description !== undefined &&
+      request.description !== existing.description
+    ) {
+      changes.description = {
+        from: existing.description,
+        to: request.description,
+      };
       updated.description = request.description;
     }
 
-    if (request.scopes && JSON.stringify(request.scopes) !== JSON.stringify(existing.scopes)) {
+    if (
+      request.scopes &&
+      JSON.stringify(request.scopes) !== JSON.stringify(existing.scopes)
+    ) {
       changes.scopes = { from: existing.scopes, to: request.scopes };
       updated.scopes = request.scopes;
     }
@@ -249,22 +267,25 @@ export class ApiKeysRepository {
     }
 
     if (request.rotationInterval !== undefined) {
-      changes.rotationInterval = { from: existing.rotationInterval, to: request.rotationInterval };
+      changes.rotationInterval = {
+        from: existing.rotationInterval,
+        to: request.rotationInterval,
+      };
       updated.rotationInterval = request.rotationInterval;
     }
 
     // Store updated key
     const keyPath = this.getCacheKey(`key:${id}`);
     await kv.set(keyPath, JSON.stringify(updated));
-    
+
     // Invalidate cache
     await this.invalidateCache();
-    
+
     // Log audit event
     if (Object.keys(changes).length > 0) {
       await auditLogger.logKeyUpdated(id, userId, changes);
     }
-    
+
     return this.enrichApiKey(updated);
   }
 
@@ -274,7 +295,7 @@ export class ApiKeysRepository {
   async deleteApiKey(id: string, reason?: string): Promise<void> {
     const { userId } = this.getCurrentContext();
     const kv = await this.getKV();
-    
+
     const existing = await this.getApiKey(id);
     if (!existing) {
       throw new Error('API key not found');
@@ -283,14 +304,14 @@ export class ApiKeysRepository {
     // Remove from storage
     const keyPath = this.getCacheKey(`key:${id}`);
     await kv.del(keyPath);
-    
+
     // Remove from list
     const listKey = this.getCacheKey('list');
     await kv.srem(listKey, id);
-    
+
     // Invalidate cache
     await this.invalidateCache();
-    
+
     // Log audit event
     await auditLogger.logKeyDeleted(id, userId, reason);
   }
@@ -300,7 +321,7 @@ export class ApiKeysRepository {
    */
   async rotateApiKey(id: string, newKey: string): Promise<ApiKeyWithMetadata> {
     const { userId } = this.getCurrentContext();
-    
+
     const existing = await this.getApiKey(id);
     if (!existing) {
       throw new Error('API key not found');
@@ -313,7 +334,7 @@ export class ApiKeysRepository {
     // Update the encrypted key and masked version
     const kv = await this.getKV();
     const keyPath = this.getCacheKey(`key:${id}`);
-    
+
     const updatedKey: ApiKey = {
       ...updated,
       key: encryptionService.encrypt(newKey),
@@ -323,13 +344,13 @@ export class ApiKeysRepository {
     };
 
     await kv.set(keyPath, JSON.stringify(updatedKey));
-    
+
     // Invalidate cache
     await this.invalidateCache();
-    
+
     // Log audit event
     await auditLogger.logKeyRotated(id, userId, 'manual');
-    
+
     return this.enrichApiKey(updatedKey);
   }
 
@@ -339,7 +360,7 @@ export class ApiKeysRepository {
   async getDecryptedKey(id: string): Promise<string | null> {
     const apiKey = await this.getApiKey(id);
     if (!apiKey) return null;
-    
+
     try {
       return encryptionService.decrypt(apiKey.key);
     } catch (error) {
@@ -359,10 +380,12 @@ export class ApiKeysRepository {
     }
 
     const { data } = await this.listApiKeys({ limit: 1000 }); // Get all keys
-    
+
     const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    
+    const thirtyDaysFromNow = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000
+    );
+
     const stats: ApiKeyStatsResponse = {
       total: data.length,
       active: data.filter(k => k.status === 'active').length,
@@ -377,24 +400,30 @@ export class ApiKeysRepository {
 
     // Calculate breakdowns
     for (const key of data) {
-      stats.byProvider[key.provider] = (stats.byProvider[key.provider] || 0) + 1;
+      stats.byProvider[key.provider] =
+        (stats.byProvider[key.provider] || 0) + 1;
       stats.byStatus[key.status] = (stats.byStatus[key.status] || 0) + 1;
-      stats.byEnvironment[key.environment] = (stats.byEnvironment[key.environment] || 0) + 1;
+      stats.byEnvironment[key.environment] =
+        (stats.byEnvironment[key.environment] || 0) + 1;
     }
 
     // Cache for 1 minute
     await this.setCache(cacheKey, stats, 60);
-    
+
     return stats;
   }
 
   /**
    * Record API key usage
    */
-  async recordUsage(id: string, operation: string, resourcesAccessed: string[]): Promise<void> {
+  async recordUsage(
+    id: string,
+    operation: string,
+    resourcesAccessed: string[]
+  ): Promise<void> {
     const { userId } = this.getCurrentContext();
     const kv = await this.getKV();
-    
+
     const existing = await this.getApiKey(id);
     if (!existing) return;
 
@@ -407,7 +436,7 @@ export class ApiKeysRepository {
 
     const keyPath = this.getCacheKey(`key:${id}`);
     await kv.set(keyPath, JSON.stringify(updated));
-    
+
     // Log usage
     await auditLogger.logKeyAccessed(id, userId, operation, resourcesAccessed);
   }
@@ -417,12 +446,16 @@ export class ApiKeysRepository {
    */
   private async enrichApiKey(apiKey: ApiKey): Promise<ApiKeyWithMetadata> {
     const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysFromNow = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000
+    );
 
     const enriched: ApiKeyWithMetadata = {
       ...apiKey,
       isExpired: apiKey.expiresAt ? apiKey.expiresAt < now : false,
-      isExpiringSoon: apiKey.expiresAt ? apiKey.expiresAt < thirtyDaysFromNow : false,
+      isExpiringSoon: apiKey.expiresAt
+        ? apiKey.expiresAt < thirtyDaysFromNow
+        : false,
       healthStatus: await this.getHealthStatus(apiKey.id),
       lastHealthCheck: new Date(), // Mock - implement actual health checks
       permissions: [], // Mock - implement permissions system
@@ -435,7 +468,9 @@ export class ApiKeysRepository {
   /**
    * Get health status for an API key
    */
-  private async getHealthStatus(apiKeyId: string): Promise<'healthy' | 'warning' | 'error'> {
+  private async getHealthStatus(
+    apiKeyId: string
+  ): Promise<'healthy' | 'warning' | 'error'> {
     // Mock implementation - replace with actual health checks
     // This would test connectivity to the provider's API
     return 'healthy';
@@ -454,7 +489,11 @@ export class ApiKeysRepository {
     }
   }
 
-  private async setCache(key: string, value: any, ttlSeconds: number): Promise<void> {
+  private async setCache(
+    key: string,
+    value: any,
+    ttlSeconds: number
+  ): Promise<void> {
     const kv = await this.getKV();
     try {
       await kv.set(`cache:${key}`, JSON.stringify(value), { ex: ttlSeconds });
@@ -466,16 +505,16 @@ export class ApiKeysRepository {
   private async invalidateCache(): Promise<void> {
     const kv = await this.getKV();
     const { tenantId } = this.getCurrentContext();
-    
+
     try {
       // Get all cache keys for this tenant
       const pattern = `cache:${this.cachePrefix}:${tenantId}:*`;
       // Note: Vercel KV doesn't support SCAN, so we'd need to track cache keys
       // For now, we'll implement a simple key tracking system
-      
+
       const cacheKeysListKey = `cache_keys:${tenantId}`;
-      const cacheKeys = await kv.smembers(cacheKeysListKey) as string[];
-      
+      const cacheKeys = (await kv.smembers(cacheKeysListKey)) as string[];
+
       // Delete all cached keys
       if (cacheKeys.length > 0) {
         await kv.del(...cacheKeys.map(k => `cache:${k}`));

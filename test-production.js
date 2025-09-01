@@ -6,7 +6,9 @@ async function testProductionAPI() {
 
   // Test 1: Homepage
   try {
-    const homeResponse = await fetch('https://crm-1-0-b11y48geq-doctorbed.vercel.app');
+    const homeResponse = await fetch(
+      'https://crm-1-0-b11y48geq-doctorbed.vercel.app'
+    );
     console.log('🏠 Homepage Status:', homeResponse.status);
     if (homeResponse.status !== 200) {
       const text = await homeResponse.text();
@@ -18,7 +20,9 @@ async function testProductionAPI() {
 
   // Test 2: API Stats
   try {
-    const statsResponse = await fetch('https://crm-1-0-b11y48geq-doctorbed.vercel.app/api/api-keys/stats');
+    const statsResponse = await fetch(
+      'https://crm-1-0-b11y48geq-doctorbed.vercel.app/api/api-keys/stats'
+    );
     console.log('\n📊 API Stats Status:', statsResponse.status);
     if (statsResponse.ok) {
       const stats = await statsResponse.json();
@@ -33,7 +37,9 @@ async function testProductionAPI() {
 
   // Test 3: API Keys List
   try {
-    const keysResponse = await fetch('https://crm-1-0-b11y48geq-doctorbed.vercel.app/api/api-keys');
+    const keysResponse = await fetch(
+      'https://crm-1-0-b11y48geq-doctorbed.vercel.app/api/api-keys'
+    );
     console.log('\n🔑 API Keys Status:', keysResponse.status);
     if (keysResponse.ok) {
       const keys = await keysResponse.json();
@@ -50,7 +56,7 @@ async function testProductionAPI() {
   console.log('\n🔍 Test Connessione Database (usando env locali):');
   try {
     require('dotenv').config({ path: '.env.local' });
-    
+
     const redis = new Redis({
       url: process.env.KV_REST_API_URL,
       token: process.env.KV_REST_API_TOKEN,
@@ -58,13 +64,12 @@ async function testProductionAPI() {
 
     const keys = await redis.keys('api_key:*');
     console.log('📊 Chiavi nel database:', keys.length);
-    
+
     if (keys.length > 0) {
       // Test decryption
       const firstKey = await redis.get(keys[0]);
       console.log('🔓 Primo record trovato:', firstKey?.name || 'Unknown');
     }
-
   } catch (err) {
     console.error('❌ Database test error:', err.message);
   }

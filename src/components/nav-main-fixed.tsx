@@ -1,7 +1,7 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import { type Icon } from "@tabler/icons-react"
+import Link from 'next/link';
+import { type Icon } from '@tabler/icons-react';
 
 import {
   SidebarGroup,
@@ -9,17 +9,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { QuickCreate } from "@/components/quick-create"
+} from '@/components/ui/sidebar';
+import { QuickCreate } from '@/components/quick-create';
 
 export function NavMainFixed({
   items,
 }: {
   items: {
-    title: string
-    url: string
-    icon?: Icon
-  }[]
+    title: string;
+    url: string;
+    icon?: Icon;
+  }[];
 }) {
   return (
     <SidebarGroup>
@@ -30,7 +30,7 @@ export function NavMainFixed({
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>
-          {items.map((item) => (
+          {items.map(item => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild>
                 <Link href={item.url}>
@@ -43,5 +43,5 @@ export function NavMainFixed({
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  )
+  );
 }

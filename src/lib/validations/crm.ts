@@ -18,7 +18,7 @@ export const prioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 // ============ LEADS ============
 export const leadStatusSchema = z.enum([
   'new',
-  'contacted', 
+  'contacted',
   'qualified',
   'proposal',
   'negotiation',
@@ -29,7 +29,7 @@ export const leadStatusSchema = z.enum([
 export const leadSourceSchema = z.enum([
   'website',
   'referral',
-  'social_media', 
+  'social_media',
   'email_campaign',
   'cold_outreach',
   'trade_show',
@@ -50,7 +50,7 @@ export const leadSchema = baseEntitySchema.extend({
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
   customFields: z.record(z.unknown()).optional(),
-  
+
   // Audit fields
   lastContactedAt: z.string().datetime().optional(),
   nextFollowUpAt: z.string().datetime().optional(),
@@ -117,19 +117,19 @@ export const activitySchema = baseEntitySchema.extend({
   leadId: z.string().optional(),
   contactId: z.string().optional(),
   assignedTo: z.string().optional(),
-  
+
   // Timing
   scheduledAt: z.string().datetime().optional(),
   startedAt: z.string().datetime().optional(),
   completedAt: z.string().datetime().optional(),
   duration: z.number().positive().optional(), // minutes
-  
+
   // Outcome
   outcome: activityOutcomeSchema.optional(),
   notes: z.string().optional(),
   nextActions: z.array(z.string()).optional(),
   followUpDate: z.string().datetime().optional(),
-  
+
   // Attachments
   attachments: z.array(attachmentSchema).optional(),
   relatedRecords: z.array(z.string()).optional(),
@@ -168,13 +168,17 @@ export const contactSchema = baseEntitySchema.extend({
   company: z.string().optional(),
   jobTitle: z.string().optional(),
   leadId: z.string().optional(),
-  
+
   // Social and communication
-  linkedInUrl: z.string().url('Invalid LinkedIn URL').optional().or(z.literal('')),
+  linkedInUrl: z
+    .string()
+    .url('Invalid LinkedIn URL')
+    .optional()
+    .or(z.literal('')),
   twitterHandle: z.string().optional(),
   preferredContactMethod: contactMethodSchema.optional(),
   timeZone: z.string().optional(),
-  
+
   // Relationship data
   tags: z.array(z.string()).optional(),
   notes: z.string().optional(),
@@ -194,7 +198,7 @@ export const updateContactSchema = createContactSchema.partial();
 export const companySizeSchema = z.enum([
   'startup',
   'small',
-  'medium', 
+  'medium',
   'large',
   'enterprise',
 ]);
@@ -215,15 +219,24 @@ export const companySchema = baseEntitySchema.extend({
   revenue: z.number().positive().optional(),
   location: addressSchema.optional(),
   description: z.string().optional(),
-  
+
   // Social presence
-  linkedInUrl: z.string().url('Invalid LinkedIn URL').optional().or(z.literal('')),
+  linkedInUrl: z
+    .string()
+    .url('Invalid LinkedIn URL')
+    .optional()
+    .or(z.literal('')),
   twitterHandle: z.string().optional(),
-  
+
   // Business data
   annualRevenue: z.number().positive().optional(),
   employeeCount: z.number().int().positive().optional(),
-  foundedYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  foundedYear: z
+    .number()
+    .int()
+    .min(1800)
+    .max(new Date().getFullYear())
+    .optional(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -255,17 +268,17 @@ export const opportunitySchema = baseEntitySchema.extend({
   value: z.number().positive('Value must be positive'),
   currency: z.string().length(3, 'Currency must be 3 characters (e.g., USD)'),
   probability: z.number().int().min(0).max(100, 'Probability must be 0-100'),
-  
+
   // Timing
   expectedCloseDate: z.string().datetime(),
   actualCloseDate: z.string().datetime().optional(),
-  
+
   // Details
   description: z.string().optional(),
   lostReason: z.string().optional(),
   nextSteps: z.array(z.string()).optional(),
   competitors: z.array(z.string()).optional(),
-  
+
   // Ownership
   ownerId: z.string().min(1, 'Owner ID is required'),
   teamMembers: z.array(z.string()).optional(),
@@ -285,7 +298,9 @@ export const pipelineStageSchema = z.object({
   name: z.string().min(1, 'Stage name is required'),
   order: z.number().int().positive(),
   probability: z.number().int().min(0).max(100),
-  color: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Invalid color format'),
+  color: z
+    .string()
+    .regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Invalid color format'),
 });
 
 export const pipelineSchema = z.object({
@@ -316,10 +331,12 @@ export const filterParamsSchema = z.object({
   assignedTo: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   search: z.string().optional(),
-  dateRange: z.object({
-    start: z.string().datetime(),
-    end: z.string().datetime(),
-  }).optional(),
+  dateRange: z
+    .object({
+      start: z.string().datetime(),
+      end: z.string().datetime(),
+    })
+    .optional(),
 });
 
 export const sortParamsSchema = z.object({

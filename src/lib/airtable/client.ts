@@ -39,11 +39,11 @@ export class AirtableClient {
   private readonly apiKey: string;
   private readonly baseId: string;
   private readonly baseUrl: string;
-  
+
   // Rate limiting
   private lastRequestTime = 0;
   private readonly requestInterval = 200; // 5 requests per second max
-  
+
   constructor(apiKey?: string, baseId?: string) {
     this.apiKey = apiKey ?? env.AIRTABLE_API_KEY;
     this.baseId = baseId ?? env.AIRTABLE_BASE_ID;
@@ -55,7 +55,7 @@ export class AirtableClient {
    */
   private getHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${this.apiKey}`,
       'Content-Type': 'application/json',
       'User-Agent': 'CRM-1.0/1.0.0',
     };
@@ -67,12 +67,12 @@ export class AirtableClient {
   private async rateLimit(): Promise<void> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest < this.requestInterval) {
       const delay = this.requestInterval - timeSinceLastRequest;
       await new Promise(resolve => setTimeout(resolve, delay));
     }
-    
+
     this.lastRequestTime = Date.now();
   }
 
@@ -88,7 +88,7 @@ export class AirtableClient {
 
     const url = `${this.baseUrl}${endpoint}`;
     const headers = { ...this.getHeaders(), ...options.headers };
-    
+
     const requestOptions: RequestInit = {
       ...options,
       headers,
@@ -102,7 +102,7 @@ export class AirtableClient {
       // Handle different HTTP status codes
       if (!response.ok) {
         const errorText = await response.text();
-        
+
         switch (response.status) {
           case 401:
             throw new Error('Unauthorized: Check your Airtable API key');
@@ -121,21 +121,26 @@ export class AirtableClient {
             }
             throw new Error('Rate limited: Too many requests');
           default:
-            throw new Error(`Airtable API error ${response.status}: ${errorText}`);
+            throw new Error(
+              `Airtable API error ${response.status}: ${errorText}`
+            );
         }
       }
 
       const data = await response.json();
       return data as T;
-      
     } catch (error) {
       // Retry on network errors
-      if (retries > 0 && (error instanceof TypeError || (error instanceof Error && error.message.includes('fetch')))) {
+      if (
+        retries > 0 &&
+        (error instanceof TypeError ||
+          (error instanceof Error && error.message.includes('fetch')))
+      ) {
         const delay = Math.pow(2, 4 - retries) * 1000;
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.request<T>(endpoint, options, retries - 1);
       }
-      
+
       throw error;
     }
   }
@@ -204,7 +209,7 @@ export class AirtableClient {
     do {
       const currentParams = { ...params, offset };
       const queryString = this.buildQueryString(currentParams);
-      
+
       const response = await this.request<AirtableListResponse<T>>(
         `/${tableId}${queryString}`
       );
@@ -238,8 +243,8 @@ export class AirtableClient {
       {
         method: 'POST',
         body: JSON.stringify({
-          records: [{ fields }]
-        })
+          records: [{ fields }],
+        }),
       }
     );
 
@@ -259,11 +264,13 @@ export class AirtableClient {
       {
         method: 'PATCH',
         body: JSON.stringify({
-          records: [{
-            id: recordId,
-            fields
-          }]
-        })
+          records: [
+            {
+              id: recordId,
+              fields,
+            },
+          ],
+        }),
       }
     );
 
@@ -279,12 +286,11 @@ export class AirtableClient {
   ): Promise<{ id: string; deleted: boolean }> {
     const params = new URLSearchParams();
     params.append('records[]', recordId);
-    
-    const response = await this.request<{ records: Array<{ id: string; deleted: boolean }> }>(
-      `/${tableId}?${params.toString()}`,
-      { method: 'DELETE' }
-    );
-    
+
+    const response = await this.request<{
+      records: Array<{ id: string; deleted: boolean }>;
+    }>(`/${tableId}?${params.toString()}`, { method: 'DELETE' });
+
     return response.records[0]!;
   }
 }
@@ -308,15 +314,15 @@ export function getAirtableClient(): AirtableClient {
  * Build OR filter for multiple values
  */
 export function buildOrFilter(field: string, values: string[]): string | null {
-  const safeValues = values.filter(Boolean).map((v) => {
+  const safeValues = values.filter(Boolean).map(v => {
     const escaped = String(v).replace(/'/g, "\\\\'");
     return `'${escaped}'`;
   });
-  
+
   if (safeValues.length === 0) return null;
   if (safeValues.length === 1) return `{${field}} = ${safeValues[0]!}`;
-  
-  return `OR(${safeValues.map((v) => `{${field}} = ${v}`).join(",")})`;
+
+  return `OR(${safeValues.map(v => `{${field}} = ${v}`).join(',')})`;
 }
 
 /**
@@ -328,31 +334,34 @@ export function buildDateRangeFilter(
   endDate?: string
 ): string | null {
   const clauses: string[] = [];
-  
+
   if (startDate) {
     clauses.push(`IS_AFTER({${field}}, '${startDate}')`);
   }
-  
+
   if (endDate) {
     clauses.push(`IS_BEFORE({${field}}, '${endDate}')`);
   }
-  
+
   if (clauses.length === 0) return null;
   if (clauses.length === 1) return clauses[0]!;
-  
+
   return `AND(${clauses.join(', ')})`;
 }
 
 /**
  * Build search filter for multiple fields
  */
-export function buildSearchFilter(query: string, fields: string[]): string | null {
+export function buildSearchFilter(
+  query: string,
+  fields: string[]
+): string | null {
   if (!query.trim()) return null;
-  
+
   const escaped = query.replace(/'/g, "\\\\'");
-  const searchClauses = fields.map(field => 
-    `FIND(LOWER('${escaped}'), LOWER({${field}})) > 0`
+  const searchClauses = fields.map(
+    field => `FIND(LOWER('${escaped}'), LOWER({${field}})) > 0`
   );
-  
+
   return `OR(${searchClauses.join(', ')})`;
 }

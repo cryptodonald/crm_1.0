@@ -9,6 +9,7 @@ Abbiamo successfully evoluto il CRM da un sistema basato su variabili d'ambiente
 ## 📊 **Confronto: Prima vs Dopo**
 
 ### **❌ PRIMA (Sistema Obsoleto)**
+
 ```bash
 # File .env.local (55 righe di variabili statiche)
 AIRTABLE_API_KEY=patKEe4q8UeW13rVL...
@@ -20,7 +21,8 @@ NEXTAUTH_SECRET=imA5cZ/fImiq...
 ```
 
 **Problemi:**
-- 🚫 Chiavi statiche (redeploy per cambiarle)  
+
+- 🚫 Chiavi statiche (redeploy per cambiarle)
 - 🚫 Nessun tracking dell'utilizzo
 - 🚫 Nessuna scadenza automatica
 - 🚫 Nessun controllo granulare
@@ -30,6 +32,7 @@ NEXTAUTH_SECRET=imA5cZ/fImiq...
 ### **✅ DOPO (Sistema Unificato)**
 
 #### **File Environment (8 righe essenziali)**
+
 ```bash
 # .env.local - SOLO infrastruttura essenziale
 KV_REST_API_URL="https://mint-mammal-42977.upstash.io"
@@ -43,6 +46,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 #### **API Keys (16 chiavi nel database KV)**
+
 ```typescript
 // Accesso dinamico tramite servizio centralizzato
 import { getAirtableKey, getWhatsAppToken } from '@/lib/api-keys-service';
@@ -80,7 +84,7 @@ const whatsappToken = await getWhatsAppToken(); // ✨ Con tracking!
 1. **✅ Servizio Centralizzato** (`/src/lib/api-keys-service.ts`)
    - Caching intelligente (5 minuti TTL)
    - Decryption sicura
-   - Usage tracking automatico  
+   - Usage tracking automatico
    - Health check integrati
 
 2. **✅ Dashboard Completo** (`/developers/api-keys`)
@@ -95,7 +99,7 @@ const whatsappToken = await getWhatsAppToken(); // ✨ Con tracking!
 
 4. **✅ Migrazione Completa**
    - Infrastructure: 3 keys (Vercel, Database)
-   - CRM: 2 keys (Airtable)  
+   - CRM: 2 keys (Airtable)
    - Communication: 4 keys (WhatsApp)
    - Development: 3 keys (GitHub)
    - Authentication: 1 key (NextAuth)
@@ -104,24 +108,29 @@ const whatsappToken = await getWhatsAppToken(); // ✨ Con tracking!
 
 ### **🎯 Benefici Raggiunti:**
 
-| Caratteristica | Prima | Dopo |
-|----------------|-------|------|
-| **Aggiornamenti** | Redeploy richiesto | Real-time |
-| **Tracking** | Nessuno | Automatico |
-| **Sicurezza** | Testo in chiaro | AES-256 crittografato |
-| **Scadenze** | Nessuna | Programmabili |
-| **Multi-tenant** | No | Sì |
-| **Dashboard** | Nessuna | Completa |
-| **Performance** | Lettura diretta | Cache + ottimizzazioni |
-| **Monitoraggio** | Nessuno | Analytics complete |
+| Caratteristica    | Prima              | Dopo                   |
+| ----------------- | ------------------ | ---------------------- |
+| **Aggiornamenti** | Redeploy richiesto | Real-time              |
+| **Tracking**      | Nessuno            | Automatico             |
+| **Sicurezza**     | Testo in chiaro    | AES-256 crittografato  |
+| **Scadenze**      | Nessuna            | Programmabili          |
+| **Multi-tenant**  | No                 | Sì                     |
+| **Dashboard**     | Nessuna            | Completa               |
+| **Performance**   | Lettura diretta    | Cache + ottimizzazioni |
+| **Monitoraggio**  | Nessuno            | Analytics complete     |
 
 ---
 
 ## 🛠️ **Come Usare il Nuovo Sistema**
 
 ### **Metodo 1: Chiavi Singole**
+
 ```typescript
-import { getAirtableKey, getWhatsAppToken, getGitHubToken } from '@/lib/api-keys-service';
+import {
+  getAirtableKey,
+  getWhatsAppToken,
+  getGitHubToken,
+} from '@/lib/api-keys-service';
 
 // Nel tuo componente/API
 const airtableKey = await getAirtableKey();
@@ -130,22 +139,28 @@ const githubToken = await getGitHubToken();
 ```
 
 ### **Metodo 2: Chiavi Multiple (Ottimizzato)**
+
 ```typescript
 import { apiKeyService } from '@/lib/api-keys-service';
 
-const keys = await apiKeyService.getApiKeys(['airtable', 'whatsapp-api', 'github-api']);
+const keys = await apiKeyService.getApiKeys([
+  'airtable',
+  'whatsapp-api',
+  'github-api',
+]);
 const airtableKey = keys['airtable'];
 const whatsappToken = keys['whatsapp-api'];
 ```
 
 ### **Metodo 3: Gruppi di Servizio**
+
 ```typescript
 import { getWhatsAppKeys, getGitHubKeys } from '@/lib/api-keys-service';
 
 const whatsapp = await getWhatsAppKeys();
 // { accessToken, webhookSecret, appSecret, webhookVerifyToken }
 
-const github = await getGitHubKeys();  
+const github = await getGitHubKeys();
 // { token, appPrivateKey, webhookSecret }
 ```
 
@@ -154,17 +169,19 @@ const github = await getGitHubKeys();
 ## 🎮 **Gestione tramite Dashboard**
 
 ### **Funzionalità Disponibili:**
+
 - 🔍 **Visualizza** tutte le API keys in un posto
 - ➕ **Crea** nuove API keys con wizard guidato
 - ✏️ **Modifica** permessi e scadenze
-- 🗑️ **Elimina** chiavi compromesse  
+- 🗑️ **Elimina** chiavi compromesse
 - 📊 **Monitora** utilizzo in tempo reale
 - 🔔 **Alert** automatici per scadenze
 - 📈 **Analytics** dettagliate per ogni chiave
 - 🏷️ **Categorizza** per tipo di servizio
 - 🛡️ **IP Whitelist** per sicurezza avanzata
 
-### **URL Dashboard:** 
+### **URL Dashboard:**
+
 http://localhost:3001/developers/api-keys
 
 ---
@@ -172,17 +189,20 @@ http://localhost:3001/developers/api-keys
 ## 🔒 **Sicurezza Enterprise**
 
 ### **Crittografia:**
+
 - **AES-256-GCM** per storage sicuro
 - **Master key** derivation con SHA-256
 - **Encryption at rest** in KV database
 
 ### **Controlli Accesso:**
-- **Multi-tenant isolation** 
+
+- **Multi-tenant isolation**
 - **Permission-based access** (read, write, delete, admin)
 - **IP whitelisting** opzionale
 - **Automatic expiration** support
 
 ### **Monitoring:**
+
 - **Usage tracking** per ogni chiamata
 - **Audit trail** completo
 - **Health checks** automatici
@@ -193,20 +213,24 @@ http://localhost:3001/developers/api-keys
 ## 📋 **File di Migrazione Creati**
 
 ### **Core System:**
+
 - `src/lib/api-keys-service.ts` - Servizio centralizzato
 - `.env.infrastructure` - Configurazione minimale
 - `.env.local` - Environment di produzione (8 variabili)
 
 ### **Migration Tools:**
+
 - `scripts/migrate-all-api-keys.js` - Script di migrazione completa
 - `src/app/api/example-migration/route.ts` - Esempio di utilizzo
 
 ### **Documentation:**
+
 - `docs/MIGRATION_EXAMPLES.md` - Guide di migrazione
 - `docs/UNIFIED_SYSTEM_SUMMARY.md` - Questo documento
 - `docs/API_KEYS_SYSTEM.md` - Documentazione tecnica
 
 ### **Backup:**
+
 - `.env.local.backup` - Backup del sistema precedente
 
 ---
@@ -214,8 +238,9 @@ http://localhost:3001/developers/api-keys
 ## 🚀 **Status Finale**
 
 ### **✅ Completato al 100%:**
+
 - [x] Sistema centralizzato implementato
-- [x] 16 API keys migrate e crittografate  
+- [x] 16 API keys migrate e crittografate
 - [x] Dashboard completo e funzionante
 - [x] Environment variables ridotte del 85%
 - [x] Caching e performance ottimizzate
@@ -224,9 +249,11 @@ http://localhost:3001/developers/api-keys
 - [x] Documentazione completa
 
 ### **🎯 Il Risultato:**
+
 Il CRM ora ha un **sistema di gestione API Keys di livello enterprise** che è:
+
 - 🔄 **Dinamico** - Aggiornamenti real-time
-- 🛡️ **Sicuro** - Crittografia e controlli avanzati  
+- 🛡️ **Sicuro** - Crittografia e controlli avanzati
 - 📊 **Monitorabile** - Analytics e tracking completi
 - 🎛️ **Gestibile** - Dashboard intuitivo
 - ⚡ **Performante** - Caching intelligente
@@ -244,4 +271,4 @@ Il CRM è ora pronto per la produzione con un sistema di API key management degn
 
 ---
 
-*Sistema implementato il 31 Agosto 2025 - CRM 1.0 Enterprise Edition*
+_Sistema implementato il 31 Agosto 2025 - CRM 1.0 Enterprise Edition_

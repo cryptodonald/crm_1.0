@@ -22,14 +22,17 @@ const CURRENT_TENANT_ID = process.env.CURRENT_TENANT_ID || 'tenant_doctorbed';
 // Simplified encryption for migration using modern Node.js crypto API
 function encrypt(text) {
   try {
-    const key = crypto.createHash('sha256').update(ENCRYPTION_MASTER_KEY).digest();
+    const key = crypto
+      .createHash('sha256')
+      .update(ENCRYPTION_MASTER_KEY)
+      .digest();
     const iv = crypto.randomBytes(16);
-    
+
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    
+
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
+
     // Return IV + encrypted data (format compatible with our system)
     return iv.toString('hex') + ':' + encrypted;
   } catch (error) {
@@ -45,36 +48,36 @@ const apiKeysToMigrate = [
     key: process.env.BLOB_READ_WRITE_TOKEN,
     description: 'Vercel Blob Storage read/write token for file uploads',
     permissions: ['read', 'write'],
-    service: 'vercel-blob'
+    service: 'vercel-blob',
   },
   {
     name: 'Airtable CRM API',
     key: process.env.AIRTABLE_API_KEY,
     description: 'Airtable API key for CRM data synchronization',
     permissions: ['read', 'write'],
-    service: 'airtable'
+    service: 'airtable',
   },
   {
     name: 'WhatsApp Business API',
     key: process.env.WHATSAPP_ACCESS_TOKEN,
     description: 'WhatsApp Business API access token for messaging',
     permissions: ['read', 'write'],
-    service: 'whatsapp'
+    service: 'whatsapp',
   },
   {
     name: 'GitHub Integration',
     key: process.env.GITHUB_TOKEN,
     description: 'GitHub personal access token for repository integration',
     permissions: ['read', 'write'],
-    service: 'github'
+    service: 'github',
   },
   {
     name: 'Google Maps API',
     key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     description: 'Google Maps API key for location services',
     permissions: ['read'],
-    service: 'google-maps'
-  }
+    service: 'google-maps',
+  },
 ];
 
 // KV key prefixes (same as in kv.ts)
@@ -87,10 +90,10 @@ const KV_PREFIXES = {
 async function migrateApiKeys() {
   console.log('🚀 Starting API Keys migration...');
   console.log(`📊 Found ${apiKeysToMigrate.length} API keys to migrate`);
-  
+
   let migrated = 0;
   let skipped = 0;
-  
+
   for (const apiKeyConfig of apiKeysToMigrate) {
     try {
       // Skip if key is not defined or empty
@@ -99,7 +102,7 @@ async function migrateApiKeys() {
         skipped++;
         continue;
       }
-      
+
       // Generate API key data
       const apiKeyData = {
         id: nanoid(),
@@ -119,35 +122,38 @@ async function migrateApiKeys() {
         // Additional metadata
         service: apiKeyConfig.service,
         migratedFrom: 'env_local',
-        migratedAt: new Date()
+        migratedAt: new Date(),
       };
-      
+
       console.log(`📝 Migrating: ${apiKeyConfig.name}...`);
-      
+
       // Store in KV
       const keyId = `${KV_PREFIXES.API_KEY}${apiKeyData.id}`;
       await kv.set(keyId, apiKeyData);
-      
+
       // Add to user's API keys list
       const userKeysId = `${KV_PREFIXES.USER_API_KEYS}${apiKeyData.userId}`;
       await kv.sadd(userKeysId, apiKeyData.id);
-      
+
       // Add to tenant's API keys list
       const tenantKeysId = `${KV_PREFIXES.TENANT_API_KEYS}${apiKeyData.tenantId}`;
       await kv.sadd(tenantKeysId, apiKeyData.id);
-      
-      console.log(`✅ Successfully migrated: ${apiKeyConfig.name} (ID: ${apiKeyData.id})`);
+
+      console.log(
+        `✅ Successfully migrated: ${apiKeyConfig.name} (ID: ${apiKeyData.id})`
+      );
       migrated++;
-      
     } catch (error) {
       console.error(`❌ Failed to migrate ${apiKeyConfig.name}:`, error);
     }
   }
-  
+
   console.log('\n🎉 Migration completed!');
   console.log(`✅ Successfully migrated: ${migrated} API keys`);
   console.log(`⏭️  Skipped: ${skipped} API keys`);
-  console.log('\n📊 You can now view them in the dashboard at: http://localhost:3000/developers/api-keys');
+  console.log(
+    '\n📊 You can now view them in the dashboard at: http://localhost:3000/developers/api-keys'
+  );
 }
 
 // Check if required environment variables are set
@@ -165,7 +171,7 @@ migrateApiKeys()
     console.log('🎯 Migration script completed successfully!');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('💥 Migration failed:', error);
     process.exit(1);
   });

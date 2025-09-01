@@ -15,16 +15,16 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
     console.log('[GitHub Webhook] Received webhook request');
-    
+
     // Get headers
     const githubEvent = request.headers.get('x-github-event');
     const githubDelivery = request.headers.get('x-github-delivery');
     const signature = request.headers.get('x-hub-signature-256') || '';
     const userAgent = request.headers.get('user-agent') || '';
-    
+
     console.log('[GitHub Webhook] Event details:', {
       event: githubEvent,
       delivery: githubDelivery,
@@ -35,12 +35,15 @@ export async function POST(request: NextRequest) {
     // Validate GitHub user agent
     if (!userAgent.startsWith('GitHub-Hookshot/')) {
       console.error('[GitHub Webhook] Invalid user agent');
-      return NextResponse.json({ error: 'Invalid user agent' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Invalid user agent' },
+        { status: 403 }
+      );
     }
 
     // Get raw body for signature verification
     const body = await request.text();
-    
+
     if (!body) {
       console.error('[GitHub Webhook] Empty body');
       return NextResponse.json({ error: 'Empty body' }, { status: 400 });
@@ -48,7 +51,10 @@ export async function POST(request: NextRequest) {
 
     // Verify signature if secret is configured
     const webhookSecret = env.GITHUB_WEBHOOK_SECRET;
-    if (webhookSecret && !GitHubClient.verifyWebhookSignature(body, signature, webhookSecret)) {
+    if (
+      webhookSecret &&
+      !GitHubClient.verifyWebhookSignature(body, signature, webhookSecret)
+    ) {
       console.error('[GitHub Webhook] Invalid signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
@@ -59,13 +65,19 @@ export async function POST(request: NextRequest) {
       payload = JSON.parse(body);
     } catch (error) {
       console.error('[GitHub Webhook] Invalid JSON payload');
-      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid JSON payload' },
+        { status: 400 }
+      );
     }
 
     // Validate required fields
     if (!githubEvent || !githubDelivery) {
       console.error('[GitHub Webhook] Missing required headers');
-      return NextResponse.json({ error: 'Missing required headers' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing required headers' },
+        { status: 400 }
+      );
     }
 
     // Process the webhook event
@@ -74,11 +86,13 @@ export async function POST(request: NextRequest) {
       deliveryId: githubDelivery,
       signature,
       payload,
-      repository: payload.repository ? {
-        id: payload.repository.id,
-        name: payload.repository.name,
-        fullName: payload.repository.full_name,
-      } : undefined,
+      repository: payload.repository
+        ? {
+            id: payload.repository.id,
+            name: payload.repository.name,
+            fullName: payload.repository.full_name,
+          }
+        : undefined,
     };
 
     await GitHubClient.processWebhookEvent(webhookEvent);
@@ -86,21 +100,26 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     console.log(`[GitHub Webhook] Processing completed in ${duration}ms`);
 
-    return NextResponse.json({
-      status: 'ok',
-      event: githubEvent,
-      delivery: githubDelivery,
-      processed: true,
-    }, { status: 200 });
-
+    return NextResponse.json(
+      {
+        status: 'ok',
+        event: githubEvent,
+        delivery: githubDelivery,
+        processed: true,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error('[GitHub Webhook] Error processing webhook:', error);
-    
-    return NextResponse.json({
-      error: 'Internal server error',
-      duration,
-    }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        duration,
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -109,20 +128,23 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   console.log('[GitHub Webhook] Health check requested');
-  
-  return NextResponse.json({
-    status: 'healthy',
-    service: 'GitHub Webhook Handler',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      POST: 'Handles GitHub webhook events',
-      GET: 'Health check',
+
+  return NextResponse.json(
+    {
+      status: 'healthy',
+      service: 'GitHub Webhook Handler',
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        POST: 'Handles GitHub webhook events',
+        GET: 'Health check',
+      },
+      security: {
+        signatureVerification: 'enabled',
+        userAgentValidation: 'enabled',
+      },
     },
-    security: {
-      signatureVerification: 'enabled',
-      userAgentValidation: 'enabled',
-    },
-  }, { status: 200 });
+    { status: 200 }
+  );
 }
 
 /**
@@ -134,7 +156,8 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': 'https://api.github.com',
       'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'X-Hub-Signature-256, X-GitHub-Event, X-GitHub-Delivery, Content-Type',
+      'Access-Control-Allow-Headers':
+        'X-Hub-Signature-256, X-GitHub-Event, X-GitHub-Delivery, Content-Type',
     },
   });
 }

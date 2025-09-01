@@ -50,15 +50,21 @@ interface UseEnvVarsReturn {
   creating: boolean;
   updating: boolean;
   deleting: boolean;
-  
+
   // Actions
   fetchApiKeys: () => Promise<void>;
   fetchStats: () => Promise<void>;
   createApiKey: (data: CreateApiKeyData) => Promise<ApiKeyData | null>;
-  updateApiKey: (id: string, data: UpdateApiKeyData) => Promise<ApiKeyData | null>;
+  updateApiKey: (
+    id: string,
+    data: UpdateApiKeyData
+  ) => Promise<ApiKeyData | null>;
   deleteApiKey: (id: string) => Promise<boolean>;
-  getApiKeyUsageStats: (keyId: string, days?: number) => Promise<ApiKeyDetailedStats | null>;
-  
+  getApiKeyUsageStats: (
+    keyId: string,
+    days?: number
+  ) => Promise<ApiKeyDetailedStats | null>;
+
   // Utilities
   clearError: () => void;
   refresh: () => Promise<void>;
@@ -100,15 +106,15 @@ export function useEnvVars(): UseEnvVarsReturn {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch('/api/api-keys');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       setApiKeys(data.apiKeys || []);
-      
+
       // Update stats if included
       if (data.stats) {
         setStats(data.stats);
@@ -129,7 +135,7 @@ export function useEnvVars(): UseEnvVarsReturn {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       setStats(data.overview || null);
     } catch (err) {
@@ -140,141 +146,145 @@ export function useEnvVars(): UseEnvVarsReturn {
   /**
    * Create a new API key
    */
-  const createApiKey = useCallback(async (data: CreateApiKeyData): Promise<ApiKeyData | null> => {
-    try {
-      setCreating(true);
-      setError(null);
-      
-      const response = await fetch('/api/api-keys', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create API key');
+  const createApiKey = useCallback(
+    async (data: CreateApiKeyData): Promise<ApiKeyData | null> => {
+      try {
+        setCreating(true);
+        setError(null);
+
+        const response = await fetch('/api/api-keys', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create API key');
+        }
+
+        const result = await response.json();
+
+        // Refresh the list to get updated data
+        await fetchApiKeys();
+
+        return result.apiKey;
+      } catch (err) {
+        handleError(err, 'create API key');
+        return null;
+      } finally {
+        setCreating(false);
       }
-      
-      const result = await response.json();
-      
-      // Refresh the list to get updated data
-      await fetchApiKeys();
-      
-      return result.apiKey;
-    } catch (err) {
-      handleError(err, 'create API key');
-      return null;
-    } finally {
-      setCreating(false);
-    }
-  }, [handleError, fetchApiKeys]);
+    },
+    [handleError, fetchApiKeys]
+  );
 
   /**
    * Update an existing API key
    */
-  const updateApiKey = useCallback(async (
-    id: string, 
-    data: UpdateApiKeyData
-  ): Promise<ApiKeyData | null> => {
-    try {
-      setUpdating(true);
-      setError(null);
-      
-      const response = await fetch(`/api/api-keys/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update API key');
+  const updateApiKey = useCallback(
+    async (id: string, data: UpdateApiKeyData): Promise<ApiKeyData | null> => {
+      try {
+        setUpdating(true);
+        setError(null);
+
+        const response = await fetch(`/api/api-keys/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update API key');
+        }
+
+        const updatedKey = await response.json();
+
+        // Update the local state
+        setApiKeys(prev => prev.map(key => (key.id === id ? updatedKey : key)));
+
+        return updatedKey;
+      } catch (err) {
+        handleError(err, 'update API key');
+        return null;
+      } finally {
+        setUpdating(false);
       }
-      
-      const updatedKey = await response.json();
-      
-      // Update the local state
-      setApiKeys(prev => 
-        prev.map(key => key.id === id ? updatedKey : key)
-      );
-      
-      return updatedKey;
-    } catch (err) {
-      handleError(err, 'update API key');
-      return null;
-    } finally {
-      setUpdating(false);
-    }
-  }, [handleError]);
+    },
+    [handleError]
+  );
 
   /**
    * Delete an API key
    */
-  const deleteApiKey = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      setDeleting(true);
-      setError(null);
-      
-      const response = await fetch(`/api/api-keys/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete API key');
+  const deleteApiKey = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        setDeleting(true);
+        setError(null);
+
+        const response = await fetch(`/api/api-keys/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete API key');
+        }
+
+        // Remove from local state
+        setApiKeys(prev => prev.filter(key => key.id !== id));
+
+        // Refresh stats
+        await fetchStats();
+
+        return true;
+      } catch (err) {
+        handleError(err, 'delete API key');
+        return false;
+      } finally {
+        setDeleting(false);
       }
-      
-      // Remove from local state
-      setApiKeys(prev => prev.filter(key => key.id !== id));
-      
-      // Refresh stats
-      await fetchStats();
-      
-      return true;
-    } catch (err) {
-      handleError(err, 'delete API key');
-      return false;
-    } finally {
-      setDeleting(false);
-    }
-  }, [handleError, fetchStats]);
+    },
+    [handleError, fetchStats]
+  );
 
   /**
    * Get detailed usage statistics for a specific API key
    */
-  const getApiKeyUsageStats = useCallback(async (
-    keyId: string, 
-    days: number = 30
-  ): Promise<ApiKeyDetailedStats | null> => {
-    try {
-      const response = await fetch(
-        `/api/api-keys/stats?keyId=${keyId}&days=${days}`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  const getApiKeyUsageStats = useCallback(
+    async (
+      keyId: string,
+      days: number = 30
+    ): Promise<ApiKeyDetailedStats | null> => {
+      try {
+        const response = await fetch(
+          `/api/api-keys/stats?keyId=${keyId}&days=${days}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+      } catch (err) {
+        handleError(err, 'fetch usage statistics');
+        return null;
       }
-      
-      return await response.json();
-    } catch (err) {
-      handleError(err, 'fetch usage statistics');
-      return null;
-    }
-  }, [handleError]);
+    },
+    [handleError]
+  );
 
   /**
    * Refresh all data
    */
   const refresh = useCallback(async () => {
-    await Promise.all([
-      fetchApiKeys(),
-      fetchStats(),
-    ]);
+    await Promise.all([fetchApiKeys(), fetchStats()]);
   }, [fetchApiKeys, fetchStats]);
 
   // Initial data load
@@ -291,7 +301,7 @@ export function useEnvVars(): UseEnvVarsReturn {
     creating,
     updating,
     deleting,
-    
+
     // Actions
     fetchApiKeys,
     fetchStats,
@@ -299,7 +309,7 @@ export function useEnvVars(): UseEnvVarsReturn {
     updateApiKey,
     deleteApiKey,
     getApiKeyUsageStats,
-    
+
     // Utilities
     clearError,
     refresh,

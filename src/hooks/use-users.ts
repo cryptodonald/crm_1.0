@@ -46,7 +46,9 @@ export function useUsers(): UseUsersReturn {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        throw new Error(
+          errorData.error || `HTTP error! status: ${response.status}`
+        );
       }
 
       const data: ApiResponse = await response.json();
@@ -57,9 +59,9 @@ export function useUsers(): UseUsersReturn {
 
       console.log(`✅ [useUsers] Successfully loaded ${data.count} users`);
       setUsers(data.users);
-
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
       console.error('❌ [useUsers] Error fetching users:', errorMessage);
       setError(errorMessage);
       setUsers(null);
@@ -69,10 +71,13 @@ export function useUsers(): UseUsersReturn {
   }, []);
 
   // Funzione helper per ottenere dati utente per ID
-  const getUserByData = useCallback((userId: string): UserData | null => {
-    if (!users || !userId) return null;
-    return users[userId] || null;
-  }, [users]);
+  const getUserByData = useCallback(
+    (userId: string): UserData | null => {
+      if (!users || !userId) return null;
+      return users[userId] || null;
+    },
+    [users]
+  );
 
   // Fetch iniziale
   useEffect(() => {

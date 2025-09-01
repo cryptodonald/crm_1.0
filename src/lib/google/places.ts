@@ -94,7 +94,10 @@ export class GooglePlacesClient {
     }
 
     if (options.componentRestrictions?.country) {
-      params.set('components', `country:${options.componentRestrictions.country}`);
+      params.set(
+        'components',
+        `country:${options.componentRestrictions.country}`
+      );
     }
 
     if (options.sessionToken) {
@@ -119,19 +122,23 @@ export class GooglePlacesClient {
       const data = await response.json();
 
       if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-        throw new Error(`Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+        throw new Error(
+          `Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`
+        );
       }
 
-      return data.predictions?.map((prediction: any) => ({
-        placeId: prediction.place_id,
-        description: prediction.description,
-        structuredFormatting: {
-          mainText: prediction.structured_formatting?.main_text || '',
-          secondaryText: prediction.structured_formatting?.secondary_text || '',
-        },
-        types: prediction.types || [],
-      })) || [];
-
+      return (
+        data.predictions?.map((prediction: any) => ({
+          placeId: prediction.place_id,
+          description: prediction.description,
+          structuredFormatting: {
+            mainText: prediction.structured_formatting?.main_text || '',
+            secondaryText:
+              prediction.structured_formatting?.secondary_text || '',
+          },
+          types: prediction.types || [],
+        })) || []
+      );
     } catch (error) {
       console.error('[Google Places] Search error:', error);
       throw error;
@@ -155,7 +162,7 @@ export class GooglePlacesClient {
       'website',
       'rating',
       'user_ratings_total',
-      'opening_hours'
+      'opening_hours',
     ]
   ): Promise<PlaceDetails> {
     const params = new URLSearchParams({
@@ -182,7 +189,9 @@ export class GooglePlacesClient {
       const data = await response.json();
 
       if (data.status !== 'OK') {
-        throw new Error(`Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+        throw new Error(
+          `Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`
+        );
       }
 
       const result = data.result;
@@ -191,11 +200,12 @@ export class GooglePlacesClient {
         placeId: result.place_id,
         name: result.name,
         formattedAddress: result.formatted_address,
-        addressComponents: result.address_components?.map((component: any) => ({
-          longName: component.long_name,
-          shortName: component.short_name,
-          types: component.types,
-        })) || [],
+        addressComponents:
+          result.address_components?.map((component: any) => ({
+            longName: component.long_name,
+            shortName: component.short_name,
+            types: component.types,
+          })) || [],
         geometry: {
           location: {
             lat: result.geometry?.location?.lat || 0,
@@ -208,13 +218,14 @@ export class GooglePlacesClient {
         website: result.website,
         rating: result.rating,
         userRatingsTotal: result.user_ratings_total,
-        openingHours: result.opening_hours ? {
-          openNow: result.opening_hours.open_now,
-          periods: result.opening_hours.periods || [],
-          weekdayText: result.opening_hours.weekday_text || [],
-        } : undefined,
+        openingHours: result.opening_hours
+          ? {
+              openNow: result.opening_hours.open_now,
+              periods: result.opening_hours.periods || [],
+              weekdayText: result.opening_hours.weekday_text || [],
+            }
+          : undefined,
       };
-
     } catch (error) {
       console.error('[Google Places] Details error:', error);
       throw error;
@@ -252,7 +263,9 @@ export class GooglePlacesClient {
       const data = await response.json();
 
       if (data.status !== 'OK') {
-        throw new Error(`Google Geocoding API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+        throw new Error(
+          `Google Geocoding API error: ${data.status} - ${data.error_message || 'Unknown error'}`
+        );
       }
 
       const result = data.results[0];
@@ -272,7 +285,6 @@ export class GooglePlacesClient {
           types: component.types,
         })),
       };
-
     } catch (error) {
       console.error('[Google Geocoding] Error:', error);
       throw error;
@@ -292,7 +304,10 @@ export class GooglePlacesClient {
         parsed.streetNumber = component.longName;
       } else if (component.types.includes('route')) {
         parsed.streetName = component.longName;
-      } else if (component.types.includes('locality') || component.types.includes('administrative_area_level_2')) {
+      } else if (
+        component.types.includes('locality') ||
+        component.types.includes('administrative_area_level_2')
+      ) {
         parsed.city = component.longName;
       } else if (component.types.includes('administrative_area_level_1')) {
         parsed.state = component.shortName;
@@ -305,7 +320,9 @@ export class GooglePlacesClient {
 
     // Build formatted address
     const parts = [
-      parsed.streetNumber && parsed.streetName ? `${parsed.streetNumber} ${parsed.streetName}` : parsed.streetName,
+      parsed.streetNumber && parsed.streetName
+        ? `${parsed.streetNumber} ${parsed.streetName}`
+        : parsed.streetName,
       parsed.city,
       parsed.state,
       parsed.zipCode,

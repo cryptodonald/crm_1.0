@@ -15,14 +15,17 @@ const ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY;
 // AES-256 encryption function (same as in EncryptionService)
 function encryptAES(plaintext) {
   try {
-    const masterKey = crypto.createHash('sha256').update(ENCRYPTION_MASTER_KEY).digest();
+    const masterKey = crypto
+      .createHash('sha256')
+      .update(ENCRYPTION_MASTER_KEY)
+      .digest();
     const iv = crypto.randomBytes(16);
-    
+
     const cipher = crypto.createCipheriv('aes-256-cbc', masterKey, iv);
-    
+
     let encrypted = cipher.update(plaintext, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
+
     return iv.toString('hex') + ':' + encrypted;
   } catch (error) {
     console.error('Encryption failed:', error);
@@ -77,44 +80,42 @@ async function migrateToAES() {
         if (keyData.key.startsWith('ENC:')) {
           // This is Base64 format - migrate to AES
           console.log(`   📤 Migrating from Base64 to AES-256...`);
-          
+
           try {
             // Decrypt the Base64 value
             const plaintext = decryptBase64(keyData.key);
-            
+
             // Encrypt with AES-256
             const aesEncrypted = encryptAES(plaintext);
-            
+
             // Update the key data
             keyData.key = aesEncrypted;
             keyData.updatedAt = new Date();
             keyData.encryptionFormat = 'AES-256-CBC';
             keyData.migratedToAES = new Date();
-            
+
             // Save back to KV
             await redis.set(keyId, keyData);
-            
-            console.log(`   ✅ Successfully migrated to: ${aesEncrypted.substring(0, 20)}...`);
+
+            console.log(
+              `   ✅ Successfully migrated to: ${aesEncrypted.substring(0, 20)}...`
+            );
             migratedCount++;
             base64Count++;
-            
           } catch (migrationError) {
             console.error(`   ❌ Migration failed:`, migrationError.message);
             errorCount++;
           }
-          
         } else if (keyData.key.includes(':')) {
           // Already AES format
           console.log(`   ✅ Already AES-256 encrypted`);
           aesCount++;
-          
         } else {
           // Unknown format
           console.log(`   ⚠️  Unknown format, leaving as-is`);
         }
 
         console.log(''); // Empty line for readability
-
       } catch (error) {
         console.error(`❌ Error processing ${keyId}:`, error.message);
         errorCount++;
@@ -126,16 +127,19 @@ async function migrateToAES() {
     console.log('======================');
     console.log(`📊 Total keys analyzed: ${keys.length}`);
     console.log(`🔄 Base64 keys found: ${base64Count}`);
-    console.log(`🔐 AES keys found: ${aesCount}`);  
+    console.log(`🔐 AES keys found: ${aesCount}`);
     console.log(`✅ Successfully migrated: ${migratedCount}`);
     console.log(`❌ Errors: ${errorCount}`);
-    
+
     if (migratedCount > 0) {
-      console.log('\n🎯 All Base64 keys have been upgraded to AES-256-CBC encryption!');
-      console.log('🌐 Test your dashboard: http://localhost:3000/developers/api-keys');
+      console.log(
+        '\n🎯 All Base64 keys have been upgraded to AES-256-CBC encryption!'
+      );
+      console.log(
+        '🌐 Test your dashboard: http://localhost:3000/developers/api-keys'
+      );
       console.log('🚀 Deploy to production to apply the changes');
     }
-
   } catch (error) {
     console.error('💥 Migration failed:', error.message);
     process.exit(1);
@@ -148,7 +152,7 @@ migrateToAES()
     console.log('\n✨ Migration script completed successfully!');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n💥 Migration script failed:', error);
     process.exit(1);
   });

@@ -1,21 +1,24 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   // Enable experimental features
   experimental: {
     // Enable optimized package imports
-    optimizePackageImports: ["lucide-react", "@radix-ui/react-icons"],
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
 
   // Build configuration
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   poweredByHeader: false,
-  
+
   // Production optimizations
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error', 'warn']
-    } : false,
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? {
+            exclude: ['error', 'warn'],
+          }
+        : false,
   },
 
   // Security headers
@@ -61,7 +64,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  
+
   typescript: {
     ignoreBuildErrors: true,
   },

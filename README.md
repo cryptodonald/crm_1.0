@@ -56,17 +56,20 @@ src/
 ### Installation
 
 1. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 2. **Environment setup**:
+
    ```bash
    cp .env.example .env.local
    # Edit .env.local with your actual API keys
    ```
 
 3. **Development server**:
+
    ```bash
    npm run dev
    ```
@@ -78,6 +81,7 @@ src/
 ## 🔑 **API Key Management System**
 
 ### Dashboard Features
+
 - **📊 Statistics Overview**: Total keys, active keys, usage metrics
 - **🗂️ Data Table**: Sortable and filterable key list with actions
 - **➕ Create Keys**: Full form with permissions and security settings
@@ -86,6 +90,7 @@ src/
 - **🔗 Copy Function**: Secure clipboard operations with visual feedback
 
 ### Security Features
+
 - **🔐 Hybrid Encryption**: Modern `ENC:` format + legacy support
 - **🛡️ Safe Previews**: Partial display (`d4fa...b946`) without full decryption
 - **🔒 Permission Control**: Read, Write, Delete, Admin levels
@@ -110,6 +115,7 @@ const baseId = await getAirtableBaseId();
 ```
 
 #### Available API Key Helpers:
+
 - `getAirtableKey()` - Main Airtable API key
 - `getAirtableBaseId()` - Airtable base ID
 - `getAirtableLeadsTableId()` - Leads table ID
@@ -127,6 +133,7 @@ const baseId = await getAirtableBaseId();
 #### All API keys and table IDs are stored in KV database, not environment variables.
 
 ### API Endpoints
+
 - `GET /api/api-keys` - List all keys with pagination
 - `POST /api/api-keys` - Create new API key
 - `GET /api/api-keys/[id]` - Get specific key details
@@ -193,16 +200,19 @@ npm run validate         # Run all checks (type, lint, test)
 ## 🏛️ **Key Architecture Decisions**
 
 ### 1. **Data Layer**
+
 - **Airtable Client**: Enterprise-grade with rate limiting, retry logic, and error handling
 - **Type Safety**: End-to-end TypeScript with auto-generated schemas
 - **Validation**: Zod schemas for runtime type checking
 
 ### 2. **Security**
+
 - **Environment Variables**: Type-safe validation with Zod
 - **Webhook Security**: Signature verification with timing-safe comparison
 - **Input Validation**: All user inputs validated with Zod schemas
 
 ### 3. **Developer Experience**
+
 - **TypeScript Strict**: Maximum type safety
 - **ESLint + Prettier**: Code consistency
 - **Testing**: Vitest with React Testing Library
@@ -224,6 +234,7 @@ npm run validate         # Run all checks (type, lint, test)
 ```
 
 #### Component Modification Best Practices:
+
 1. **Create Custom Components**: For any modifications, create a new file with `custom-` prefix
 2. **Preserve Originals**: Keep original shadcn/ui components untouched for updates
 3. **Document Changes**: Add comments explaining why custom version was needed

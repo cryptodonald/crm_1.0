@@ -22,22 +22,16 @@ export async function GET(
     const user = getCurrentUser();
     const { id } = await params;
     const apiKey = await kvApiKeyService.getApiKey(id);
-    
+
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'API key not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'API key not found' }, { status: 404 });
     }
-    
+
     // Verify ownership
     if (apiKey.userId !== user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
-    
+
     // Decrypt and mask the key for display
     let decryptedKey = '';
     try {
@@ -45,7 +39,7 @@ export async function GET(
     } catch (error) {
       console.error('Failed to decrypt API key:', id, error);
     }
-    
+
     return NextResponse.json({
       ...apiKey,
       key: encryptionService.maskApiKey(decryptedKey),
@@ -72,7 +66,7 @@ export async function PUT(
     const user = getCurrentUser();
     const { id } = await params;
     const body = await request.json();
-    
+
     const {
       name,
       value,
@@ -82,28 +76,22 @@ export async function PUT(
       expiresAt,
       ipWhitelist,
     } = body;
-    
+
     // Get existing API key to verify ownership
     const existingKey = await kvApiKeyService.getApiKey(id);
-    
+
     if (!existingKey) {
-      return NextResponse.json(
-        { error: 'API key not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'API key not found' }, { status: 404 });
     }
-    
+
     // Verify ownership
     if (existingKey.userId !== user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
-    
+
     // Prepare update data
     const updates: any = {};
-    
+
     if (name !== undefined) updates.name = name;
     if (value !== undefined && value.trim()) {
       // Update the key value if provided
@@ -118,17 +106,17 @@ export async function PUT(
     if (ipWhitelist !== undefined) {
       updates.ipWhitelist = ipWhitelist.length > 0 ? ipWhitelist : undefined;
     }
-    
+
     // Update the API key
     const updatedKey = await kvApiKeyService.updateApiKey(id, updates);
-    
+
     if (!updatedKey) {
       return NextResponse.json(
         { error: 'Failed to update API key' },
         { status: 500 }
       );
     }
-    
+
     // Return updated key with masked value
     let decryptedKey = '';
     try {
@@ -136,7 +124,7 @@ export async function PUT(
     } catch (error) {
       console.error('Failed to decrypt updated API key:', id, error);
     }
-    
+
     return NextResponse.json({
       ...updatedKey,
       key: encryptionService.maskApiKey(decryptedKey),
@@ -161,35 +149,29 @@ export async function DELETE(
   try {
     const user = getCurrentUser();
     const { id } = await params;
-    
+
     // Get existing API key to verify ownership
     const existingKey = await kvApiKeyService.getApiKey(id);
-    
+
     if (!existingKey) {
-      return NextResponse.json(
-        { error: 'API key not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'API key not found' }, { status: 404 });
     }
-    
+
     // Verify ownership
     if (existingKey.userId !== user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
-    
+
     // Delete the API key
     const deleted = await kvApiKeyService.deleteApiKey(id);
-    
+
     if (!deleted) {
       return NextResponse.json(
         { error: 'Failed to delete API key' },
         { status: 500 }
       );
     }
-    
+
     return NextResponse.json({
       success: true,
       message: 'API key deleted successfully',

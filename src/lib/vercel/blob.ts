@@ -67,7 +67,9 @@ export class VercelBlobClient {
       };
     } catch (error) {
       console.error('[Vercel Blob] Upload error:', error);
-      throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -85,7 +87,7 @@ export class VercelBlobClient {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    
+
     return this.uploadFile(file.name, buffer, {
       ...options,
       contentType: options.contentType ?? file.type,
@@ -110,7 +112,9 @@ export class VercelBlobClient {
       return await Promise.all(uploads);
     } catch (error) {
       console.error('[Vercel Blob] Multiple upload error:', error);
-      throw new Error(`Failed to upload multiple files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to upload multiple files: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -122,7 +126,9 @@ export class VercelBlobClient {
       await del(url, { token: this.token });
     } catch (error) {
       console.error('[Vercel Blob] Delete error:', error);
-      throw new Error(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -136,18 +142,22 @@ export class VercelBlobClient {
       await Promise.all(deletions);
     } catch (error) {
       console.error('[Vercel Blob] Multiple delete error:', error);
-      throw new Error(`Failed to delete multiple files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to delete multiple files: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
   /**
    * List files with optional prefix filtering
    */
-  async listFiles(options: { 
-    prefix?: string; 
-    limit?: number; 
-    cursor?: string; 
-  } = {}): Promise<{
+  async listFiles(
+    options: {
+      prefix?: string;
+      limit?: number;
+      cursor?: string;
+    } = {}
+  ): Promise<{
     blobs: BlobFile[];
     hasMore: boolean;
     cursor?: string;
@@ -173,7 +183,9 @@ export class VercelBlobClient {
       };
     } catch (error) {
       console.error('[Vercel Blob] List error:', error);
-      throw new Error(`Failed to list files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to list files: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -197,7 +209,9 @@ export class VercelBlobClient {
       };
     } catch (error) {
       console.error('[Vercel Blob] Head error:', error);
-      throw new Error(`Failed to get file metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get file metadata: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -208,11 +222,11 @@ export class VercelBlobClient {
     const params = new URLSearchParams({
       filename,
       ...(options.access && { access: options.access }),
-      ...(options.addRandomSuffix !== undefined && { 
-        addRandomSuffix: options.addRandomSuffix.toString() 
+      ...(options.addRandomSuffix !== undefined && {
+        addRandomSuffix: options.addRandomSuffix.toString(),
       }),
-      ...(options.cacheControlMaxAge && { 
-        cacheControlMaxAge: options.cacheControlMaxAge.toString() 
+      ...(options.cacheControlMaxAge && {
+        cacheControlMaxAge: options.cacheControlMaxAge.toString(),
       }),
       ...(options.contentType && { contentType: options.contentType }),
     });
@@ -223,10 +237,12 @@ export class VercelBlobClient {
   /**
    * Validate file type
    */
-  static validateFileType(file: File | string, allowedTypes: string[]): boolean {
-    const fileType = typeof file === 'string' 
-      ? file 
-      : file.type || 'application/octet-stream';
+  static validateFileType(
+    file: File | string,
+    allowedTypes: string[]
+  ): boolean {
+    const fileType =
+      typeof file === 'string' ? file : file.type || 'application/octet-stream';
 
     return allowedTypes.some(type => {
       if (type.endsWith('/*')) {
@@ -239,9 +255,12 @@ export class VercelBlobClient {
   /**
    * Validate file size
    */
-  static validateFileSize(file: File | Buffer | string, maxSizeBytes: number): boolean {
+  static validateFileSize(
+    file: File | Buffer | string,
+    maxSizeBytes: number
+  ): boolean {
     let size: number;
-    
+
     if (file instanceof File) {
       size = file.size;
     } else if (file instanceof Buffer) {
@@ -282,10 +301,10 @@ export class VercelBlobClient {
     const baseName = originalFilename
       .replace(`.${extension}`, '')
       .replace(/[^\w\-_]/g, '_');
-    
+
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
-    
+
     return `${baseName}_${timestamp}_${random}.${extension}`;
   }
 }
@@ -306,7 +325,7 @@ export function getVercelBlobClient(): VercelBlobClient {
 // File type constants
 export const ALLOWED_IMAGE_TYPES = [
   'image/jpeg',
-  'image/jpg', 
+  'image/jpg',
   'image/png',
   'image/gif',
   'image/webp',

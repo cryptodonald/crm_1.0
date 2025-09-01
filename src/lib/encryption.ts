@@ -13,9 +13,12 @@ export class EncryptionService {
     if (!masterKeyString) {
       throw new Error('ENCRYPTION_MASTER_KEY environment variable is required');
     }
-    
+
     // Derive AES-256 key from master key using SHA-256
-    this.masterKey = crypto.createHash('sha256').update(masterKeyString).digest();
+    this.masterKey = crypto
+      .createHash('sha256')
+      .update(masterKeyString)
+      .digest();
   }
 
   /**
@@ -25,14 +28,14 @@ export class EncryptionService {
     try {
       // Generate random IV for each encryption
       const iv = crypto.randomBytes(16);
-      
+
       // Create cipher with AES-256-CBC
       const cipher = crypto.createCipheriv('aes-256-cbc', this.masterKey, iv);
-      
+
       // Encrypt the plaintext
       let encrypted = cipher.update(plaintext, 'utf8', 'hex');
       encrypted += cipher.final('hex');
-      
+
       // Return IV + encrypted data (format: iv:encrypted)
       return iv.toString('hex') + ':' + encrypted;
     } catch (error) {
@@ -52,29 +55,33 @@ export class EncryptionService {
         const base64Data = ciphertext.substring(4);
         const plaintext = Buffer.from(base64Data, 'base64').toString('utf8');
         return plaintext;
-      } 
-      
+      }
+
       // Modern AES-256-CBC format (iv:encrypted)
       if (ciphertext.includes(':')) {
         const [ivHex, encryptedHex] = ciphertext.split(':');
-        
+
         // Validate format
         if (ivHex.length !== 32 || !encryptedHex) {
           console.warn('Invalid AES format, showing preview');
           return this.createPreview(ciphertext);
         }
-        
+
         try {
           const iv = Buffer.from(ivHex, 'hex');
           const encrypted = Buffer.from(encryptedHex, 'hex');
-          
+
           // Create decipher
-          const decipher = crypto.createDecipheriv('aes-256-cbc', this.masterKey, iv);
-          
+          const decipher = crypto.createDecipheriv(
+            'aes-256-cbc',
+            this.masterKey,
+            iv
+          );
+
           // Decrypt the data
           let decrypted = decipher.update(encrypted, undefined, 'utf8');
           decrypted += decipher.final('utf8');
-          
+
           return decrypted;
         } catch (aesError) {
           console.error('AES decryption failed:', aesError);
@@ -82,16 +89,15 @@ export class EncryptionService {
           return this.createPreview(ciphertext);
         }
       }
-      
+
       // Unknown format - show partial preview for safety
       return this.createPreview(ciphertext);
-      
     } catch (error) {
       console.error('Decryption failed:', error);
       return this.createPreview(ciphertext);
     }
   }
-  
+
   /**
    * Create a safe preview of encrypted data
    */
@@ -112,10 +118,10 @@ export class EncryptionService {
     if (!apiKey || apiKey.length <= visibleChars) {
       return '***';
     }
-    
+
     const visible = apiKey.slice(-visibleChars);
     const masked = '*'.repeat(Math.max(8, apiKey.length - visibleChars));
-    
+
     return `${masked}${visible}`;
   }
 

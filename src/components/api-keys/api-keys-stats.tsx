@@ -3,7 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Key, Activity, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  Key,
+  Activity,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react';
 
 interface ApiKeyStatsProps {
   stats: {
@@ -25,16 +32,18 @@ interface ApiKeyStatsProps {
 export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
   if (!stats) {
     return (
-      <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-4 ${className || ''}`}>
+      <div
+        className={`grid gap-4 md:grid-cols-2 lg:grid-cols-4 ${className || ''}`}
+      >
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="h-4 w-16 bg-gray-200 rounded"></div>
-              <div className="h-4 w-4 bg-gray-200 rounded"></div>
+              <div className="h-4 w-16 rounded bg-gray-200"></div>
+              <div className="h-4 w-4 rounded bg-gray-200"></div>
             </CardHeader>
             <CardContent>
-              <div className="h-8 w-12 bg-gray-200 rounded mb-1"></div>
-              <div className="h-3 w-20 bg-gray-200 rounded"></div>
+              <div className="mb-1 h-8 w-12 rounded bg-gray-200"></div>
+              <div className="h-3 w-20 rounded bg-gray-200"></div>
             </CardContent>
           </Card>
         ))}
@@ -42,7 +51,8 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
     );
   }
 
-  const activePercentage = stats.total > 0 ? (stats.active / stats.total) * 100 : 0;
+  const activePercentage =
+    stats.total > 0 ? (stats.active / stats.total) * 100 : 0;
   const usageGrowth = trends ? trends.usageTrend : 0;
 
   const getTrendIcon = (trend: number) => {
@@ -58,23 +68,27 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
   };
 
   return (
-    <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-4 ${className || ''}`}>
+    <div
+      className={`grid gap-4 md:grid-cols-2 lg:grid-cols-4 ${className || ''}`}
+    >
       {/* Total API Keys */}
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
+      <Card className="from-muted/30 to-muted/60 border-border bg-gradient-to-br">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Totale Chiavi API</CardTitle>
-          <Key className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">
+            Totale Chiavi API
+          </CardTitle>
+          <Key className="text-muted-foreground h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.total}</div>
-          <div className="flex items-center space-x-2 text-xs text-muted-foreground mt-1">
+          <div className="text-muted-foreground mt-1 flex items-center space-x-2 text-xs">
             <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="h-2 w-2 rounded-full bg-green-500"></div>
               <span>{stats.active} attive</span>
             </div>
             {stats.inactive > 0 && (
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <div className="h-2 w-2 rounded-full bg-gray-400"></div>
                 <span>{stats.inactive} inattive</span>
               </div>
             )}
@@ -83,44 +97,49 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
       </Card>
 
       {/* Active Keys Progress */}
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
+      <Card className="from-muted/30 to-muted/60 border-border bg-gradient-to-br">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Chiavi Attive</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
+          <Activity className="text-muted-foreground h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.active}</div>
           <Progress value={activePercentage} className="mt-2" />
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-xs">
             {Math.round(activePercentage)}% del totale
           </p>
         </CardContent>
       </Card>
 
       {/* Total Usage */}
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
+      <Card className="from-muted/30 to-muted/60 border-border bg-gradient-to-br">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Uso Totale</CardTitle>
           {trends && getTrendIcon(usageGrowth)}
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalUsage.toLocaleString()}</div>
+          <div className="text-2xl font-bold">
+            {stats.totalUsage.toLocaleString()}
+          </div>
           {trends && (
-            <div className="flex items-center space-x-1 text-xs mt-1">
+            <div className="mt-1 flex items-center space-x-1 text-xs">
               <span className={getTrendColor(usageGrowth)}>
-                {usageGrowth > 0 ? '+' : ''}{Math.abs(usageGrowth).toFixed(1)}%
+                {usageGrowth > 0 ? '+' : ''}
+                {Math.abs(usageGrowth).toFixed(1)}%
               </span>
-              <span className="text-muted-foreground">dalla scorsa settimana</span>
+              <span className="text-muted-foreground">
+                dalla scorsa settimana
+              </span>
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* Alerts */}
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
+      <Card className="from-muted/30 to-muted/60 border-border bg-gradient-to-br">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Avvisi</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          <AlertTriangle className="text-muted-foreground h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -133,17 +152,20 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
             )}
             {stats.expiringSoon && stats.expiringSoon > 0 && (
               <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                <Badge
+                  variant="secondary"
+                  className="bg-yellow-100 text-xs text-yellow-800"
+                >
                   {stats.expiringSoon} In Scadenza
                 </Badge>
               </div>
             )}
-            {(!stats.expired || stats.expired === 0) && 
-             (!stats.expiringSoon || stats.expiringSoon === 0) && (
-              <div className="text-sm text-muted-foreground">
-                Tutte le chiavi sono sane
-              </div>
-            )}
+            {(!stats.expired || stats.expired === 0) &&
+              (!stats.expiringSoon || stats.expiringSoon === 0) && (
+                <div className="text-muted-foreground text-sm">
+                  Tutte le chiavi sono sane
+                </div>
+              )}
           </div>
         </CardContent>
       </Card>

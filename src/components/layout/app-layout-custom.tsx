@@ -1,27 +1,27 @@
-"use client"
+'use client';
 
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebarCustomFixed } from "./fixed/app-sidebar-custom-fixed"
-import { SiteHeaderCustom } from "./site-header-custom"
-import { Toaster } from "@/components/ui/sonner"
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { AppSidebarCustomFixed } from './fixed/app-sidebar-custom-fixed';
+import { SiteHeaderCustom } from './site-header-custom';
+import { Toaster } from '@/components/ui/sonner';
 
 interface AppLayoutCustomProps {
-  children: React.ReactNode
-  sidebarWidth?: string
-  headerHeight?: string
+  children: React.ReactNode;
+  sidebarWidth?: string;
+  headerHeight?: string;
 }
 
-export function AppLayoutCustom({ 
-  children, 
-  sidebarWidth = "calc(var(--spacing) * 60)", 
-  headerHeight = "calc(var(--spacing) * 12)" 
+export function AppLayoutCustom({
+  children,
+  sidebarWidth = 'calc(var(--spacing) * 60)',
+  headerHeight = 'calc(var(--spacing) * 12)',
 }: AppLayoutCustomProps) {
   return (
     <SidebarProvider
       style={
         {
-          "--sidebar-width": sidebarWidth,
-          "--header-height": headerHeight,
+          '--sidebar-width': sidebarWidth,
+          '--header-height': headerHeight,
         } as React.CSSProperties
       }
     >
@@ -37,5 +37,5 @@ export function AppLayoutCustom({
       {/* Toast notifications */}
       <Toaster />
     </SidebarProvider>
-  )
+  );
 }

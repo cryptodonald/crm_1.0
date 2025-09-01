@@ -68,13 +68,7 @@ export class AuditLogger {
     changes: Record<string, { from: any; to: any }>,
     context?: { ipAddress?: string; userAgent?: string }
   ): Promise<void> {
-    await this.logEvent(
-      apiKeyId,
-      'updated',
-      userId,
-      { changes },
-      context
-    );
+    await this.logEvent(apiKeyId, 'updated', userId, { changes }, context);
   }
 
   /**
@@ -86,13 +80,7 @@ export class AuditLogger {
     reason?: string,
     context?: { ipAddress?: string; userAgent?: string }
   ): Promise<void> {
-    await this.logEvent(
-      apiKeyId,
-      'deleted',
-      userId,
-      { reason },
-      context
-    );
+    await this.logEvent(apiKeyId, 'deleted', userId, { reason }, context);
   }
 
   /**
@@ -104,13 +92,7 @@ export class AuditLogger {
     rotationType: 'manual' | 'automatic',
     context?: { ipAddress?: string; userAgent?: string }
   ): Promise<void> {
-    await this.logEvent(
-      apiKeyId,
-      'rotated',
-      userId,
-      { rotationType },
-      context
-    );
+    await this.logEvent(apiKeyId, 'rotated', userId, { rotationType }, context);
   }
 
   /**
@@ -185,7 +167,7 @@ export class AuditLogger {
     // This would typically query your database
     // For now, we'll return a mock implementation
     const cacheKey = `audit_trail_${apiKeyId}`;
-    
+
     try {
       // Try to get from cache first
       const cached = await this.getFromCache(cacheKey);
@@ -195,10 +177,10 @@ export class AuditLogger {
 
       // Fetch from storage (implement based on your storage solution)
       const entries = await this.fetchAuditEntries(apiKeyId);
-      
+
       // Cache for future requests
       await this.setCache(cacheKey, entries, 300); // 5 minutes
-      
+
       return this.filterAuditEntries(entries, options);
     } catch (error) {
       console.error('Failed to get audit trail:', error);
@@ -241,22 +223,22 @@ export class AuditLogger {
 
   private sanitizeDetails(details: Record<string, any>): Record<string, any> {
     const sanitized = { ...details };
-    
+
     // Remove or mask sensitive information
     const sensitiveKeys = ['apiKey', 'key', 'password', 'token', 'secret'];
-    
+
     for (const key of sensitiveKeys) {
       if (sanitized[key]) {
         sanitized[key] = encryptionService.maskApiKey(sanitized[key]);
       }
     }
-    
+
     return sanitized;
   }
 
   private async persistAuditEntry(entry: AuditEntry): Promise<void> {
     let retries = 0;
-    
+
     while (retries < this.maxRetries) {
       try {
         // Store in your preferred storage (database, KV store, etc.)
@@ -268,9 +250,11 @@ export class AuditLogger {
           console.error('Failed to persist audit entry after retries:', error);
           throw error;
         }
-        
+
         // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, this.retryDelay * retries));
+        await new Promise(resolve =>
+          setTimeout(resolve, this.retryDelay * retries)
+        );
       }
     }
   }
@@ -282,7 +266,7 @@ export class AuditLogger {
     if (kv) {
       const key = `audit:${entry.apiKeyId}:${entry.id}`;
       await kv.kv.set(key, JSON.stringify(entry), { ex: 86400 * 365 }); // 1 year
-      
+
       // Also add to list for querying
       const listKey = `audit_list:${entry.apiKeyId}`;
       await kv.kv.lpush(listKey, entry.id);
@@ -298,7 +282,7 @@ export class AuditLogger {
     try {
       const listKey = `audit_list:${apiKeyId}`;
       const entryIds = await kv.kv.lrange(listKey, 0, -1);
-      
+
       const entries: AuditEntry[] = [];
       for (const entryId of entryIds) {
         const key = `audit:${apiKeyId}:${entryId}`;
@@ -307,10 +291,11 @@ export class AuditLogger {
           entries.push(JSON.parse(entryData as string));
         }
       }
-      
+
       // Sort by timestamp descending
-      return entries.sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      return entries.sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
     } catch (error) {
       console.error('Failed to fetch audit entries:', error);
@@ -331,19 +316,19 @@ export class AuditLogger {
     let filtered = entries;
 
     if (options?.startDate) {
-      filtered = filtered.filter(entry => 
-        new Date(entry.timestamp) >= options.startDate!
+      filtered = filtered.filter(
+        entry => new Date(entry.timestamp) >= options.startDate!
       );
     }
 
     if (options?.endDate) {
-      filtered = filtered.filter(entry => 
-        new Date(entry.timestamp) <= options.endDate!
+      filtered = filtered.filter(
+        entry => new Date(entry.timestamp) <= options.endDate!
       );
     }
 
     if (options?.actions?.length) {
-      filtered = filtered.filter(entry => 
+      filtered = filtered.filter(entry =>
         options.actions!.includes(entry.action)
       );
     }
@@ -367,12 +352,18 @@ export class AuditLogger {
     }
   }
 
-  private async setCache(key: string, value: any, ttlSeconds: number): Promise<void> {
+  private async setCache(
+    key: string,
+    value: any,
+    ttlSeconds: number
+  ): Promise<void> {
     const kv = await import('@vercel/kv').catch(() => null);
     if (!kv) return;
 
     try {
-      await kv.kv.set(`cache:${key}`, JSON.stringify(value), { ex: ttlSeconds });
+      await kv.kv.set(`cache:${key}`, JSON.stringify(value), {
+        ex: ttlSeconds,
+      });
     } catch (error) {
       console.error('Failed to set cache:', error);
     }

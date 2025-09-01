@@ -18,7 +18,7 @@ export interface Lead extends BaseEntity {
   notes?: string;
   tags?: string[];
   customFields?: Record<string, unknown>;
-  
+
   // Audit fields
   lastContactedAt?: string;
   nextFollowUpAt?: string;
@@ -58,19 +58,19 @@ export interface Activity extends BaseEntity {
   leadId?: string;
   contactId?: string;
   assignedTo?: string;
-  
+
   // Timing
   scheduledAt?: string;
   startedAt?: string;
   completedAt?: string;
   duration?: number; // in minutes
-  
+
   // Outcome
   outcome?: ActivityOutcome;
   notes?: string;
   nextActions?: string[];
   followUpDate?: string;
-  
+
   // Attachments and links
   attachments?: Attachment[];
   relatedRecords?: string[];
@@ -112,13 +112,13 @@ export interface Contact extends BaseEntity {
   company?: string;
   jobTitle?: string;
   leadId?: string;
-  
+
   // Social and communication preferences
   linkedInUrl?: string;
   twitterHandle?: string;
   preferredContactMethod?: ContactMethod;
   timeZone?: string;
-  
+
   // Relationship data
   tags?: string[];
   notes?: string;
@@ -151,11 +151,11 @@ export interface Company extends BaseEntity {
   revenue?: number;
   location?: Address;
   description?: string;
-  
+
   // Social presence
   linkedInUrl?: string;
   twitterHandle?: string;
-  
+
   // Business data
   annualRevenue?: number;
   employeeCount?: number;
@@ -165,9 +165,9 @@ export interface Company extends BaseEntity {
 
 export enum CompanySize {
   STARTUP = 'startup',
-  SMALL = 'small',        // 1-50
-  MEDIUM = 'medium',      // 51-200  
-  LARGE = 'large',        // 201-1000
+  SMALL = 'small', // 1-50
+  MEDIUM = 'medium', // 51-200
+  LARGE = 'large', // 201-1000
   ENTERPRISE = 'enterprise', // 1000+
 }
 
@@ -180,17 +180,17 @@ export interface Opportunity extends BaseEntity {
   value: number;
   currency: string;
   probability: number; // 0-100
-  
+
   // Timing
   expectedCloseDate: string;
   actualCloseDate?: string;
-  
+
   // Details
   description?: string;
   lostReason?: string;
   nextSteps?: string[];
   competitors?: string[];
-  
+
   // Ownership
   ownerId: string;
   teamMembers?: string[];
@@ -198,7 +198,7 @@ export interface Opportunity extends BaseEntity {
 
 export enum OpportunityStage {
   IDENTIFICATION = 'identification',
-  QUALIFICATION = 'qualification', 
+  QUALIFICATION = 'qualification',
   NEEDS_ANALYSIS = 'needs_analysis',
   VALUE_PROPOSITION = 'value_proposition',
   PROPOSAL = 'proposal',
@@ -259,16 +259,16 @@ export interface CrmMetrics {
   conversionRate: number;
   averageDealSize: number;
   salesCycleLength: number; // in days
-  
+
   // Pipeline metrics
   pipelineValue: number;
   weightedPipelineValue: number;
-  
+
   // Activity metrics
   totalActivities: number;
   completedActivities: number;
   overdueActivities: number;
-  
+
   // Time-based metrics
   period: {
     start: string;

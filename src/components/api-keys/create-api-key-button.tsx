@@ -9,13 +9,13 @@ interface CreateApiKeyButtonProps {
   className?: string;
 }
 
-export function CreateApiKeyButton({ onClick, loading, className }: CreateApiKeyButtonProps) {
+export function CreateApiKeyButton({
+  onClick,
+  loading,
+  className,
+}: CreateApiKeyButtonProps) {
   return (
-    <Button 
-      onClick={onClick} 
-      disabled={loading}
-      className={className}
-    >
+    <Button onClick={onClick} disabled={loading} className={className}>
       <Plus className="mr-2 h-4 w-4" />
       Crea Chiave API
     </Button>

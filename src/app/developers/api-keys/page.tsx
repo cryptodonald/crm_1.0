@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AppLayoutCustom } from "@/components/layout/app-layout-custom"
-import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
+import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { useEnvVars } from '@/hooks/use-env-vars';
 import { ApiKeysStats } from '@/components/api-keys/api-keys-stats';
 import { ApiKeysDataTable } from '@/components/api-keys/api-keys-data-table';
@@ -64,15 +64,18 @@ export default function ApiKeysPage() {
     <AppLayoutCustom>
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <PageBreadcrumb pageName="Chiavi API" />
-        
+
         <div className="px-4 lg:px-6">
           <div className="flex flex-col gap-6">
             {/* Header Section */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">Chiavi API</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Chiavi API
+                </h1>
                 <p className="text-muted-foreground">
-                  Gestisci le tue chiavi API per un accesso sicuro alle API del CRM
+                  Gestisci le tue chiavi API per un accesso sicuro alle API del
+                  CRM
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -82,10 +85,12 @@ export default function ApiKeysPage() {
                   onClick={refresh}
                   disabled={loading}
                 >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+                  />
                   Aggiorna
                 </Button>
-                <CreateApiKeyButton 
+                <CreateApiKeyButton
                   onClick={handleCreateClick}
                   loading={creating}
                 />

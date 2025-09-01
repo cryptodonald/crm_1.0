@@ -138,7 +138,11 @@ export class GitHubClient {
   /**
    * List repository issues
    */
-  async listIssues(owner: string, repo: string, state?: 'open' | 'closed' | 'all'): Promise<GitHubIssue[]> {
+  async listIssues(
+    owner: string,
+    repo: string,
+    state?: 'open' | 'closed' | 'all'
+  ): Promise<GitHubIssue[]> {
     const { data } = await this.octokit.rest.issues.listForRepo({
       owner,
       repo,
@@ -152,9 +156,9 @@ export class GitHubClient {
       title: issue.title,
       body: issue.body,
       state: issue.state as 'open' | 'closed',
-      labels: issue.labels.map(label => 
-        typeof label === 'string' ? label : label.name || ''
-      ).filter(Boolean),
+      labels: issue.labels
+        .map(label => (typeof label === 'string' ? label : label.name || ''))
+        .filter(Boolean),
       assignees: issue.assignees?.map(assignee => assignee.login) || [],
       createdAt: issue.created_at,
       updatedAt: issue.updated_at,
@@ -167,10 +171,10 @@ export class GitHubClient {
    * Create an issue
    */
   async createIssue(
-    owner: string, 
-    repo: string, 
-    title: string, 
-    body?: string, 
+    owner: string,
+    repo: string,
+    title: string,
+    body?: string,
     labels?: string[]
   ): Promise<GitHubIssue> {
     const { data } = await this.octokit.rest.issues.create({
@@ -187,9 +191,9 @@ export class GitHubClient {
       title: data.title,
       body: data.body,
       state: data.state as 'open' | 'closed',
-      labels: data.labels.map(label => 
-        typeof label === 'string' ? label : label.name || ''
-      ).filter(Boolean),
+      labels: data.labels
+        .map(label => (typeof label === 'string' ? label : label.name || ''))
+        .filter(Boolean),
       assignees: data.assignees?.map(assignee => assignee.login) || [],
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -201,7 +205,11 @@ export class GitHubClient {
   /**
    * List pull requests
    */
-  async listPullRequests(owner: string, repo: string, state?: 'open' | 'closed' | 'all'): Promise<GitHubPullRequest[]> {
+  async listPullRequests(
+    owner: string,
+    repo: string,
+    state?: 'open' | 'closed' | 'all'
+  ): Promise<GitHubPullRequest[]> {
     const { data } = await this.octokit.rest.pulls.list({
       owner,
       repo,
@@ -228,7 +236,11 @@ export class GitHubClient {
   /**
    * Verify webhook signature
    */
-  static verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+  static verifyWebhookSignature(
+    payload: string,
+    signature: string,
+    secret: string
+  ): boolean {
     if (!signature || !secret) {
       console.warn('[GitHub] Missing signature or secret');
       return false;
@@ -259,7 +271,9 @@ export class GitHubClient {
    * Process webhook event
    */
   static async processWebhookEvent(event: GitHubWebhookEvent): Promise<void> {
-    console.log(`[GitHub] Processing ${event.eventType} event for ${event.repository?.fullName}`);
+    console.log(
+      `[GitHub] Processing ${event.eventType} event for ${event.repository?.fullName}`
+    );
 
     switch (event.eventType) {
       case 'push':
@@ -281,7 +295,7 @@ export class GitHubClient {
 
   private static async handlePushEvent(payload: any): Promise<void> {
     const { repository, pusher, commits, ref } = payload;
-    
+
     console.log('[GitHub] Push event details:', {
       repository: repository?.full_name,
       branch: ref?.replace('refs/heads/', ''),
@@ -298,7 +312,7 @@ export class GitHubClient {
 
   private static async handleIssuesEvent(payload: any): Promise<void> {
     const { action, issue, repository } = payload;
-    
+
     console.log('[GitHub] Issues event:', {
       action,
       issueNumber: issue?.number,
@@ -316,7 +330,7 @@ export class GitHubClient {
 
   private static async handlePullRequestEvent(payload: any): Promise<void> {
     const { action, pull_request, repository } = payload;
-    
+
     console.log('[GitHub] Pull request event:', {
       action,
       prNumber: pull_request?.number,
@@ -334,7 +348,7 @@ export class GitHubClient {
 
   private static async handleRepositoryEvent(payload: any): Promise<void> {
     const { action, repository } = payload;
-    
+
     console.log('[GitHub] Repository event:', {
       action,
       repository: repository?.full_name,

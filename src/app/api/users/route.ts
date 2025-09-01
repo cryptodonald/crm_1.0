@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAirtableKey, getAirtableBaseId, getAirtableUsersTableId } from '@/lib/api-keys-service';
+import {
+  getAirtableKey,
+  getAirtableBaseId,
+  getAirtableUsersTableId,
+} from '@/lib/api-keys-service';
 
 interface AirtableUser {
   id: string;
@@ -22,14 +26,18 @@ interface UserData {
   telefono?: string;
 }
 
-async function fetchAllUsers(apiKey: string, baseId: string, tableId: string): Promise<UserData[]> {
+async function fetchAllUsers(
+  apiKey: string,
+  baseId: string,
+  tableId: string
+): Promise<UserData[]> {
   const users: UserData[] = [];
   let offset: string | undefined;
 
   try {
     do {
       const url = new URL(`https://api.airtable.com/v0/${baseId}/${tableId}`);
-      
+
       if (offset) {
         url.searchParams.append('offset', offset);
       }
@@ -38,18 +46,24 @@ async function fetchAllUsers(apiKey: string, baseId: string, tableId: string): P
 
       const response = await fetch(url.toString(), {
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        console.error('❌ Airtable API error:', response.status, response.statusText);
-        throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+        console.error(
+          '❌ Airtable API error:',
+          response.status,
+          response.statusText
+        );
+        throw new Error(
+          `Airtable API error: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = await response.json();
-      
+
       // Trasforma i dati Airtable nel nostro formato
       const transformedUsers = data.records.map((record: AirtableUser) => ({
         id: record.id,
@@ -63,13 +77,13 @@ async function fetchAllUsers(apiKey: string, baseId: string, tableId: string): P
       users.push(...transformedUsers);
       offset = data.offset;
 
-      console.log(`📦 Loaded ${transformedUsers.length} users, total: ${users.length}`);
-
+      console.log(
+        `📦 Loaded ${transformedUsers.length} users, total: ${users.length}`
+      );
     } while (offset);
 
     console.log(`✅ Completed: ${users.length} total users loaded`);
     return users;
-
   } catch (error) {
     console.error('❌ Error fetching users:', error);
     throw error;
@@ -84,14 +98,14 @@ export async function GET(request: NextRequest) {
     const [apiKey, baseId, tableId] = await Promise.all([
       getAirtableKey(),
       getAirtableBaseId(),
-      getAirtableUsersTableId()
+      getAirtableUsersTableId(),
     ]);
 
     if (!apiKey || !baseId || !tableId) {
-      console.error('❌ Missing Airtable credentials:', { 
-        hasApiKey: !!apiKey, 
-        hasBaseId: !!baseId, 
-        hasTableId: !!tableId 
+      console.error('❌ Missing Airtable credentials:', {
+        hasApiKey: !!apiKey,
+        hasBaseId: !!baseId,
+        hasTableId: !!tableId,
       });
       return NextResponse.json(
         { error: 'Missing Airtable credentials' },
@@ -100,7 +114,7 @@ export async function GET(request: NextRequest) {
     }
 
     const users = await fetchAllUsers(apiKey, baseId, tableId);
-    
+
     // Trasforma in un oggetto con chiave ID per lookup veloce
     const usersById: Record<string, UserData> = {};
     users.forEach(user => {
@@ -112,15 +126,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       users: usersById,
       count: users.length,
-      success: true
+      success: true,
     });
-
   } catch (error) {
     console.error('❌ [Users API] Error:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch users', 
-        details: error instanceof Error ? error.message : 'Unknown error'
+      {
+        error: 'Failed to fetch users',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

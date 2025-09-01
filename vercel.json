@@ -2,7 +2,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "devCommand": "npm run dev -- --port $PORT",
-  
+
   "functions": {
     "src/app/api/webhooks/**/route.ts": {
       "maxDuration": 30
@@ -27,7 +27,7 @@
           "value": "https://api.github.com"
         },
         {
-          "key": "Access-Control-Allow-Methods", 
+          "key": "Access-Control-Allow-Methods",
           "value": "POST, GET, OPTIONS"
         },
         {

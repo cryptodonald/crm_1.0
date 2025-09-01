@@ -4,17 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Users, 
-  Clock, 
-  TrendingUp, 
+import {
+  Users,
+  Clock,
+  TrendingUp,
   Lightbulb,
   AlertTriangle,
   Calendar,
   CheckCircle2,
   ArrowUpRight,
   ArrowDownRight,
-  Minus
+  Minus,
 } from 'lucide-react';
 import { LeadsStats } from '@/types/leads';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,12 @@ interface LeadsStatsProps {
   className?: string;
 }
 
-export function LeadsStats({ stats, loading, error, className }: LeadsStatsProps) {
+export function LeadsStats({
+  stats,
+  loading,
+  error,
+  className,
+}: LeadsStatsProps) {
   if (error) {
     return (
       <Alert variant="destructive" className={className}>
@@ -40,7 +45,9 @@ export function LeadsStats({ stats, loading, error, className }: LeadsStatsProps
 
   if (loading || !stats) {
     return (
-      <div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-4", className)}>
+      <div
+        className={cn('grid gap-4 md:grid-cols-2 lg:grid-cols-4', className)}
+      >
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -48,7 +55,7 @@ export function LeadsStats({ stats, loading, error, className }: LeadsStatsProps
               <Skeleton className="h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="mb-2 h-8 w-16" />
               <Skeleton className="h-3 w-24" />
             </CardContent>
           </Card>
@@ -62,8 +69,10 @@ export function LeadsStats({ stats, loading, error, className }: LeadsStatsProps
   };
 
   const getTrendIcon = (variation: number) => {
-    if (variation > 0) return <ArrowUpRight className="h-4 w-4 text-green-600" />;
-    if (variation < 0) return <ArrowDownRight className="h-4 w-4 text-red-600" />;
+    if (variation > 0)
+      return <ArrowUpRight className="h-4 w-4 text-green-600" />;
+    if (variation < 0)
+      return <ArrowDownRight className="h-4 w-4 text-red-600" />;
     return <Minus className="h-4 w-4 text-gray-400" />;
   };
 
@@ -74,74 +83,75 @@ export function LeadsStats({ stats, loading, error, className }: LeadsStatsProps
   };
 
   return (
-    <div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-4", className)}>
+    <div className={cn('grid gap-4 md:grid-cols-2 lg:grid-cols-4', className)}>
       {/* KPI 1: Lead ultimi 7 giorni */}
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
+      <Card className="from-muted/30 to-muted/60 border-border bg-gradient-to-br">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
             Lead Ultimi 7 Giorni
           </CardTitle>
-          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Calendar className="text-muted-foreground h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
             {stats.nuoviUltimi7Giorni.toLocaleString('it-IT')}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-xs">
             Su {stats.totale} lead totali
           </p>
         </CardContent>
       </Card>
 
       {/* KPI 2: Contattati entro 48h */}
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
+      <Card className="from-muted/30 to-muted/60 border-border bg-gradient-to-br">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
             Contattati Entro 48h
           </CardTitle>
-          <Clock className="h-4 w-4 text-muted-foreground" />
+          <Clock className="text-muted-foreground h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
             {stats.contattatiEntro48h.toLocaleString('it-IT')}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-xs">
             Lead con attività o conversazioni
           </p>
         </CardContent>
       </Card>
 
       {/* KPI 3: Tasso di qualificazione */}
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
+      <Card className="from-muted/30 to-muted/60 border-border bg-gradient-to-br">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
             Tasso di Qualificazione
           </CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <TrendingUp className="text-muted-foreground h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
             {formatPercentage(stats.tassoQualificazione)}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Nuovo → Qualificato ({stats.byStato['Qualificato'] || 0} qualificati)
+          <p className="text-muted-foreground mt-1 text-xs">
+            Nuovo → Qualificato ({stats.byStato['Qualificato'] || 0}{' '}
+            qualificati)
           </p>
         </CardContent>
       </Card>
 
       {/* KPI 4: Tasso di conversione */}
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/60 border-border">
+      <Card className="from-muted/30 to-muted/60 border-border bg-gradient-to-br">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
             Tasso di Conversione
           </CardTitle>
-          <Lightbulb className="h-4 w-4 text-muted-foreground" />
+          <Lightbulb className="text-muted-foreground h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
             {formatPercentage(stats.tassoConversione)}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-xs">
             Nuovo → Cliente ({stats.byStato['Cliente'] || 0} clienti)
           </p>
         </CardContent>
@@ -151,26 +161,29 @@ export function LeadsStats({ stats, loading, error, className }: LeadsStatsProps
 }
 
 // Componente aggiuntivo per mostrare breakdown dettagliato
-export function LeadsStatsBreakdown({ stats, className }: { 
-  stats: LeadsStats | null; 
+export function LeadsStatsBreakdown({
+  stats,
+  className,
+}: {
+  stats: LeadsStats | null;
   className?: string;
 }) {
   if (!stats) return null;
 
   return (
-    <div className={cn("grid gap-4 md:grid-cols-2", className)}>
+    <div className={cn('grid gap-4 md:grid-cols-2', className)}>
       {/* Breakdown per stato */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center">
-            <Users className="h-4 w-4 mr-2" />
+          <CardTitle className="flex items-center text-sm font-medium">
+            <Users className="mr-2 h-4 w-4" />
             Distribuzione per Stato
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {Object.entries(stats.byStato).map(([stato, count]) => (
             <div key={stato} className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{stato}</span>
+              <span className="text-muted-foreground text-sm">{stato}</span>
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium">{count}</span>
                 <Badge variant="outline" className="text-xs">
@@ -185,15 +198,20 @@ export function LeadsStatsBreakdown({ stats, className }: {
       {/* Breakdown per provenienza */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center">
-            <TrendingUp className="h-4 w-4 mr-2" />
+          <CardTitle className="flex items-center text-sm font-medium">
+            <TrendingUp className="mr-2 h-4 w-4" />
             Distribuzione per Provenienza
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {Object.entries(stats.byProvenienza).map(([provenienza, count]) => (
-            <div key={provenienza} className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{provenienza}</span>
+            <div
+              key={provenienza}
+              className="flex items-center justify-between"
+            >
+              <span className="text-muted-foreground text-sm">
+                {provenienza}
+              </span>
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium">{count}</span>
                 <Badge variant="outline" className="text-xs">

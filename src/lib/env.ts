@@ -6,7 +6,8 @@
 // Simple environment access without validation
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  NEXT_PUBLIC_APP_URL:
+    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   // Add other vars as needed without validation
   AIRTABLE_API_KEY: process.env.AIRTABLE_API_KEY || '',
   AIRTABLE_BASE_ID: process.env.AIRTABLE_BASE_ID || '',
@@ -40,7 +41,10 @@ export function getEnvVar(name: string): string {
  * @param defaultValue - Default value if not found
  * @returns Environment variable value or default
  */
-export function getEnvVarWithDefault(name: string, defaultValue: string): string {
+export function getEnvVarWithDefault(
+  name: string,
+  defaultValue: string
+): string {
   return process.env[name] ?? defaultValue;
 }
 
@@ -67,12 +71,12 @@ export const getBaseUrl = (): string => {
     // Browser should use relative path
     return '';
   }
-  
+
   if (process.env.VERCEL_URL) {
     // Reference for vercel.com
     return `https://${process.env.VERCEL_URL}`;
   }
-  
+
   // Assume localhost
   return env.NEXT_PUBLIC_APP_URL;
 };

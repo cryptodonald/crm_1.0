@@ -45,18 +45,20 @@ export class KVApiKeyService {
    */
   async storeApiKey(apiKeyData: ApiKeyData): Promise<void> {
     const keyId = `${KV_PREFIXES.API_KEY}${apiKeyData.id}`;
-    
+
     // Filter out null/undefined values for Redis hset
     const filteredData = Object.fromEntries(
-      Object.entries(apiKeyData).filter(([_, value]) => value !== null && value !== undefined)
+      Object.entries(apiKeyData).filter(
+        ([_, value]) => value !== null && value !== undefined
+      )
     );
-    
+
     await kv.hset(keyId, filteredData);
-    
+
     // Add to user's API keys list
     const userKeysId = `${KV_PREFIXES.USER_API_KEYS}${apiKeyData.userId}`;
     await kv.sadd(userKeysId, apiKeyData.id);
-    
+
     // Add to tenant's API keys list
     const tenantKeysId = `${KV_PREFIXES.TENANT_API_KEYS}${apiKeyData.tenantId}`;
     await kv.sadd(tenantKeysId, apiKeyData.id);
@@ -67,7 +69,7 @@ export class KVApiKeyService {
    */
   async getApiKey(id: string): Promise<ApiKeyData | null> {
     const keyId = `${KV_PREFIXES.API_KEY}${id}`;
-    return await kv.hgetall(keyId) as ApiKeyData | null;
+    return (await kv.hgetall(keyId)) as ApiKeyData | null;
   }
 
   /**
@@ -76,13 +78,11 @@ export class KVApiKeyService {
   async getUserApiKeys(userId: string): Promise<ApiKeyData[]> {
     const userKeysId = `${KV_PREFIXES.USER_API_KEYS}${userId}`;
     const keyIds = await kv.smembers(userKeysId);
-    
+
     if (!keyIds.length) return [];
-    
-    const keys = await Promise.all(
-      keyIds.map(id => this.getApiKey(id))
-    );
-    
+
+    const keys = await Promise.all(keyIds.map(id => this.getApiKey(id)));
+
     return keys.filter(Boolean) as ApiKeyData[];
   }
 
@@ -92,37 +92,40 @@ export class KVApiKeyService {
   async getTenantApiKeys(tenantId: string): Promise<ApiKeyData[]> {
     const tenantKeysId = `${KV_PREFIXES.TENANT_API_KEYS}${tenantId}`;
     const keyIds = await kv.smembers(tenantKeysId);
-    
+
     if (!keyIds.length) return [];
-    
-    const keys = await Promise.all(
-      keyIds.map(id => this.getApiKey(id))
-    );
-    
+
+    const keys = await Promise.all(keyIds.map(id => this.getApiKey(id)));
+
     return keys.filter(Boolean) as ApiKeyData[];
   }
 
   /**
    * Update an API key
    */
-  async updateApiKey(id: string, updates: Partial<ApiKeyData>): Promise<ApiKeyData | null> {
+  async updateApiKey(
+    id: string,
+    updates: Partial<ApiKeyData>
+  ): Promise<ApiKeyData | null> {
     const existing = await this.getApiKey(id);
     if (!existing) return null;
-    
+
     const updated: ApiKeyData = {
       ...existing,
       ...updates,
       updatedAt: new Date(),
     };
-    
+
     // Filter out null/undefined values for Redis hset
     const filteredUpdated = Object.fromEntries(
-      Object.entries(updated).filter(([_, value]) => value !== null && value !== undefined)
+      Object.entries(updated).filter(
+        ([_, value]) => value !== null && value !== undefined
+      )
     );
-    
+
     const keyId = `${KV_PREFIXES.API_KEY}${id}`;
     await kv.hset(keyId, filteredUpdated);
-    
+
     return updated;
   }
 
@@ -132,23 +135,23 @@ export class KVApiKeyService {
   async deleteApiKey(id: string): Promise<boolean> {
     const existing = await this.getApiKey(id);
     if (!existing) return false;
-    
+
     // Remove from KV
     const keyId = `${KV_PREFIXES.API_KEY}${id}`;
     await kv.del(keyId);
-    
+
     // Remove from user's list
     const userKeysId = `${KV_PREFIXES.USER_API_KEYS}${existing.userId}`;
     await kv.srem(userKeysId, id);
-    
+
     // Remove from tenant's list
     const tenantKeysId = `${KV_PREFIXES.TENANT_API_KEYS}${existing.tenantId}`;
     await kv.srem(tenantKeysId, id);
-    
+
     // Clean up usage stats
     const usageKey = `${KV_PREFIXES.API_KEY_USAGE}${id}`;
     await kv.del(usageKey);
-    
+
     return true;
   }
 
@@ -158,19 +161,19 @@ export class KVApiKeyService {
   async recordUsage(apiKeyId: string, endpoint?: string): Promise<void> {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const usageKey = `${KV_PREFIXES.API_KEY_USAGE}${apiKeyId}:${today}`;
-    
+
     // Increment daily usage count
     await kv.incr(usageKey);
-    
+
     // Set expiry for usage data (30 days)
     await kv.expire(usageKey, 30 * 24 * 60 * 60);
-    
+
     // Update last used timestamp and increment total usage
     await this.updateApiKey(apiKeyId, {
       lastUsed: new Date(),
       usageCount: await this.getTotalUsage(apiKeyId),
     });
-    
+
     // Store last endpoint if provided
     if (endpoint) {
       const endpointKey = `${KV_PREFIXES.API_KEY_USAGE}${apiKeyId}:last_endpoint`;
@@ -182,24 +185,27 @@ export class KVApiKeyService {
   /**
    * Get usage statistics for an API key
    */
-  async getUsageStats(apiKeyId: string, days: number = 30): Promise<ApiKeyUsage[]> {
+  async getUsageStats(
+    apiKeyId: string,
+    days: number = 30
+  ): Promise<ApiKeyUsage[]> {
     const stats: ApiKeyUsage[] = [];
     const today = new Date();
-    
+
     for (let i = 0; i < days; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      
+
       const usageKey = `${KV_PREFIXES.API_KEY_USAGE}${apiKeyId}:${dateStr}`;
-      const count = await kv.get<number>(usageKey) || 0;
-      
+      const count = (await kv.get<number>(usageKey)) || 0;
+
       stats.push({
         date: dateStr,
         count,
       });
     }
-    
+
     return stats.reverse(); // Oldest first
   }
 
@@ -218,36 +224,39 @@ export class KVApiKeyService {
     // Note: In a production environment, you might want to hash the key
     // and store the hash for faster lookups
     // For now, we'll need to decrypt and compare all keys
-    
+
     // This is not efficient for large numbers of keys
     // Consider implementing a key hash index for production
     console.warn('findByKeyValue is not optimized for large datasets');
-    
+
     return null; // Implement key hashing for production
   }
 
   /**
    * Get API key statistics for dashboard
    */
-  async getApiKeyStats(userId?: string, tenantId?: string): Promise<{
+  async getApiKeyStats(
+    userId?: string,
+    tenantId?: string
+  ): Promise<{
     total: number;
     active: number;
     inactive: number;
     totalUsage: number;
   }> {
     let keys: ApiKeyData[] = [];
-    
+
     if (userId) {
       keys = await this.getUserApiKeys(userId);
     } else if (tenantId) {
       keys = await this.getTenantApiKeys(tenantId);
     }
-    
+
     const total = keys.length;
     const active = keys.filter(key => key.isActive).length;
     const inactive = total - active;
     const totalUsage = keys.reduce((sum, key) => sum + key.usageCount, 0);
-    
+
     return {
       total,
       active,

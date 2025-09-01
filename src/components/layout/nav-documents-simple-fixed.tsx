@@ -1,7 +1,7 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import { type Icon } from "@tabler/icons-react"
+import Link from 'next/link';
+import { type Icon } from '@tabler/icons-react';
 
 import {
   SidebarGroup,
@@ -9,24 +9,24 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar';
 
 export function NavDocumentsSimpleFixed({
   items,
-  title = "Documents",
+  title = 'Documents',
 }: {
   items: {
-    name: string
-    url: string
-    icon: Icon
-  }[]
-  title?: string
+    name: string;
+    url: string;
+    icon: Icon;
+  }[];
+  title?: string;
 }) {
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>{title}</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
+        {items.map(item => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
               <Link href={item.url}>
@@ -38,5 +38,5 @@ export function NavDocumentsSimpleFixed({
         ))}
       </SidebarMenu>
     </SidebarGroup>
-  )
+  );
 }

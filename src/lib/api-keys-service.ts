@@ -38,10 +38,9 @@ class ApiKeyService {
 
       // Fetch from KV database
       const keys = await kvApiKeyService.getUserApiKeys(this.userId);
-      const targetKey = keys.find(key => 
-        key.service === serviceName && 
-        key.isActive &&
-        this.isNotExpired(key)
+      const targetKey = keys.find(
+        key =>
+          key.service === serviceName && key.isActive && this.isNotExpired(key)
       );
 
       if (!targetKey) {
@@ -51,13 +50,13 @@ class ApiKeyService {
 
       // Decrypt the key
       const decryptedKey = encryptionService.decrypt(targetKey.key);
-      
+
       // Cache the result
       this.setCachedKey(serviceName, decryptedKey);
-      
+
       // Record usage
       await this.recordUsage(targetKey.id, serviceName);
-      
+
       return decryptedKey;
     } catch (error) {
       console.error(`Error retrieving API key for ${serviceName}:`, error);
@@ -68,13 +67,15 @@ class ApiKeyService {
   /**
    * Get multiple API keys at once for performance
    */
-  async getApiKeys(serviceNames: string[]): Promise<Record<string, string | null>> {
+  async getApiKeys(
+    serviceNames: string[]
+  ): Promise<Record<string, string | null>> {
     const results: Record<string, string | null> = {};
-    
+
     try {
       // Get all user keys once
       const keys = await kvApiKeyService.getUserApiKeys(this.userId);
-      
+
       for (const serviceName of serviceNames) {
         // Check cache first
         const cached = this.getCachedKey(serviceName);
@@ -84,10 +85,11 @@ class ApiKeyService {
         }
 
         // Find key for this service
-        const targetKey = keys.find(key => 
-          key.service === serviceName && 
-          key.isActive &&
-          this.isNotExpired(key)
+        const targetKey = keys.find(
+          key =>
+            key.service === serviceName &&
+            key.isActive &&
+            this.isNotExpired(key)
         );
 
         if (targetKey) {
@@ -95,11 +97,14 @@ class ApiKeyService {
             const decryptedKey = encryptionService.decrypt(targetKey.key);
             this.setCachedKey(serviceName, decryptedKey);
             results[serviceName] = decryptedKey;
-            
+
             // Record usage (non-blocking)
             this.recordUsage(targetKey.id, serviceName).catch(console.error);
           } catch (decryptError) {
-            console.error(`Error decrypting key for ${serviceName}:`, decryptError);
+            console.error(
+              `Error decrypting key for ${serviceName}:`,
+              decryptError
+            );
             results[serviceName] = null;
           }
         } else {
@@ -107,15 +112,18 @@ class ApiKeyService {
           results[serviceName] = null;
         }
       }
-      
+
       return results;
     } catch (error) {
       console.error('Error retrieving multiple API keys:', error);
       // Return null for all requested keys
-      return serviceNames.reduce((acc, service) => {
-        acc[service] = null;
-        return acc;
-      }, {} as Record<string, string | null>);
+      return serviceNames.reduce(
+        (acc, service) => {
+          acc[service] = null;
+          return acc;
+        },
+        {} as Record<string, string | null>
+      );
     }
   }
 
@@ -194,14 +202,14 @@ class ApiKeyService {
       'whatsapp-api',
       'whatsapp-webhook',
       'whatsapp-security',
-      'whatsapp-webhook-auth'
+      'whatsapp-webhook-auth',
     ]);
 
     return {
       accessToken: keys['whatsapp-api'],
       webhookVerifyToken: keys['whatsapp-webhook'],
       appSecret: keys['whatsapp-security'],
-      webhookSecret: keys['whatsapp-webhook-auth']
+      webhookSecret: keys['whatsapp-webhook-auth'],
     };
   }
 
@@ -216,13 +224,13 @@ class ApiKeyService {
     const keys = await this.getApiKeys([
       'github-api',
       'github-app',
-      'github-webhook'
+      'github-webhook',
     ]);
 
     return {
       token: keys['github-api'],
       appPrivateKey: keys['github-app'],
-      webhookSecret: keys['github-webhook']
+      webhookSecret: keys['github-webhook'],
     };
   }
 
@@ -232,13 +240,13 @@ class ApiKeyService {
   private getCachedKey(serviceName: string): string | null {
     const entry = this.cache.get(serviceName);
     if (!entry) return null;
-    
+
     const now = Date.now();
     if (now - entry.timestamp > entry.ttl) {
       this.cache.delete(serviceName);
       return null;
     }
-    
+
     return entry.key;
   }
 
@@ -246,7 +254,7 @@ class ApiKeyService {
     this.cache.set(serviceName, {
       key,
       timestamp: Date.now(),
-      ttl: this.CACHE_TTL
+      ttl: this.CACHE_TTL,
     });
   }
 
@@ -307,7 +315,7 @@ class ApiKeyService {
       cacheSize: this.cache.size,
       cacheHits: 0, // Could implement hit tracking
       userId: this.userId,
-      tenantId: this.tenantId
+      tenantId: this.tenantId,
     };
   }
 }
@@ -316,7 +324,8 @@ class ApiKeyService {
 export const apiKeyService = new ApiKeyService();
 
 // Convenience exports for common patterns
-export const getApiKey = (serviceName: string) => apiKeyService.getApiKey(serviceName);
+export const getApiKey = (serviceName: string) =>
+  apiKeyService.getApiKey(serviceName);
 export const getAirtableKey = () => apiKeyService.getAirtableKey();
 export const getWhatsAppToken = () => apiKeyService.getWhatsAppToken();
 export const getGitHubToken = () => apiKeyService.getGitHubToken();
@@ -329,9 +338,15 @@ export const getGitHubKeys = () => apiKeyService.getGitHubKeys();
 
 // Airtable table ID exports
 export const getAirtableBaseId = () => apiKeyService.getAirtableBaseId();
-export const getAirtableLeadsTableId = () => apiKeyService.getAirtableLeadsTableId();
-export const getAirtableUsersTableId = () => apiKeyService.getAirtableUsersTableId();
-export const getAirtableActivitiesTableId = () => apiKeyService.getAirtableActivitiesTableId();
-export const getAirtableOrdersTableId = () => apiKeyService.getAirtableOrdersTableId();
-export const getAirtableProductsTableId = () => apiKeyService.getAirtableProductsTableId();
-export const getAirtableAutomationsTableId = () => apiKeyService.getAirtableAutomationsTableId();
+export const getAirtableLeadsTableId = () =>
+  apiKeyService.getAirtableLeadsTableId();
+export const getAirtableUsersTableId = () =>
+  apiKeyService.getAirtableUsersTableId();
+export const getAirtableActivitiesTableId = () =>
+  apiKeyService.getAirtableActivitiesTableId();
+export const getAirtableOrdersTableId = () =>
+  apiKeyService.getAirtableOrdersTableId();
+export const getAirtableProductsTableId = () =>
+  apiKeyService.getAirtableProductsTableId();
+export const getAirtableAutomationsTableId = () =>
+  apiKeyService.getAirtableAutomationsTableId();

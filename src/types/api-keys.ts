@@ -1,7 +1,7 @@
 // Advanced API Keys Types for Scalable CRM
-export type ApiKeyProvider = 
+export type ApiKeyProvider =
   | 'airtable'
-  | 'github' 
+  | 'github'
   | 'google'
   | 'vercel'
   | 'stripe'
@@ -10,21 +10,16 @@ export type ApiKeyProvider =
   | 'webhooks'
   | 'custom';
 
-export type ApiKeyScope = 
-  | 'read'
-  | 'write'
-  | 'admin'
-  | 'sync'
-  | 'webhook';
+export type ApiKeyScope = 'read' | 'write' | 'admin' | 'sync' | 'webhook';
 
-export type ApiKeyStatus = 
+export type ApiKeyStatus =
   | 'active'
   | 'inactive'
   | 'expired'
   | 'revoked'
   | 'rotating';
 
-export type AuditAction = 
+export type AuditAction =
   | 'created'
   | 'updated'
   | 'deleted'
@@ -43,22 +38,22 @@ export interface ApiKey {
   maskedKey: string; // display value
   scopes: ApiKeyScope[];
   status: ApiKeyStatus;
-  
+
   // Multi-tenant support
   tenantId: string;
   userId: string;
   teamId?: string;
-  
+
   // Metadata
   environment: 'development' | 'staging' | 'production';
   lastUsed?: Date;
   usageCount: number;
-  
+
   // Expiration & Rotation
   expiresAt?: Date;
   rotationInterval?: number; // days
   lastRotated?: Date;
-  
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -121,12 +116,12 @@ export interface ApiKeyMetrics {
   period: 'hour' | 'day' | 'week' | 'month';
   startDate: Date;
   endDate: Date;
-  
+
   requestCount: number;
   successCount: number;
   errorCount: number;
   averageResponseTime: number;
-  
+
   // Data sync metrics
   recordsSynced?: number;
   syncErrors?: number;
@@ -141,18 +136,18 @@ export interface ProviderConfig {
   iconUrl?: string;
   baseUrl?: string;
   authType: 'bearer' | 'basic' | 'api_key' | 'oauth';
-  
+
   // Validation rules
   keyPattern: RegExp;
   keyLength?: { min: number; max: number };
   requiredScopes: ApiKeyScope[];
-  
+
   // Rate limiting
   defaultRateLimit?: {
     requests: number;
     period: number; // seconds
   };
-  
+
   // Health check configuration
   healthCheckEndpoint?: string;
   healthCheckInterval?: number; // minutes
@@ -168,7 +163,10 @@ export interface CreateApiKeyRequest {
   environment: 'development' | 'staging' | 'production';
   expiresAt?: Date;
   rotationInterval?: number;
-  permissions?: Omit<ApiKeyPermission, 'id' | 'apiKeyId' | 'createdAt' | 'createdBy'>[];
+  permissions?: Omit<
+    ApiKeyPermission,
+    'id' | 'apiKeyId' | 'createdAt' | 'createdBy'
+  >[];
 }
 
 export interface UpdateApiKeyRequest {
@@ -205,16 +203,16 @@ export interface SyncConfig {
   apiKeyId: string;
   provider: ApiKeyProvider;
   enabled: boolean;
-  
+
   // Sync settings
   syncInterval: number; // minutes
   syncDirection: 'inbound' | 'outbound' | 'bidirectional';
   conflictResolution: 'source_wins' | 'target_wins' | 'timestamp' | 'manual';
-  
+
   // Filters and mappings
   resourceFilters?: Record<string, any>;
   fieldMappings?: Record<string, string>;
-  
+
   // Last sync info
   lastSyncAt?: Date;
   lastSyncStatus: 'success' | 'error' | 'partial';

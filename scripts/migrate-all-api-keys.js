@@ -20,14 +20,17 @@ const CURRENT_TENANT_ID = process.env.CURRENT_TENANT_ID || 'tenant_doctorbed';
 // Simplified encryption for migration using modern Node.js crypto API
 function encrypt(text) {
   try {
-    const key = crypto.createHash('sha256').update(ENCRYPTION_MASTER_KEY).digest();
+    const key = crypto
+      .createHash('sha256')
+      .update(ENCRYPTION_MASTER_KEY)
+      .digest();
     const iv = crypto.randomBytes(16);
-    
+
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    
+
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
+
     return iv.toString('hex') + ':' + encrypted;
   } catch (error) {
     console.error('Encryption failed:', error);
@@ -41,10 +44,11 @@ const apiKeysToMigrate = [
   {
     name: 'Vercel Blob Storage',
     key: process.env.BLOB_READ_WRITE_TOKEN,
-    description: 'Vercel Blob Storage read/write token for file uploads and media management',
+    description:
+      'Vercel Blob Storage read/write token for file uploads and media management',
     permissions: ['read', 'write'],
     service: 'vercel-blob',
-    category: 'Infrastructure'
+    category: 'Infrastructure',
   },
   {
     name: 'Vercel OIDC Token',
@@ -52,7 +56,7 @@ const apiKeysToMigrate = [
     description: 'Vercel OpenID Connect token for project authentication',
     permissions: ['admin'],
     service: 'vercel-oidc',
-    category: 'Infrastructure'
+    category: 'Infrastructure',
   },
 
   // Database
@@ -62,7 +66,7 @@ const apiKeysToMigrate = [
     description: 'Prisma PostgreSQL database connection string',
     permissions: ['read', 'write', 'admin'],
     service: 'database',
-    category: 'Infrastructure'
+    category: 'Infrastructure',
   },
 
   // Airtable CRM
@@ -72,7 +76,7 @@ const apiKeysToMigrate = [
     description: 'Airtable API key for CRM data synchronization and management',
     permissions: ['read', 'write'],
     service: 'airtable',
-    category: 'CRM'
+    category: 'CRM',
   },
   {
     name: 'Airtable Webhook Secret',
@@ -80,17 +84,18 @@ const apiKeysToMigrate = [
     description: 'Secret for validating Airtable webhook requests',
     permissions: ['read'],
     service: 'airtable-webhook',
-    category: 'CRM'
+    category: 'CRM',
   },
 
   // WhatsApp Business API
   {
     name: 'WhatsApp Business Access Token',
     key: process.env.WHATSAPP_ACCESS_TOKEN,
-    description: 'WhatsApp Business API access token for messaging and automation',
+    description:
+      'WhatsApp Business API access token for messaging and automation',
     permissions: ['read', 'write'],
     service: 'whatsapp-api',
-    category: 'Communication'
+    category: 'Communication',
   },
   {
     name: 'WhatsApp Webhook Verify Token',
@@ -98,7 +103,7 @@ const apiKeysToMigrate = [
     description: 'Token for verifying WhatsApp webhook subscriptions',
     permissions: ['read'],
     service: 'whatsapp-webhook',
-    category: 'Communication'
+    category: 'Communication',
   },
   {
     name: 'WhatsApp App Secret',
@@ -106,7 +111,7 @@ const apiKeysToMigrate = [
     description: 'WhatsApp application secret for secure API communication',
     permissions: ['admin'],
     service: 'whatsapp-security',
-    category: 'Communication'
+    category: 'Communication',
   },
   {
     name: 'WhatsApp Webhook Secret',
@@ -114,17 +119,18 @@ const apiKeysToMigrate = [
     description: 'Secret for validating WhatsApp webhook requests',
     permissions: ['read'],
     service: 'whatsapp-webhook-auth',
-    category: 'Communication'
+    category: 'Communication',
   },
 
   // GitHub Integration
   {
     name: 'GitHub Personal Access Token',
     key: process.env.GITHUB_TOKEN,
-    description: 'GitHub personal access token for repository integration and automation',
+    description:
+      'GitHub personal access token for repository integration and automation',
     permissions: ['read', 'write'],
     service: 'github-api',
-    category: 'Development'
+    category: 'Development',
   },
   {
     name: 'GitHub App Private Key',
@@ -132,7 +138,7 @@ const apiKeysToMigrate = [
     description: 'GitHub App private key for enhanced integration features',
     permissions: ['admin'],
     service: 'github-app',
-    category: 'Development'
+    category: 'Development',
   },
   {
     name: 'GitHub Webhook Secret',
@@ -140,7 +146,7 @@ const apiKeysToMigrate = [
     description: 'Secret for validating GitHub webhook requests',
     permissions: ['read'],
     service: 'github-webhook',
-    category: 'Development'
+    category: 'Development',
   },
 
   // Authentication
@@ -150,17 +156,18 @@ const apiKeysToMigrate = [
     description: 'NextAuth.js secret for JWT encryption and session security',
     permissions: ['admin'],
     service: 'nextauth',
-    category: 'Authentication'
+    category: 'Authentication',
   },
 
   // Google Services
   {
     name: 'Google Maps API',
     key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-    description: 'Google Maps API key for location services and mapping features',
+    description:
+      'Google Maps API key for location services and mapping features',
     permissions: ['read'],
     service: 'google-maps',
-    category: 'Location Services'
+    category: 'Location Services',
   },
 
   // Webhook URLs (Production)
@@ -170,7 +177,7 @@ const apiKeysToMigrate = [
     description: 'Production WhatsApp webhook endpoint URL',
     permissions: ['read'],
     service: 'whatsapp-endpoint',
-    category: 'Webhooks'
+    category: 'Webhooks',
   },
   {
     name: 'Airtable Webhook URL',
@@ -178,8 +185,8 @@ const apiKeysToMigrate = [
     description: 'Production Airtable webhook endpoint URL',
     permissions: ['read'],
     service: 'airtable-endpoint',
-    category: 'Webhooks'
-  }
+    category: 'Webhooks',
+  },
 ];
 
 // KV key prefixes
@@ -191,20 +198,20 @@ const KV_PREFIXES = {
 
 async function clearExistingKeys() {
   console.log('🧹 Clearing existing API keys...');
-  
+
   try {
     const userKeysId = `${KV_PREFIXES.USER_API_KEYS}${CURRENT_USER_ID}`;
     const existingKeyIds = await kv.smembers(userKeysId);
-    
+
     if (existingKeyIds && existingKeyIds.length > 0) {
       for (const keyId of existingKeyIds) {
         await kv.del(`${KV_PREFIXES.API_KEY}${keyId}`);
       }
       await kv.del(userKeysId);
-      
+
       const tenantKeysId = `${KV_PREFIXES.TENANT_API_KEYS}${CURRENT_TENANT_ID}`;
       await kv.del(tenantKeysId);
-      
+
       console.log(`✅ Cleared ${existingKeyIds.length} existing API keys`);
     } else {
       console.log('📝 No existing keys found');
@@ -217,22 +224,22 @@ async function clearExistingKeys() {
 async function migrateAllApiKeys() {
   console.log('🚀 Starting COMPLETE API Keys migration...');
   console.log(`📊 Found ${apiKeysToMigrate.length} API keys to migrate`);
-  
+
   // Clear existing keys first
   await clearExistingKeys();
-  
+
   let migrated = 0;
   let skipped = 0;
   const results = {
-    'Infrastructure': 0,
-    'CRM': 0,
-    'Communication': 0,
-    'Development': 0,
-    'Authentication': 0,
+    Infrastructure: 0,
+    CRM: 0,
+    Communication: 0,
+    Development: 0,
+    Authentication: 0,
     'Location Services': 0,
-    'Webhooks': 0
+    Webhooks: 0,
   };
-  
+
   for (const apiKeyConfig of apiKeysToMigrate) {
     try {
       // Skip if key is not defined or empty
@@ -241,7 +248,7 @@ async function migrateAllApiKeys() {
         skipped++;
         continue;
       }
-      
+
       // Generate API key data
       const apiKeyData = {
         id: nanoid(),
@@ -262,44 +269,49 @@ async function migrateAllApiKeys() {
         service: apiKeyConfig.service,
         category: apiKeyConfig.category,
         migratedFrom: 'env_local',
-        migratedAt: new Date()
+        migratedAt: new Date(),
       };
-      
-      console.log(`📝 Migrating [${apiKeyConfig.category}]: ${apiKeyConfig.name}...`);
-      
+
+      console.log(
+        `📝 Migrating [${apiKeyConfig.category}]: ${apiKeyConfig.name}...`
+      );
+
       // Store in KV
       const keyId = `${KV_PREFIXES.API_KEY}${apiKeyData.id}`;
       await kv.set(keyId, apiKeyData);
-      
+
       // Add to user's API keys list
       const userKeysId = `${KV_PREFIXES.USER_API_KEYS}${apiKeyData.userId}`;
       await kv.sadd(userKeysId, apiKeyData.id);
-      
+
       // Add to tenant's API keys list
       const tenantKeysId = `${KV_PREFIXES.TENANT_API_KEYS}${apiKeyData.tenantId}`;
       await kv.sadd(tenantKeysId, apiKeyData.id);
-      
-      console.log(`✅ Successfully migrated: ${apiKeyConfig.name} (ID: ${apiKeyData.id})`);
+
+      console.log(
+        `✅ Successfully migrated: ${apiKeyConfig.name} (ID: ${apiKeyData.id})`
+      );
       migrated++;
       results[apiKeyConfig.category]++;
-      
     } catch (error) {
       console.error(`❌ Failed to migrate ${apiKeyConfig.name}:`, error);
     }
   }
-  
+
   console.log('\n🎉 COMPLETE Migration completed!');
   console.log(`✅ Successfully migrated: ${migrated} API keys`);
   console.log(`⏭️  Skipped: ${skipped} API keys`);
-  
+
   console.log('\n📊 Migration Summary by Category:');
   Object.entries(results).forEach(([category, count]) => {
     if (count > 0) {
       console.log(`   ${category}: ${count} keys`);
     }
   });
-  
-  console.log('\n📱 You can now view ALL keys in the dashboard at: http://localhost:3000/developers/api-keys');
+
+  console.log(
+    '\n📱 You can now view ALL keys in the dashboard at: http://localhost:3000/developers/api-keys'
+  );
   console.log('🎯 Your CRM now has COMPLETE centralized API key management!');
 }
 
@@ -316,10 +328,12 @@ if (!KV_REST_API_URL || !KV_REST_API_TOKEN || !ENCRYPTION_MASTER_KEY) {
 migrateAllApiKeys()
   .then(() => {
     console.log('\n🎯 COMPLETE migration script finished successfully!');
-    console.log('🚀 Your CRM API Keys system is now fully populated and enterprise-ready!');
+    console.log(
+      '🚀 Your CRM API Keys system is now fully populated and enterprise-ready!'
+    );
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('💥 Complete migration failed:', error);
     process.exit(1);
   });

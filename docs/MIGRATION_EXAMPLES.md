@@ -15,7 +15,11 @@ const githubToken = process.env.GITHUB_TOKEN;
 
 ```typescript
 // ✅ New: Dynamic API keys from KV database
-import { getAirtableKey, getWhatsAppToken, getGitHubToken } from '@/lib/api-keys-service';
+import {
+  getAirtableKey,
+  getWhatsAppToken,
+  getGitHubToken,
+} from '@/lib/api-keys-service';
 
 const airtableKey = await getAirtableKey();
 const whatsappToken = await getWhatsAppToken();
@@ -45,7 +49,11 @@ const github = process.env.GITHUB_TOKEN;
 
 // After (Optimized - single KV call)
 import { apiKeyService } from '@/lib/api-keys-service';
-const keys = await apiKeyService.getApiKeys(['airtable', 'whatsapp-api', 'github-api']);
+const keys = await apiKeyService.getApiKeys([
+  'airtable',
+  'whatsapp-api',
+  'github-api',
+]);
 const airtable = keys['airtable'];
 const whatsapp = keys['whatsapp-api'];
 const github = keys['github-api'];
@@ -71,13 +79,16 @@ const { accessToken, appSecret, webhookVerifyToken } = whatsappKeys;
 
 ```typescript
 // pages/api/airtable/sync.ts
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   const airtableKey = process.env.AIRTABLE_API_KEY;
-  
+
   if (!airtableKey) {
     return res.status(500).json({ error: 'Airtable key not configured' });
   }
-  
+
   // Use the key...
 }
 ```
@@ -88,13 +99,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 // pages/api/airtable/sync.ts
 import { getAirtableKey } from '@/lib/api-keys-service';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   const airtableKey = await getAirtableKey();
-  
+
   if (!airtableKey) {
     return res.status(500).json({ error: 'Airtable key not found or expired' });
   }
-  
+
   // Use the key...
 }
 ```
@@ -131,12 +145,12 @@ import { getAirtableKey } from '@/lib/api-keys-service';
 
 try {
   const airtableKey = await getAirtableKey();
-  
+
   if (!airtableKey) {
     // Key not found, expired, or inactive
     throw new Error('Airtable integration not available');
   }
-  
+
   // Use the key
 } catch (error) {
   console.error('Failed to get Airtable key:', error);

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { AppLayoutCustom } from "@/components/layout/app-layout-custom"
-import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
+import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { useLeadsData, useLeadsStats } from '@/hooks/use-leads-data';
 import { LeadsStats } from '@/components/leads/leads-stats';
 import { LeadsDataTable } from '@/components/leads/leads-data-table';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 
 export default function LeadsPage() {
   const [filters, setFilters] = useState<LeadsFilters>({});
-  
+
   const {
     leads,
     loading: leadsLoading,
@@ -21,19 +21,19 @@ export default function LeadsPage() {
     totalCount,
     hasMore,
     loadMore,
-    refresh: refreshLeads
+    refresh: refreshLeads,
   } = useLeadsData({ filters });
-  
+
   const {
     stats,
     loading: statsLoading,
     error: statsError,
-    refresh: refreshStats
+    refresh: refreshStats,
   } = useLeadsStats(filters);
-  
+
   const loading = leadsLoading || statsLoading;
   const error = leadsError || statsError;
-  
+
   const refresh = () => {
     refreshLeads();
     refreshStats();
@@ -54,7 +54,7 @@ export default function LeadsPage() {
     <AppLayoutCustom>
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <PageBreadcrumb pageName="Leads" />
-        
+
         <div className="px-4 lg:px-6">
           <div className="flex flex-col gap-6">
             {/* Header Section */}
@@ -72,13 +72,12 @@ export default function LeadsPage() {
                   onClick={refresh}
                   disabled={loading}
                 >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+                  />
                   Aggiorna
                 </Button>
-                <Button 
-                  size="sm" 
-                  onClick={handleCreateClick}
-                >
+                <Button size="sm" onClick={handleCreateClick}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nuovo Lead
                 </Button>

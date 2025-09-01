@@ -1,8 +1,20 @@
 // Types per la gestione dei leads basati sui metadata Airtable
 
-export type LeadProvenienza = 'Meta' | 'Instagram' | 'Google' | 'Sito' | 'Referral' | 'Organico';
+export type LeadProvenienza =
+  | 'Meta'
+  | 'Instagram'
+  | 'Google'
+  | 'Sito'
+  | 'Referral'
+  | 'Organico';
 
-export type LeadStato = 'Nuovo' | 'Attivo' | 'Qualificato' | 'Cliente' | 'Chiuso' | 'Sospeso';
+export type LeadStato =
+  | 'Nuovo'
+  | 'Attivo'
+  | 'Qualificato'
+  | 'Cliente'
+  | 'Chiuso'
+  | 'Sospeso';
 
 export interface LeadData {
   id: string;
@@ -21,7 +33,7 @@ export interface LeadData {
   Allegati?: AirtableAttachment[];
   Conversations?: string;
   Avatar?: string; // Avatar personalizzato del lead
-  
+
   // Relazioni (IDs delle tabelle collegate)
   Referenza?: string[];
   'Nome referenza'?: string[]; // Campo lookup
@@ -29,7 +41,7 @@ export interface LeadData {
   Ordini?: string[]; // Link alla tabella ordini
   Attività?: string[]; // Link alla tabella attività
   'From field: Referenza'?: string[];
-  
+
   // Metadati Airtable
   createdTime: string;
 }
@@ -41,8 +53,8 @@ export interface AirtableAttachment {
   size: number;
   type: string;
   thumbnails?: {
-    small: { url: string; width: number; height: number; };
-    large: { url: string; width: number; height: number; };
+    small: { url: string; width: number; height: number };
+    large: { url: string; width: number; height: number };
   };
 }
 
@@ -102,30 +114,30 @@ export interface LeadsTableColumn {
 
 // Configurazione colori per stati e provenienze
 export const LEAD_STATO_COLORS: Record<LeadStato, string> = {
-  'Nuovo': 'bg-slate-100 text-slate-800',
-  'Attivo': 'bg-blue-100 text-blue-800',
-  'Qualificato': 'bg-amber-100 text-amber-800',
-  'Cliente': 'bg-green-100 text-green-800',
-  'Chiuso': 'bg-red-100 text-red-800',
-  'Sospeso': 'bg-purple-100 text-purple-800'
+  Nuovo: 'bg-slate-100 text-slate-800',
+  Attivo: 'bg-blue-100 text-blue-800',
+  Qualificato: 'bg-amber-100 text-amber-800',
+  Cliente: 'bg-green-100 text-green-800',
+  Chiuso: 'bg-red-100 text-red-800',
+  Sospeso: 'bg-purple-100 text-purple-800',
 };
 
 export const LEAD_PROVENIENZA_COLORS: Record<LeadProvenienza, string> = {
-  'Meta': 'bg-blue-500',
-  'Instagram': 'bg-pink-500',
-  'Google': 'bg-red-500',
-  'Sito': 'bg-green-500',
-  'Referral': 'bg-yellow-500',
-  'Organico': 'bg-gray-500'
+  Meta: 'bg-blue-500',
+  Instagram: 'bg-pink-500',
+  Google: 'bg-red-500',
+  Sito: 'bg-green-500',
+  Referral: 'bg-yellow-500',
+  Organico: 'bg-gray-500',
 };
 
 export const LEAD_PROVENIENZA_ICONS: Record<LeadProvenienza, string> = {
-  'Meta': '👥', // Facebook/Meta
-  'Instagram': '📷', // Instagram
-  'Google': '🔍', // Ricerca Google
-  'Sito': '🌐', // Sito web
-  'Referral': '🤝', // Passaparola
-  'Organico': '🌱' // Traffico organico
+  Meta: '👥', // Facebook/Meta
+  Instagram: '📷', // Instagram
+  Google: '🔍', // Ricerca Google
+  Sito: '🌐', // Sito web
+  Referral: '🤝', // Passaparola
+  Organico: '🌱', // Traffico organico
 };
 
 export interface LeadFormData {
@@ -151,13 +163,13 @@ export const LEAD_VALIDATION_RULES = {
   Telefono: { pattern: /^[+]?[\d\s\-()]{8,}$/ },
   CAP: { min: 10000, max: 99999 },
   Esigenza: { maxLength: 500 },
-  Note: { maxLength: 1000 }
+  Note: { maxLength: 1000 },
 } as const;
 
 // Default values
 export const DEFAULT_LEAD_DATA: Partial<LeadFormData> = {
   Stato: 'Nuovo',
-  Provenienza: 'Sito'
+  Provenienza: 'Sito',
 };
 
 // Query options per ordinamento
@@ -174,5 +186,5 @@ export const LEADS_SORT_OPTIONS: LeadsSortOption[] = [
   { field: 'Nome', direction: 'desc', label: 'Nome (Z-A)' },
   { field: 'Stato', direction: 'asc', label: 'Stato' },
   { field: 'Provenienza', direction: 'asc', label: 'Provenienza' },
-  { field: 'Città', direction: 'asc', label: 'Città (A-Z)' }
+  { field: 'Città', direction: 'asc', label: 'Città (A-Z)' },
 ];

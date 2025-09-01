@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import {
   Breadcrumb,
@@ -7,11 +7,11 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+} from '@/components/ui/breadcrumb';
 
 interface PageBreadcrumbProps {
-  pageName: string
-  href?: string
+  pageName: string;
+  href?: string;
 }
 
 export function PageBreadcrumb({ pageName, href }: PageBreadcrumbProps) {
@@ -35,5 +35,5 @@ export function PageBreadcrumb({ pageName, href }: PageBreadcrumbProps) {
         </Breadcrumb>
       </div>
     </div>
-  )
+  );
 }

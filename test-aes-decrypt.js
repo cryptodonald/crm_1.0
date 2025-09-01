@@ -12,28 +12,30 @@ const ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY;
 // AES-256 decryption function (same as in EncryptionService)
 function decryptAES(ciphertext) {
   try {
-    const masterKey = crypto.createHash('sha256').update(ENCRYPTION_MASTER_KEY).digest();
-    
+    const masterKey = crypto
+      .createHash('sha256')
+      .update(ENCRYPTION_MASTER_KEY)
+      .digest();
+
     if (ciphertext.includes(':')) {
       const [ivHex, encryptedHex] = ciphertext.split(':');
-      
+
       if (ivHex.length !== 32 || !encryptedHex) {
         throw new Error('Invalid encrypted format');
       }
-      
+
       const iv = Buffer.from(ivHex, 'hex');
       const encrypted = Buffer.from(encryptedHex, 'hex');
-      
+
       const decipher = crypto.createDecipheriv('aes-256-cbc', masterKey, iv);
-      
+
       let decrypted = decipher.update(encrypted, undefined, 'utf8');
       decrypted += decipher.final('utf8');
-      
+
       return decrypted;
     }
-    
+
     throw new Error('Invalid format');
-    
   } catch (error) {
     console.error('Decryption failed:', error.message);
     return `ERROR: ${error.message}`;
@@ -59,10 +61,10 @@ async function testAESDecryption() {
 
       console.log(`🔍 Key: ${keyData.name}`);
       console.log(`   🔒 Encrypted: ${keyData.key.substring(0, 30)}...`);
-      
+
       const decrypted = decryptAES(keyData.key);
       console.log(`   🔓 Decrypted: ${decrypted.substring(0, 20)}...`);
-      
+
       if (decrypted.startsWith('ERROR:')) {
         console.log(`   ❌ Decryption failed!`);
       } else {
@@ -71,8 +73,9 @@ async function testAESDecryption() {
       console.log('');
     }
 
-    console.log('🎯 Test completed! All keys are properly encrypted with AES-256-CBC.');
-    
+    console.log(
+      '🎯 Test completed! All keys are properly encrypted with AES-256-CBC.'
+    );
   } catch (error) {
     console.error('💥 Test failed:', error.message);
   }

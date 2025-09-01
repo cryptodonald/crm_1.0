@@ -1,7 +1,7 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import Link from "next/link"
+import * as React from 'react';
+import Link from 'next/link';
 import {
   IconCalendar,
   IconChartBar,
@@ -19,11 +19,11 @@ import {
   IconTarget,
   IconActivity,
   IconCommand,
-} from "@tabler/icons-react"
+} from '@tabler/icons-react';
 
-import { NavDocumentsSimpleFixed } from "../nav-documents-simple-fixed"
-import { NavMainFixed } from "@/components/nav-main-fixed"
-import { NavUser } from "@/components/nav-user"
+import { NavDocumentsSimpleFixed } from '../nav-documents-simple-fixed';
+import { NavMainFixed } from '@/components/nav-main-fixed';
+import { NavUser } from '@/components/nav-user';
 import {
   Sidebar,
   SidebarContent,
@@ -32,71 +32,73 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar';
 
 const data = {
   user: {
-    name: "Admin User",
-    email: "admin@crm.com",
-    avatar: "",
+    name: 'Admin User',
+    email: 'admin@crm.com',
+    avatar: '',
   },
   navMain: [
     {
-      title: "Dashboard",
-      url: "/dashboard",
+      title: 'Dashboard',
+      url: '/dashboard',
       icon: IconDashboard,
     },
     {
-      title: "Leads",
-      url: "/leads",
+      title: 'Leads',
+      url: '/leads',
       icon: IconUsers,
     },
     {
-      title: "Attività",
-      url: "/activities", 
+      title: 'Attività',
+      url: '/activities',
       icon: IconActivity,
     },
     {
-      title: "Clienti",
-      url: "/clients",
+      title: 'Clienti',
+      url: '/clients',
       icon: IconUsersGroup,
     },
     {
-      title: "Ordini",
-      url: "/orders",
+      title: 'Ordini',
+      url: '/orders',
       icon: IconShoppingCart,
     },
     {
-      title: "Reports",
-      url: "/reports",
+      title: 'Reports',
+      url: '/reports',
       icon: IconChartBar,
     },
     {
-      title: "Calendario",
-      url: "/calendar",
+      title: 'Calendario',
+      url: '/calendar',
       icon: IconCalendar,
     },
   ],
   developers: [
     {
-      name: "API Keys",
-      url: "/developers/api-keys",
+      name: 'API Keys',
+      url: '/developers/api-keys',
       icon: IconKey,
     },
     {
-      name: "Automazioni",
-      url: "/developers/automations",
+      name: 'Automazioni',
+      url: '/developers/automations',
       icon: IconRobot,
     },
     {
-      name: "Impostazioni",
-      url: "/developers/settings",
+      name: 'Impostazioni',
+      url: '/developers/settings',
       icon: IconSettings,
     },
   ],
-}
+};
 
-export function AppSidebarCustomFixed({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebarCustomFixed({
+  ...props
+}: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -104,13 +106,13 @@ export function AppSidebarCustomFixed({ ...props }: React.ComponentProps<typeof 
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-2 hover:bg-transparent"
+              className="hover:bg-transparent data-[slot=sidebar-menu-button]:!p-2"
             >
               <Link href="/" className="flex items-center justify-start">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <IconCommand className="size-4" />
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight ml-2">
+                <div className="ml-2 grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">CRM 1.0</span>
                   <span className="truncate text-xs">Enterprise</span>
                 </div>
@@ -127,5 +129,5 @@ export function AppSidebarCustomFixed({ ...props }: React.ComponentProps<typeof 
         <NavUser user={data.user} />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
