@@ -17,7 +17,7 @@ export function CreateApiKeyButton({ onClick, loading, className }: CreateApiKey
       className={className}
     >
       <Plus className="mr-2 h-4 w-4" />
-      Create API Key
+      Crea Chiave API
     </Button>
   );
 }

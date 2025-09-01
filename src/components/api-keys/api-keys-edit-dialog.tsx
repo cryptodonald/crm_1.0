@@ -33,6 +33,7 @@ import { format } from 'date-fns';
 interface CreateApiKeyData {
   name: string;
   value: string;
+  service?: string;
   description?: string;
   permissions?: string[];
   expiresAt?: string;
@@ -60,10 +61,10 @@ interface ApiKeysEditDialogProps {
 }
 
 const AVAILABLE_PERMISSIONS = [
-  { id: 'read', label: 'Read', description: 'View data and resources' },
-  { id: 'write', label: 'Write', description: 'Create and update resources' },
-  { id: 'delete', label: 'Delete', description: 'Delete resources' },
-  { id: 'admin', label: 'Admin', description: 'Full administrative access' },
+  { id: 'read', label: 'Lettura', description: 'Visualizza dati e risorse' },
+  { id: 'write', label: 'Scrittura', description: 'Crea e aggiorna risorse' },
+  { id: 'delete', label: 'Eliminazione', description: 'Elimina risorse' },
+  { id: 'admin', label: 'Amministratore', description: 'Accesso amministrativo completo' },
 ];
 
 export function ApiKeysEditDialog({
@@ -78,6 +79,7 @@ export function ApiKeysEditDialog({
   const [formData, setFormData] = useState({
     name: '',
     value: '',
+    service: '',
     description: '',
     permissions: ['read'],
     isActive: true,
@@ -100,6 +102,7 @@ export function ApiKeysEditDialog({
         setFormData({
           name: apiKey.name,
           value: '', // Will be populated by fetching the real value
+          service: apiKey.service || '',
           description: apiKey.description || '',
           permissions: apiKey.permissions,
           isActive: apiKey.isActive,
@@ -112,6 +115,7 @@ export function ApiKeysEditDialog({
         setFormData({
           name: '',
           value: '',
+          service: '',
           description: '',
           permissions: ['read'],
           isActive: true,
@@ -149,6 +153,7 @@ export function ApiKeysEditDialog({
         const createData: CreateApiKeyData = {
           name: formData.name,
           value: formData.value,
+          service: formData.service || undefined,
           description: formData.description || undefined,
           permissions: formData.permissions,
           expiresAt: formData.expiresAt || undefined,
@@ -240,10 +245,10 @@ export function ApiKeysEditDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
-              <span>API Key Created Successfully</span>
+              <span>Chiave API creata con successo</span>
             </DialogTitle>
             <DialogDescription>
-              Your new API key has been generated. Make sure to copy it now, you won't be able to see it again.
+              La tua nuova chiave API è stata generata. Assicurati di copiarla ora, non potrai più visualizzarla.
             </DialogDescription>
           </DialogHeader>
           
@@ -252,7 +257,7 @@ export function ApiKeysEditDialog({
               <Key className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-2">
-                  <p className="font-medium">Your API Key:</p>
+                  <p className="font-medium">La tua chiave API:</p>
                   <div className="flex items-center space-x-2 p-2 bg-muted rounded">
                     <code className="flex-1 text-sm">{createdKey}</code>
                     <Button
@@ -269,7 +274,7 @@ export function ApiKeysEditDialog({
                     </Button>
                   </div>
                   {copied && (
-                    <p className="text-sm text-green-600">Copied to clipboard!</p>
+                    <p className="text-sm text-green-600">Copiato negli appunti!</p>
                   )}
                 </div>
               </AlertDescription>
@@ -278,7 +283,7 @@ export function ApiKeysEditDialog({
           
           <DialogFooter>
             <Button onClick={() => onOpenChange(false)}>
-              Done
+              Fatto
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -293,12 +298,12 @@ export function ApiKeysEditDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Shield className="h-5 w-5" />
-              <span>{isEditing ? 'Edit API Key' : 'Create New API Key'}</span>
+              <span>{isEditing ? 'Modifica Chiave API' : 'Crea Nuova Chiave API'}</span>
             </DialogTitle>
             <DialogDescription>
               {isEditing 
-                ? 'Update the settings for your API key.'
-                : 'Configure your new API key with the appropriate permissions and settings.'
+                ? 'Aggiorna le impostazioni della tua chiave API.'
+                : 'Configura la tua nuova chiave API con i permessi e le impostazioni appropriate.'
               }
             </DialogDescription>
           </DialogHeader>
@@ -314,12 +319,12 @@ export function ApiKeysEditDialog({
             {/* Basic Settings */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">Nome *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Airtable API Key"
+                  placeholder="es. Chiave API Airtable"
                   required
                 />
               </div>
@@ -328,29 +333,42 @@ export function ApiKeysEditDialog({
                 <div className="space-y-2">
                   <Label htmlFor="value" className="flex items-center space-x-2">
                     <Key className="h-4 w-4" />
-                    <span>API Key Value *</span>
+                    <span>Valore Chiave API *</span>
                   </Label>
                   <Input
                     id="value"
                     type="password"
                     value={formData.value}
                     onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
-                    placeholder="Paste your actual API key value here (e.g., patKEe4q8UeW13rVL...)"
+                    placeholder="Incolla qui il valore effettivo della tua chiave API (es. patKEe4q8UeW13rVL...)"
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    This is the actual API key value you want to store securely. It will be encrypted in the database.
+                    Questo è il valore effettivo della chiave API che vuoi memorizzare in modo sicuro. Sarà crittografato nel database.
                   </p>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="service">Servizio/Categoria</Label>
+                <Input
+                  id="service"
+                  value={formData.service}
+                  onChange={(e) => setFormData(prev => ({ ...prev, service: e.target.value }))}
+                  placeholder="es. airtable, stripe, openai, github"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Opzionale: Specifica il servizio per cui è questa chiave API (es. "airtable", "stripe", "openai"). Aiuta ad organizzare e filtrare le tue chiavi.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Descrizione</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Optional description of what this key is used for"
+                  placeholder="Descrizione opzionale di cosa viene utilizzata questa chiave"
                   rows={3}
                 />
               </div>
@@ -361,7 +379,7 @@ export function ApiKeysEditDialog({
                     <div className="flex items-center justify-between">
                       <Label htmlFor="newValue" className="flex items-center space-x-2">
                         <Key className="h-4 w-4" />
-                        <span>Update API Key Value</span>
+                        <span>Aggiorna Valore Chiave API</span>
                       </Label>
                       <Button
                         type="button"
@@ -371,7 +389,7 @@ export function ApiKeysEditDialog({
                         disabled={loadingRealValue}
                         className="text-xs"
                       >
-                        {loadingRealValue ? 'Loading...' : 'Show Current Value'}
+                        {loadingRealValue ? 'Caricamento...' : 'Mostra Valore Corrente'}
                       </Button>
                     </div>
                     <Input
@@ -379,12 +397,12 @@ export function ApiKeysEditDialog({
                       type="password"
                       value={formData.value}
                       onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
-                      placeholder={formData.value ? 'Current value loaded - modify or clear to keep unchanged' : 'Leave empty to keep current value, or paste new value'}
+                      placeholder={formData.value ? 'Valore corrente caricato - modifica o cancella per mantenerlo invariato' : 'Lascia vuoto per mantenere il valore corrente, o incolla un nuovo valore'}
                     />
                     <p className="text-xs text-muted-foreground">
                       {formData.value 
-                        ? 'Current API key value is loaded above. Modify it to change, or clear the field to keep the existing value unchanged.'
-                        : 'Optional: Paste a new API key value to replace the current one. Click "Show Current Value" to load and edit the existing value.'
+                        ? 'Il valore corrente della chiave API è caricato sopra. Modificalo per cambiarlo, o cancella il campo per mantenere invariato il valore esistente.'
+                        : 'Opzionale: Incolla un nuovo valore di chiave API per sostituire quello corrente. Clicca "Mostra Valore Corrente" per caricare e modificare il valore esistente.'
                       }
                     </p>
                   </div>
@@ -394,7 +412,7 @@ export function ApiKeysEditDialog({
                       checked={formData.isActive}
                       onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
                     />
-                    <Label htmlFor="isActive">Active</Label>
+                    <Label htmlFor="isActive">Attivo</Label>
                   </div>
                 </>
               )}
@@ -405,7 +423,7 @@ export function ApiKeysEditDialog({
             {/* Permissions */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Permissions *</Label>
+                <Label>Permessi *</Label>
                 <div className="grid grid-cols-1 gap-3">
                   {AVAILABLE_PERMISSIONS.map((permission) => (
                     <div key={permission.id} className="flex items-start space-x-3">
@@ -434,7 +452,7 @@ export function ApiKeysEditDialog({
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    At least one permission must be selected.
+                    Deve essere selezionato almeno un permesso.
                   </AlertDescription>
                 </Alert>
               )}
@@ -445,14 +463,14 @@ export function ApiKeysEditDialog({
             {/* Advanced Settings */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-base font-medium">Advanced Settings</Label>
+                <Label className="text-base font-medium">Impostazioni Avanzate</Label>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowAdvanced(!showAdvanced)}
                 >
-                  {showAdvanced ? 'Hide' : 'Show'}
+                  {showAdvanced ? 'Nascondi' : 'Mostra'}
                 </Button>
               </div>
 
@@ -460,7 +478,7 @@ export function ApiKeysEditDialog({
                 <div className="space-y-4 pl-4 border-l-2 border-muted">
                   {/* Expiration Date */}
                   <div className="space-y-2">
-                    <Label htmlFor="expiresAt">Expiration Date</Label>
+                    <Label htmlFor="expiresAt">Data di Scadenza</Label>
                     <Input
                       id="expiresAt"
                       type="date"
@@ -469,20 +487,20 @@ export function ApiKeysEditDialog({
                       min={format(new Date(), 'yyyy-MM-dd')}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Leave empty for no expiration
+                      Lascia vuoto per nessuna scadenza
                     </p>
                   </div>
 
                   {/* IP Whitelist */}
                   <div className="space-y-2">
-                    <Label>IP Whitelist</Label>
+                    <Label>Lista IP Consentiti</Label>
                     <div className="space-y-2">
                       {formData.ipWhitelist.map((ip, index) => (
                         <div key={index} className="flex items-center space-x-2">
                           <Input
                             value={ip}
                             onChange={(e) => handleIpWhitelistChange(index, e.target.value)}
-                            placeholder="192.168.1.0/24 or 203.0.113.1"
+                            placeholder="192.168.1.0/24 o 203.0.113.1"
                             className="flex-1"
                           />
                           {formData.ipWhitelist.length > 1 && (
@@ -504,11 +522,11 @@ export function ApiKeysEditDialog({
                         size="sm"
                         onClick={addIpWhitelistEntry}
                       >
-                        Add IP Range
+                        Aggiungi Range IP
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Restrict API key usage to specific IP addresses or ranges. Leave empty for no restrictions.
+                      Limita l'uso della chiave API a indirizzi o intervalli IP specifici. Lascia vuoto per nessuna restrizione.
                     </p>
                   </div>
                 </div>
@@ -523,16 +541,16 @@ export function ApiKeysEditDialog({
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
-              Cancel
+              Annulla
             </Button>
             <Button
               type="submit"
               disabled={loading || formData.permissions.length === 0 || !formData.name.trim() || (!isEditing && !formData.value.trim())}
             >
               {loading ? (
-                isEditing ? 'Updating...' : 'Creating...'
+                isEditing ? 'Aggiornamento...' : 'Creazione...'
               ) : (
-                isEditing ? 'Update API Key' : 'Create API Key'
+                isEditing ? 'Aggiorna Chiave API' : 'Crea Chiave API'
               )}
             </Button>
           </DialogFooter>

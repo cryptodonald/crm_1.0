@@ -63,16 +63,16 @@ export default function ApiKeysPage() {
   return (
     <AppLayoutCustom>
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        <PageBreadcrumb pageName="API Keys" />
+        <PageBreadcrumb pageName="Chiavi API" />
         
         <div className="px-4 lg:px-6">
           <div className="flex flex-col gap-6">
             {/* Header Section */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">API Keys</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Chiavi API</h1>
                 <p className="text-muted-foreground">
-                  Manage your API keys for secure access to the CRM API
+                  Gestisci le tue chiavi API per un accesso sicuro alle API del CRM
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -83,7 +83,7 @@ export default function ApiKeysPage() {
                   disabled={loading}
                 >
                   <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  Aggiorna
                 </Button>
                 <CreateApiKeyButton 
                   onClick={handleCreateClick}
@@ -104,7 +104,7 @@ export default function ApiKeysPage() {
                     onClick={clearError}
                     className="h-6 px-2 text-xs"
                   >
-                    Dismiss
+                    Chiudi
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -114,22 +114,13 @@ export default function ApiKeysPage() {
             <ApiKeysStats stats={stats} />
 
             {/* API Keys Table */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Your API Keys</h2>
-                <div className="text-sm text-muted-foreground">
-                  {apiKeys.length} {apiKeys.length === 1 ? 'key' : 'keys'} total
-                </div>
-              </div>
-              
-              <ApiKeysDataTable
-                apiKeys={apiKeys}
-                loading={loading}
-                onEdit={handleEdit}
-                onDelete={deleteApiKey}
-                onView={handleView}
-              />
-            </div>
+            <ApiKeysDataTable
+              apiKeys={apiKeys}
+              loading={loading}
+              onEdit={handleEdit}
+              onDelete={deleteApiKey}
+              onView={handleView}
+            />
           </div>
         </div>
       </div>

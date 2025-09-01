@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ApiKeyData } from '@/lib/kv';
 import {
   Table,
@@ -18,9 +18,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
   MoreHorizontal, 
@@ -32,7 +41,17 @@ import {
   AlertTriangle,
   Calendar,
   Activity,
-  Shield
+  Shield,
+  Search,
+  Filter,
+  X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -56,6 +75,100 @@ export function ApiKeysDataTable({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<ApiKeyData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [showCategoriesFilter, setShowCategoriesFilter] = useState(false);
+  const [sortBy, setSortBy] = useState<'name' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Get unique categories from API keys, grouped by main service
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>();
+    apiKeys.forEach(key => {
+      if (key.service) {
+        // Extract main service name (e.g., "airtable" from "airtable-api" or "airtable-webhook")
+        const mainService = key.service.split('-')[0].toLowerCase();
+        categories.add(mainService);
+      }
+    });
+    return Array.from(categories).sort();
+  }, [apiKeys]);
+
+  // Filter and sort API keys based on search term, selected categories, and sorting
+  const filteredApiKeys = useMemo(() => {
+    let filtered = apiKeys.filter(apiKey => {
+      // Text search filter
+      const matchesSearch = !searchTerm || 
+        apiKey.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (apiKey.description && apiKey.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      // Category filter - match by main service name
+      const matchesCategory = selectedCategories.length === 0 || 
+        (apiKey.service && selectedCategories.some(category => 
+          apiKey.service.toLowerCase().startsWith(category.toLowerCase())
+        ));
+      
+      return matchesSearch && matchesCategory;
+    });
+
+    // Apply sorting
+    if (sortBy === 'name') {
+      filtered = filtered.sort((a, b) => {
+        const comparison = a.name.localeCompare(b.name, 'it', { sensitivity: 'base' });
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return filtered;
+  }, [apiKeys, searchTerm, selectedCategories, sortBy, sortOrder]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredApiKeys.length / itemsPerPage);
+  const paginatedApiKeys = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredApiKeys.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredApiKeys, currentPage, itemsPerPage]);
+
+  // Reset to first page when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategories, sortBy, sortOrder]);
+
+  // Handle category filter toggle
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedCategories([]);
+    setSortBy(null);
+    setCurrentPage(1);
+  };
+
+  const handleSort = (column: 'name') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (column: 'name') => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
+    }
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 text-gray-600" />
+      : <ArrowDown className="h-4 w-4 text-gray-600" />;
+  };
 
   const handleDeleteClick = (apiKey: ApiKeyData) => {
     setKeyToDelete(apiKey);
@@ -97,11 +210,11 @@ export function ApiKeysDataTable({
 
   const getStatusBadge = (apiKey: ApiKeyData) => {
     if (!apiKey.isActive) {
-      return <Badge variant="secondary">Inactive</Badge>;
+      return <Badge variant="secondary">Inattiva</Badge>;
     }
     
     if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) {
-      return <Badge variant="destructive">Expired</Badge>;
+      return <Badge variant="destructive">Scaduta</Badge>;
     }
     
     if (apiKey.expiresAt) {
@@ -110,11 +223,11 @@ export function ApiKeysDataTable({
       const daysUntilExpiry = (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
       
       if (daysUntilExpiry <= 7) {
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Expiring Soon</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">In Scadenza</Badge>;
       }
     }
     
-    return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>;
+    return <Badge variant="default" className="bg-green-100 text-green-800">Attiva</Badge>;
   };
 
   const getPermissionsBadges = (permissions: string[]) => {
@@ -177,9 +290,9 @@ export function ApiKeysDataTable({
         <div className="rounded-md border">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Shield className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">No API Keys Found</h3>
+            <h3 className="text-lg font-medium">Nessuna Chiave API Trovata</h3>
             <p className="text-muted-foreground mb-4">
-              Create your first API key to start using the API
+              Crea la tua prima chiave API per iniziare ad usare le API
             </p>
           </div>
         </div>
@@ -189,21 +302,139 @@ export function ApiKeysDataTable({
 
   return (
     <div className={`space-y-4 ${className || ''}`}>
+      {/* Search and Filter Controls */}
+      <div className="space-y-4">
+        {/* Search Bar and Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Cerca chiavi API per nome o descrizione..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Filter Controls */}
+          <div className="flex items-center gap-3">
+          {/* Category Filter */}
+          {availableCategories.length > 0 && (
+            <DropdownMenu open={showCategoriesFilter} onOpenChange={setShowCategoriesFilter}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  Categorie
+                  {selectedCategories.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] text-xs">
+                      {selectedCategories.length}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Filtra per Categoria</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {availableCategories.map((category) => (
+                  <DropdownMenuItem
+                    key={category}
+                    className="flex items-center gap-2 cursor-pointer"
+                    onSelect={(e) => {
+                      e.preventDefault(); // Prevent menu from closing
+                      toggleCategory(category);
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedCategories.includes(category)}
+                      onCheckedChange={() => toggleCategory(category)}
+                      onClick={(e) => e.stopPropagation()} // Prevent double toggle
+                    />
+                    <span className="capitalize">{category}</span>
+                  </DropdownMenuItem>
+                ))}
+                {selectedCategories.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setSelectedCategories([])}>
+                      <X className="mr-2 h-4 w-4" />
+                      Cancella Categorie
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Active Filters */}
+          {selectedCategories.map((category) => (
+            <Badge
+              key={category}
+              variant="secondary"
+              className="gap-1 cursor-pointer hover:bg-secondary/80"
+              onClick={() => toggleCategory(category)}
+            >
+              {category}
+              <X className="h-3 w-3" />
+            </Badge>
+          ))}
+
+          {/* Clear All Filters */}
+          {(searchTerm || selectedCategories.length > 0) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+              Cancella Tutto
+            </Button>
+          )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* Table */}
       <div className="rounded-md border">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Permissions</TableHead>
-              <TableHead>Usage</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Last Used</TableHead>
+          <TableHeader className="bg-gray-50">
+            <TableRow className="hover:bg-gray-50">
+              <TableHead className="font-semibold text-gray-700">
+                <Button 
+                  variant="ghost" 
+                  className="h-auto p-0 font-semibold text-gray-700 hover:text-gray-900 hover:bg-transparent"
+                  onClick={() => handleSort('name')}
+                >
+                  <span className="flex items-center gap-1">
+                    Nome
+                    {getSortIcon('name')}
+                  </span>
+                </Button>
+              </TableHead>
+              <TableHead className="font-semibold text-gray-700">Categoria</TableHead>
+              <TableHead className="font-semibold text-gray-700">Stato</TableHead>
+              <TableHead className="font-semibold text-gray-700">Permessi</TableHead>
+              <TableHead className="font-semibold text-gray-700">Utilizzo</TableHead>
+              <TableHead className="font-semibold text-gray-700">Creata</TableHead>
+              <TableHead className="font-semibold text-gray-700">Ultimo Uso</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {apiKeys.map((apiKey) => (
+            {filteredApiKeys.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <Search className="h-8 w-8 mb-2" />
+                    <p>Nessuna chiave API corrisponde ai criteri di ricerca</p>
+                    <p className="text-sm">Prova ad aggiustare la ricerca o i filtri</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedApiKeys.map((apiKey) => (
               <TableRow key={apiKey.id}>
                 <TableCell>
                   <div className="space-y-1">
@@ -222,7 +453,7 @@ export function ApiKeysDataTable({
                         size="sm"
                         onClick={() => copyToClipboard(apiKey)}
                         className="h-6 w-6 p-0"
-                        title={copiedKey === apiKey.id ? 'Copied!' : 'Copy API Key'}
+                        title={copiedKey === apiKey.id ? 'Copiato!' : 'Copia Chiave API'}
                       >
                         {copiedKey === apiKey.id ? (
                           <CheckCircle className="h-3 w-3 text-green-600" />
@@ -234,6 +465,15 @@ export function ApiKeysDataTable({
                   </div>
                 </TableCell>
                 <TableCell>
+                  {apiKey.service ? (
+                    <Badge variant="outline" className="capitalize">
+                      {apiKey.service}
+                    </Badge>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
                   {getStatusBadge(apiKey)}
                 </TableCell>
                 <TableCell>
@@ -241,7 +481,7 @@ export function ApiKeysDataTable({
                     {getPermissionsBadges(apiKey.permissions)}
                     {apiKey.permissions.length > 2 && (
                       <Badge variant="secondary" className="text-xs">
-                        +{apiKey.permissions.length - 2} more
+                        +{apiKey.permissions.length - 2} altro
                       </Badge>
                     )}
                   </div>
@@ -266,7 +506,7 @@ export function ApiKeysDataTable({
                       {formatDistanceToNow(new Date(apiKey.lastUsed), { addSuffix: true })}
                     </span>
                   ) : (
-                    <span className="text-sm text-muted-foreground">Never</span>
+                    <span className="text-sm text-muted-foreground">Mai</span>
                   )}
                 </TableCell>
                 <TableCell>
@@ -277,14 +517,14 @@ export function ApiKeysDataTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuLabel>Azioni</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => onView(apiKey)}>
                         <Eye className="mr-2 h-4 w-4" />
-                        View Details
+                        Visualizza Dettagli
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEdit(apiKey)}>
                         <Edit2 className="mr-2 h-4 w-4" />
-                        Edit
+                        Modifica
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -292,16 +532,93 @@ export function ApiKeysDataTable({
                         className="text-red-600"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        Elimina
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination Controls */}
+      {filteredApiKeys.length > 0 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+              setItemsPerPage(parseInt(value));
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-20 h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">per pagina</span>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Precedente
+              </Button>
+              
+              {/* Page Numbers */}
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      className="w-8 h-8 p-0"
+                      onClick={() => setCurrentPage(pageNum)}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="gap-1"
+              >
+                Successivo
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -309,21 +626,21 @@ export function ApiKeysDataTable({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center space-x-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
-              <span>Delete API Key</span>
+              <span>Elimina Chiave API</span>
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the API key "{keyToDelete?.name}"? 
-              This action cannot be undone and will immediately revoke access for any applications using this key.
+              Sei sicuro di voler eliminare la chiave API "{keyToDelete?.name}"? 
+              Questa azione non può essere annullata e revokerà immediatamente l'accesso per tutte le applicazioni che utilizzano questa chiave.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? 'Eliminazione...' : 'Elimina'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

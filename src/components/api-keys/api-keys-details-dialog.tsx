@@ -59,11 +59,11 @@ export function ApiKeyDetailsDialog({
 
   const getStatusBadge = (apiKey: ApiKeyData) => {
     if (!apiKey.isActive) {
-      return <Badge variant="secondary">Inactive</Badge>;
+      return <Badge variant="secondary">Inattiva</Badge>;
     }
     
     if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) {
-      return <Badge variant="destructive">Expired</Badge>;
+      return <Badge variant="destructive">Scaduta</Badge>;
     }
     
     if (apiKey.expiresAt) {
@@ -72,11 +72,11 @@ export function ApiKeyDetailsDialog({
       const daysUntilExpiry = (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
       
       if (daysUntilExpiry <= 7) {
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Expiring Soon</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">In Scadenza</Badge>;
       }
     }
     
-    return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>;
+    return <Badge variant="default" className="bg-green-100 text-green-800">Attiva</Badge>;
   };
 
   const getPermissionsBadges = (permissions: string[]) => {
@@ -87,13 +87,20 @@ export function ApiKeyDetailsDialog({
       admin: 'bg-purple-100 text-purple-800',
     };
 
+    const permissionLabels: { [key: string]: string } = {
+      read: 'Lettura',
+      write: 'Scrittura',
+      delete: 'Eliminazione',
+      admin: 'Amministratore',
+    };
+
     return permissions.map((permission) => (
       <Badge
         key={permission}
         variant="secondary"
         className={`text-xs ${colors[permission] || 'bg-gray-100 text-gray-800'}`}
       >
-        {permission}
+        {permissionLabels[permission] || permission}
       </Badge>
     ));
   };
@@ -104,10 +111,10 @@ export function ApiKeyDetailsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Key className="h-5 w-5" />
-            <span>API Key Details</span>
+            <span>Dettagli Chiave API</span>
           </DialogTitle>
           <DialogDescription>
-            View detailed information about your API key
+            Visualizza informazioni dettagliate sulla tua chiave API
           </DialogDescription>
         </DialogHeader>
 
@@ -130,7 +137,7 @@ export function ApiKeyDetailsDialog({
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Key className="h-4 w-4" />
-              <span className="font-medium">API Key</span>
+              <span className="font-medium">Chiave API</span>
             </div>
             <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
               <code className="flex-1 text-sm font-mono">
@@ -141,7 +148,7 @@ export function ApiKeyDetailsDialog({
                 size="sm"
                 onClick={() => copyToClipboard(apiKey.id)}
                 className="h-8 w-8 p-0"
-                title={copied ? 'Copied!' : 'Copy Full API Key'}
+                title={copied ? 'Copiato!' : 'Copia Chiave API Completa'}
               >
                 {copied ? (
                   <CheckCircle className="h-4 w-4 text-green-600" />
@@ -151,7 +158,7 @@ export function ApiKeyDetailsDialog({
               </Button>
             </div>
             {copied && (
-              <p className="text-sm text-green-600">✓ API key copied to clipboard!</p>
+              <p className="text-sm text-green-600">✓ Chiave API copiata negli appunti!</p>
             )}
           </div>
 
@@ -161,7 +168,7 @@ export function ApiKeyDetailsDialog({
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Shield className="h-4 w-4" />
-              <span className="font-medium">Permissions</span>
+              <span className="font-medium">Permessi</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {getPermissionsBadges(apiKey.permissions)}
@@ -175,19 +182,19 @@ export function ApiKeyDetailsDialog({
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Activity className="h-4 w-4" />
-                <span className="font-medium">Usage</span>
+                <span className="font-medium">Utilizzo</span>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total requests:</span>
+                  <span className="text-sm text-muted-foreground">Richieste totali:</span>
                   <span className="text-sm font-medium">{apiKey.usageCount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Last used:</span>
+                  <span className="text-sm text-muted-foreground">Ultimo utilizzo:</span>
                   <span className="text-sm font-medium">
                     {apiKey.lastUsed 
                       ? formatDistanceToNow(new Date(apiKey.lastUsed), { addSuffix: true })
-                      : 'Never'
+                      : 'Mai'
                     }
                   </span>
                 </div>
@@ -197,26 +204,26 @@ export function ApiKeyDetailsDialog({
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4" />
-                <span className="font-medium">Dates</span>
+                <span className="font-medium">Date</span>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Created:</span>
+                  <span className="text-sm text-muted-foreground">Creata:</span>
                   <span className="text-sm font-medium">
-                    {format(new Date(apiKey.createdAt), 'MMM d, yyyy')}
+                    {format(new Date(apiKey.createdAt), 'dd MMM yyyy')}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Updated:</span>
+                  <span className="text-sm text-muted-foreground">Aggiornata:</span>
                   <span className="text-sm font-medium">
-                    {format(new Date(apiKey.updatedAt), 'MMM d, yyyy')}
+                    {format(new Date(apiKey.updatedAt), 'dd MMM yyyy')}
                   </span>
                 </div>
                 {apiKey.expiresAt && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Expires:</span>
+                    <span className="text-sm text-muted-foreground">Scade:</span>
                     <span className="text-sm font-medium">
-                      {format(new Date(apiKey.expiresAt), 'MMM d, yyyy')}
+                      {format(new Date(apiKey.expiresAt), 'dd MMM yyyy')}
                     </span>
                   </div>
                 )}
@@ -231,7 +238,7 @@ export function ApiKeyDetailsDialog({
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4" />
-                  <span className="font-medium">IP Whitelist</span>
+                  <span className="font-medium">Lista IP Consentiti</span>
                 </div>
                 <div className="space-y-1">
                   {apiKey.ipWhitelist.map((ip, index) => (
@@ -250,17 +257,17 @@ export function ApiKeyDetailsDialog({
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <User className="h-4 w-4" />
-              <span className="font-medium">Technical Details</span>
+              <span className="font-medium">Dettagli Tecnici</span>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground">Key ID:</span>
+                <span className="text-muted-foreground">ID Chiave:</span>
                 <code className="block text-xs bg-muted px-2 py-1 rounded mt-1">
                   {apiKey.id}
                 </code>
               </div>
               <div>
-                <span className="text-muted-foreground">User ID:</span>
+                <span className="text-muted-foreground">ID Utente:</span>
                 <code className="block text-xs bg-muted px-2 py-1 rounded mt-1">
                   {apiKey.userId}
                 </code>

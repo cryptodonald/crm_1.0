@@ -53,7 +53,7 @@ export function QuickCreate() {
 
   useEffect(() => {
     function onKeydown(e: KeyboardEvent) {
-      if (e.metaKey && e.key.toLowerCase() === 'c') {
+      if (e.metaKey && e.key.toLowerCase() === 'j') {
         const active = document.activeElement as HTMLElement | null
         if (active && ['INPUT', 'TEXTAREA'].includes(active.tagName)) return
         e.preventDefault()
@@ -82,7 +82,7 @@ export function QuickCreate() {
             <IconCirclePlusFilled />
             <span>Crea Rapido</span>
           </div>
-          <kbd className="ml-auto rounded bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-mono">⌘ C</kbd>
+          <kbd className="ml-auto rounded bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-mono">⌘ J</kbd>
         </SidebarMenuButton>
       </DialogTrigger>
       <DialogContent className="p-0 max-w-[450px]">

@@ -60,9 +60,9 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
   return (
     <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-4 ${className || ''}`}>
       {/* Total API Keys */}
-      <Card>
+      <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total API Keys</CardTitle>
+          <CardTitle className="text-sm font-medium">Totale Chiavi API</CardTitle>
           <Key className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -70,12 +70,12 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
           <div className="flex items-center space-x-2 text-xs text-muted-foreground mt-1">
             <div className="flex items-center space-x-1">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>{stats.active} active</span>
+              <span>{stats.active} attive</span>
             </div>
             {stats.inactive > 0 && (
               <div className="flex items-center space-x-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                <span>{stats.inactive} inactive</span>
+                <span>{stats.inactive} inattive</span>
               </div>
             )}
           </div>
@@ -83,24 +83,24 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
       </Card>
 
       {/* Active Keys Progress */}
-      <Card>
+      <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Active Keys</CardTitle>
+          <CardTitle className="text-sm font-medium">Chiavi Attive</CardTitle>
           <Activity className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.active}</div>
           <Progress value={activePercentage} className="mt-2" />
           <p className="text-xs text-muted-foreground mt-1">
-            {Math.round(activePercentage)}% of total keys
+            {Math.round(activePercentage)}% del totale
           </p>
         </CardContent>
       </Card>
 
       {/* Total Usage */}
-      <Card>
+      <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Usage</CardTitle>
+          <CardTitle className="text-sm font-medium">Uso Totale</CardTitle>
           {trends && getTrendIcon(usageGrowth)}
         </CardHeader>
         <CardContent>
@@ -110,16 +110,16 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
               <span className={getTrendColor(usageGrowth)}>
                 {usageGrowth > 0 ? '+' : ''}{Math.abs(usageGrowth).toFixed(1)}%
               </span>
-              <span className="text-muted-foreground">from last week</span>
+              <span className="text-muted-foreground">dalla scorsa settimana</span>
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* Alerts */}
-      <Card>
+      <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Alerts</CardTitle>
+          <CardTitle className="text-sm font-medium">Avvisi</CardTitle>
           <AlertTriangle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -127,21 +127,21 @@ export function ApiKeysStats({ stats, trends, className }: ApiKeyStatsProps) {
             {stats.expired && stats.expired > 0 && (
               <div className="flex items-center justify-between">
                 <Badge variant="destructive" className="text-xs">
-                  {stats.expired} Expired
+                  {stats.expired} Scadute
                 </Badge>
               </div>
             )}
             {stats.expiringSoon && stats.expiringSoon > 0 && (
               <div className="flex items-center justify-between">
                 <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
-                  {stats.expiringSoon} Expiring Soon
+                  {stats.expiringSoon} In Scadenza
                 </Badge>
               </div>
             )}
             {(!stats.expired || stats.expired === 0) && 
              (!stats.expiringSoon || stats.expiringSoon === 0) && (
               <div className="text-sm text-muted-foreground">
-                All keys are healthy
+                Tutte le chiavi sono sane
               </div>
             )}
           </div>

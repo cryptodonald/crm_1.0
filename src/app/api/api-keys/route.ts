@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
     const {
       name,
       value,
+      service,
       description,
       permissions = ['read'],
       expiresAt,
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
       id: nanoid(),
       name,
       key: encryptedKey,
+      service: service || undefined,
       userId: user.id,
       tenantId: user.tenantId,
       permissions,
