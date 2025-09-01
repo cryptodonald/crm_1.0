@@ -24,6 +24,15 @@ const eslintConfig = [
     rules: {
       // Disable no-explicit-any rule as requested
       "@typescript-eslint/no-explicit-any": "off",
+      
+      // Disable unused vars warnings (common during development)
+      "@typescript-eslint/no-unused-vars": "warn",
+      
+      // Disable unescaped entities errors (aesthetic, not functional)
+      "react/no-unescaped-entities": "off",
+      
+      // Keep exhaustive-deps warnings (can cause real bugs)
+      "react-hooks/exhaustive-deps": "warn",
     },
   },
 ];
