@@ -1,26 +1,3 @@
-# Project Operational Index
-
-Questa repository usa documentazione modulare governata da `docs/index.yaml`.
-
-## Documenti chiave
-- [rules/global-rules.md](/docs/rules/global-rules.md)
-- [rules/api-keys.md](/docs/rules/api-keys.md)
-- [rules/repo-rules.md](/docs/rules/repo-rules.md)
-- [domain/leads.md](/docs/domain/leads.md)
-- [domain/avatar-system.md](/docs/domain/avatar-system.md)
-- [runbooks/local-dev.md](/docs/runbooks/local-dev.md)
-- [runbooks/migrations.md](/docs/runbooks/migrations.md)
-- [runbooks/release.md](/docs/runbooks/release.md)
-- [runbooks/incident.md](/docs/runbooks/incident.md)
-- [validation/mcp-validation.md](/docs/validation/mcp-validation.md)
-
-## Runbook rapidi
-- [runbooks/local-dev.md](/docs/runbooks/local-dev.md)
-- [runbooks/migrations.md](/docs/runbooks/migrations.md)
-
----
-
-## Appendice — README originale
 # 🚀 CRM 1.0 - Enterprise CRM with Advanced API Key Management
 
 A modern, enterprise-grade CRM system built with Next.js 15, TypeScript, featuring a complete **API Key Management System** with hybrid encryption and advanced UI.

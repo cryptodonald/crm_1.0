@@ -1,0 +1,39 @@
+version: 1
+generated_at: '2025-09-04'
+priority:
+- rules/global-rules.md
+- rules/api-keys.md
+- rules/repo-rules.md
+- domain/leads.md
+- domain/avatar-system.md
+- runbooks/local-dev.md
+- runbooks/migrations.md
+- runbooks/release.md
+- runbooks/incident.md
+- validation/mcp-validation.md
+warp_extract:
+  sections:
+  - heading: Sicurezza & Anti-allucinazioni
+    includes:
+    - rules/global-rules.md
+  - heading: API Keys (estratto)
+    includes:
+    - rules/api-keys.md
+  - heading: Regole di Repo
+    includes:
+    - rules/repo-rules.md
+  - heading: Runbook rapidi
+    includes:
+    - runbooks/local-dev.md
+    - runbooks/migrations.md
+sources:
+- source/AVATAR_SYSTEM.md
+- source/README.md
+- source/API_KEYS_GUIDELINES.md
+- source/API_KEYS_SYSTEM.md
+- source/leads-system-analysis.md
+- source/mcp_validation_20250901.md
+- source/MIGRATION_EXAMPLES.md
+- source/repo-overview.md
+- source/UNIFIED_SYSTEM_SUMMARY.md
+- source/api-keys-permissions-implementation.md
