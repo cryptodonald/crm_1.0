@@ -1,18 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
-import { useLeadsData, useLeadsStats } from '@/hooks/use-leads-data';
+import { useLeadsData } from '@/hooks/use-leads-data';
 import { LeadsStats } from '@/components/leads/leads-stats';
-import { LeadsDataTable } from '@/components/leads/leads-data-table';
-import { LeadsFilters } from '@/types/leads';
+import { LeadsDataTable } from '@/components/leads-modified/leads-data-table-improved';
+import { NewLeadModal } from '@/components/leads/new-lead-modal';
+import { LeadsFilters, LeadData } from '@/types/leads';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function LeadsPage() {
   const [filters, setFilters] = useState<LeadsFilters>({});
+  const [newLeadModalOpen, setNewLeadModalOpen] = useState(false);
 
   const {
     leads,
@@ -22,27 +24,72 @@ export default function LeadsPage() {
     hasMore,
     loadMore,
     refresh: refreshLeads,
-  } = useLeadsData({ filters });
+  } = useLeadsData({ 
+    // NON passiamo più i filtri qui! I filtri saranno applicati lato client nella tabella
+    loadAll: true, // Carica tutto il database SENZA FILTRI
+    pageSize: 100 // Mantiene comunque pageSize per eventuali usi futuri
+  });
 
-  const {
-    stats,
-    loading: statsLoading,
-    error: statsError,
-    refresh: refreshStats,
-  } = useLeadsStats(filters);
+  // Calcola statistiche lato client dai leads caricati
+  const stats = useMemo(() => {
+    if (!leads.length) return null;
+    
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Lead degli ultimi 7 giorni
+    const nuoviUltimi7Giorni = leads.filter(lead => {
+      if (!lead.Data) return false;
+      const leadDate = new Date(lead.Data);
+      return leadDate >= sevenDaysAgo;
+    }).length;
+    
+    // Conteggio per stato
+    const byStato: Record<string, number> = {};
+    leads.forEach(lead => {
+      byStato[lead.Stato] = (byStato[lead.Stato] || 0) + 1;
+    });
+    
+    // Conteggio per provenienza
+    const byProvenienza: Record<string, number> = {};
+    leads.forEach(lead => {
+      byProvenienza[lead.Provenienza] = (byProvenienza[lead.Provenienza] || 0) + 1;
+    });
+    
+    // Calcoli per i tassi
+    const totale = leads.length;
+    const qualificati = byStato['Qualificato'] || 0;
+    const clienti = byStato['Cliente'] || 0;
+    
+    const tassoQualificazione = totale > 0 ? Math.round((qualificati / totale) * 100) : 0;
+    const tassoConversione = totale > 0 ? Math.round((clienti / totale) * 100) : 0;
+    
+    return {
+      totale,
+      nuoviUltimi7Giorni,
+      contattatiEntro48h: 0, // TODO: Implementare logica per contattati
+      tassoQualificazione,
+      tassoConversione,
+      byStato,
+      byProvenienza
+    };
+  }, [leads]);
 
-  const loading = leadsLoading || statsLoading;
-  const error = leadsError || statsError;
+  const loading = leadsLoading;
+  const error = leadsError;
 
   const refresh = () => {
     refreshLeads();
-    refreshStats();
   };
 
   // Handle create new lead
   const handleCreateClick = () => {
-    // TODO: Implement create lead functionality
-    console.log('Create new lead');
+    setNewLeadModalOpen(true);
+  };
+
+  // Handle successful lead creation
+  const handleLeadCreated = () => {
+    refreshLeads();
   };
 
   const clearError = () => {
@@ -103,7 +150,7 @@ export default function LeadsPage() {
             )}
 
             {/* Statistics Cards */}
-            <LeadsStats stats={stats} />
+            <LeadsStats stats={stats} loading={loading} error={error} />
 
             {/* Leads Table */}
             <LeadsDataTable
@@ -118,6 +165,13 @@ export default function LeadsPage() {
           </div>
         </div>
       </div>
+      
+      {/* New Lead Modal */}
+      <NewLeadModal
+        open={newLeadModalOpen}
+        onOpenChange={setNewLeadModalOpen}
+        onSuccess={handleLeadCreated}
+      />
     </AppLayoutCustom>
   );
 }

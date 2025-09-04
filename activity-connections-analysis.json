@@ -1,0 +1,60 @@
+{
+  "timestamp": "2025-09-01T22:39:31.463Z",
+  "summary": {
+    "totalLeads": 50,
+    "leadsWithActivities": 6,
+    "uniqueActivityIds": 6,
+    "activityIds": [
+      "recWl3c8uUWDN5Bcf",
+      "reckqPSDIIycADvbj",
+      "recEEmjHUlOg4d9t8",
+      "recx4z5SNWurNKMtq",
+      "recQXzqPx5JQ3Vy6G",
+      "recVoGqK596pqT34u"
+    ]
+  },
+  "leadsWithActivities": [
+    {
+      "leadId": "recjrAD9cSuFi2k3X",
+      "leadName": "Maria Assunta Landi",
+      "activityIds": [
+        "recWl3c8uUWDN5Bcf"
+      ]
+    },
+    {
+      "leadId": "recunMv4urAxziqK8",
+      "leadName": "Gianluca Ghisa Chirico",
+      "activityIds": [
+        "reckqPSDIIycADvbj"
+      ]
+    },
+    {
+      "leadId": "recnC4bUQMtfgNsmX",
+      "leadName": "Ester Annario",
+      "activityIds": [
+        "recEEmjHUlOg4d9t8"
+      ]
+    },
+    {
+      "leadId": "rec8o1s0owUNmpMlN",
+      "leadName": "Simonetta Minichiello",
+      "activityIds": [
+        "recx4z5SNWurNKMtq"
+      ]
+    },
+    {
+      "leadId": "recbh5A5aWxqX4AYZ",
+      "leadName": "Dhurata Urru",
+      "activityIds": [
+        "recQXzqPx5JQ3Vy6G"
+      ]
+    },
+    {
+      "leadId": "recjA89nkdsqKCRmM",
+      "leadName": "Angela Damiano",
+      "activityIds": [
+        "recVoGqK596pqT34u"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,284 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAirtableKey, getAirtableBaseId, getAirtableActivitiesTableId } from '@/lib/api-keys-service';
+
+// Helper function to build Airtable filter for activities
+function buildAirtableFilter(searchParams: URLSearchParams): string {
+  const conditions: string[] = [];
+
+  // Filtro per stato - supporta valori multipli
+  const stati = searchParams.getAll('stato').filter(s => s && s !== 'all');
+  if (stati.length > 0) {
+    if (stati.length === 1) {
+      conditions.push(`{Stato} = '${stati[0]}'`);
+    } else {
+      const statiConditions = stati.map(stato => `{Stato} = '${stato}'`).join(',');
+      conditions.push(`OR(${statiConditions})`);
+    }
+  }
+
+  // Filtro per tipo - supporta valori multipli
+  const tipi = searchParams.getAll('tipo').filter(t => t && t !== 'all');
+  if (tipi.length > 0) {
+    if (tipi.length === 1) {
+      conditions.push(`{Tipo} = '${tipi[0]}'`);
+    } else {
+      const tipiConditions = tipi.map(tipo => `{Tipo} = '${tipo}'`).join(',');
+      conditions.push(`OR(${tipiConditions})`);
+    }
+  }
+
+  // Filtro per obiettivo - supporta valori multipli
+  const obiettivi = searchParams.getAll('obiettivo').filter(o => o && o !== 'all');
+  if (obiettivi.length > 0) {
+    if (obiettivi.length === 1) {
+      conditions.push(`{Obiettivo} = '${obiettivi[0]}'`);
+    } else {
+      const obiettiviConditions = obiettivi.map(obiettivo => `{Obiettivo} = '${obiettivo}'`).join(',');
+      conditions.push(`OR(${obiettiviConditions})`);
+    }
+  }
+
+  // Filtro per priorità - supporta valori multipli
+  const prioritas = searchParams.getAll('priorita').filter(p => p && p !== 'all');
+  if (prioritas.length > 0) {
+    if (prioritas.length === 1) {
+      conditions.push(`{Priorità} = '${prioritas[0]}'`);
+    } else {
+      const prioritasConditions = prioritas.map(priorita => `{Priorità} = '${priorita}'`).join(',');
+      conditions.push(`OR(${prioritasConditions})`);
+    }
+  }
+
+  // Filtro per data (usa il campo "Data" che è il principale)
+  const dataInizio = searchParams.get('dataInizio');
+  if (dataInizio) {
+    conditions.push(`IS_AFTER({Data}, '${dataInizio}')`);
+  }
+
+  const dataFine = searchParams.get('dataFine');
+  if (dataFine) {
+    conditions.push(`IS_BEFORE({Data}, '${dataFine}')`);
+  }
+
+  // Filtro per assegnatario (cerca nel campo lookup Nome Assegnatario)
+  const assegnatario = searchParams.get('assegnatario');
+  if (assegnatario) {
+    conditions.push(`SEARCH('${assegnatario.toLowerCase()}', LOWER(ARRAYJOIN({Nome Assegnatario}, ', ')))`);
+  }
+
+  // Search globale
+  const search = searchParams.get('search');
+  if (search) {
+    const searchLower = search.toLowerCase();
+    conditions.push(`OR(
+      SEARCH('${searchLower}', LOWER({Titolo})),
+      SEARCH('${searchLower}', LOWER(ARRAYJOIN({Nome Lead}, ', '))),
+      SEARCH('${searchLower}', LOWER(ARRAYJOIN({Nome Assegnatario}, ', '))),
+      SEARCH('${searchLower}', LOWER({Note})),
+      SEARCH('${searchLower}', LOWER({Tipo})),
+      SEARCH('${searchLower}', LOWER({Stato})),
+      SEARCH('${searchLower}', LOWER({Obiettivo}))
+    )`);
+  }
+
+  return conditions.length > 0 ? `AND(${conditions.join(',')})` : '';
+}
+
+// Helper function to fetch ALL records from Airtable using pagination
+async function fetchAllRecords(
+  apiKey: string,
+  baseId: string,
+  tableId: string,
+  baseParams: URLSearchParams
+): Promise<any[]> {
+  let offset: string | undefined;
+  const allRecords: any[] = [];
+
+  do {
+    const currentParams = new URLSearchParams(baseParams);
+    if (offset) {
+      currentParams.set('offset', offset);
+    }
+
+    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${currentParams.toString()}`;
+
+    console.log(
+      `📡 [Activities] Fetching records${offset ? ` (offset: ${offset.substring(0, 10)}...)` : ' (first page)'}`
+    );
+    console.log(`🔗 URL: ${airtableUrl}`);
+
+    const response = await fetch(airtableUrl, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Airtable API error: ${response.status} - ${errorText}`);
+      throw new Error(`Airtable error ${response.status}`);
+    }
+
+    const json = (await response.json()) as {
+      records: Array<{
+        id: string;
+        fields: Record<string, unknown>;
+        createdTime: string;
+      }>;
+      offset?: string;
+    };
+
+    console.log(`📦 [Activities] Received ${json.records?.length || 0} records`);
+
+    allRecords.push(...json.records);
+    offset = json.offset;
+
+    console.log(
+      `📊 [Activities] Total so far: ${allRecords.length}${offset ? ', more available' : ', done'}`
+    );
+  } while (offset);
+
+  console.log(`✅ [Activities] Completed: ${allRecords.length} total records loaded`);
+  return allRecords;
+}
+
+/**
+ * GET /api/activities - Retrieve activities with optional filters
+ * Supports ?loadAll=true to fetch all records regardless of pagination
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+
+    // Get Airtable API credentials
+    const [apiKey, baseId, tableId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+      getAirtableActivitiesTableId(),
+    ]);
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Airtable API key not available' },
+        { status: 500 }
+      );
+    }
+
+    if (!baseId) {
+      return NextResponse.json(
+        { error: 'Airtable base ID not available' },
+        { status: 500 }
+      );
+    }
+
+    if (!tableId) {
+      return NextResponse.json(
+        { error: 'Airtable activities table ID not available' },
+        { status: 500 }
+      );
+    }
+
+    // Check if user wants to load all records
+    const loadAll = searchParams.get('loadAll') === 'true';
+
+    console.log(`🔧 [Activities API] Request parameters:`, {
+      loadAll: loadAll,
+      loadAllParam: searchParams.get('loadAll'),
+      url: request.url,
+      baseId: baseId.substring(0, 6) + '...',
+      tableId: tableId.substring(0, 6) + '...',
+    });
+
+    // Build base query parameters (without pagination)
+    const baseParams = new URLSearchParams();
+
+    // Filters
+    const filterFormula = buildAirtableFilter(searchParams);
+    if (filterFormula) {
+      baseParams.set('filterByFormula', filterFormula);
+    }
+
+    // Sorting - default to Data (most recent first)
+    const sortField = searchParams.get('sortField') || 'Data';
+    const sortDirection = searchParams.get('sortDirection') || 'desc';
+    baseParams.set('sort[0][field]', sortField);
+    baseParams.set('sort[0][direction]', sortDirection);
+
+    // DON'T specify a view - this will fetch ALL records from the table
+    // regardless of any view filters that might be applied in Airtable UI
+
+    if (loadAll) {
+      // Fetch ALL records using recursive pagination
+      console.log('🔄 [Activities] Loading ALL activities from Airtable...');
+      const allRecords = await fetchAllRecords(apiKey, baseId, tableId, baseParams);
+
+      // Transform the data to match our ActivityData interface
+      const transformedData = {
+        records: allRecords.map((record: any) => ({
+          id: record.id,
+          createdTime: record.createdTime,
+          ...record.fields,
+        })),
+        // No offset since we loaded everything
+        offset: undefined,
+      };
+
+      console.log(`✅ [Activities] Loaded ${allRecords.length} activities total`);
+      return NextResponse.json(transformedData);
+    } else {
+      // Standard paginated request
+      const maxRecords = searchParams.get('maxRecords') || '25';
+      baseParams.set('maxRecords', maxRecords);
+
+      const offset = searchParams.get('offset');
+      if (offset) {
+        baseParams.set('offset', offset);
+      }
+
+      // Call Airtable API
+      const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${baseParams}`;
+
+      console.log(`📡 [Activities] Fetching from: ${airtableUrl}`);
+
+      const response = await fetch(airtableUrl, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Activities] Airtable API error:', response.status, errorText);
+        return NextResponse.json(
+          { error: `Airtable API error: ${response.status}` },
+          { status: response.status }
+        );
+      }
+
+      const data = await response.json();
+
+      // Transform the data to match our ActivityData interface
+      const transformedData = {
+        ...data,
+        records: data.records.map((record: any) => ({
+          id: record.id,
+          createdTime: record.createdTime,
+          ...record.fields,
+        })),
+      };
+
+      console.log(`📦 [Activities] Retrieved ${data.records.length} activities`);
+      return NextResponse.json(transformedData);
+    }
+  } catch (error) {
+    console.error('[Activities] Error fetching activities:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch activities' },
+      { status: 500 }
+    );
+  }
+}

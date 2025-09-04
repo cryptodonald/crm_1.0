@@ -5,18 +5,13 @@ import Link from 'next/link';
 import {
   IconCalendar,
   IconChartBar,
-  IconChecklist,
   IconDashboard,
   IconKey,
   IconSettings,
   IconShoppingCart,
   IconUsers,
   IconUsersGroup,
-  IconMessageCircle,
-  IconPlug,
   IconRobot,
-  IconBuildingStore,
-  IconTarget,
   IconActivity,
   IconCommand,
 } from '@tabler/icons-react';

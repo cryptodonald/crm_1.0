@@ -3,7 +3,7 @@
  * Address completion and geocoding services
  */
 
-import { env } from '@/lib/env';
+// removed env import to avoid client-side access
 
 export interface PlaceResult {
   placeId: string;
@@ -66,7 +66,14 @@ export class GooglePlacesClient {
   private baseUrl = 'https://maps.googleapis.com/maps/api';
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey ?? env.GOOGLE_PLACES_API_KEY;
+    this.apiKey = apiKey ?? '';
+  }
+
+  /**
+   * Set API key for the client
+   */
+  setApiKey(apiKey: string) {
+    this.apiKey = apiKey;
   }
 
   /**

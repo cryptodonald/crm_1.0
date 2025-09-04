@@ -154,6 +154,7 @@ export interface LeadFormData {
   Referenza?: string[];
   Assegnatario?: string[];
   Avatar?: string; // Avatar personalizzato
+  Allegati?: AirtableAttachment[]; // Allegati caricati
 }
 
 // Validation
@@ -167,9 +168,21 @@ export const LEAD_VALIDATION_RULES = {
 } as const;
 
 // Default values
-export const DEFAULT_LEAD_DATA: Partial<LeadFormData> = {
+export const DEFAULT_LEAD_DATA: LeadFormData = {
+  Nome: '',
+  Telefono: '',
+  Email: '',
+  Indirizzo: '',
+  CAP: undefined,
+  Città: '',
+  Esigenza: '',
   Stato: 'Nuovo',
   Provenienza: 'Sito',
+  Note: '',
+  Referenza: [],
+  Assegnatario: [],
+  Avatar: '',
+  Allegati: [],
 };
 
 // Query options per ordinamento

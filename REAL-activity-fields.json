@@ -1,0 +1,517 @@
+{
+  "timestamp": "2025-09-01T22:47:23.594Z",
+  "method": "Direct Airtable API metadata access",
+  "activityTable": {
+    "name": "Activity",
+    "id": "tblbcuRXKrWvne0Wy",
+    "description": null
+  },
+  "fields": [
+    {
+      "name": "ID",
+      "type": "formula",
+      "id": "fld6pXq1O74quaBeM",
+      "description": null,
+      "options": {
+        "isValid": true,
+        "formula": "RECORD_ID()",
+        "referencedFieldIds": [],
+        "result": {
+          "type": "singleLineText"
+        }
+      }
+    },
+    {
+      "name": "ID Lead",
+      "type": "multipleRecordLinks",
+      "id": "fldl9Pzx0SnlSrkXv",
+      "description": null,
+      "options": {
+        "linkedTableId": "tblKIZ9CDjcQorONA",
+        "isReversed": false,
+        "prefersSingleRecordLink": true,
+        "inverseLinkFieldId": "fldkdo2z38CnPc3Uk"
+      }
+    },
+    {
+      "name": "Nome Lead",
+      "type": "multipleLookupValues",
+      "id": "fldjTRENBzctRrCGL",
+      "description": null,
+      "options": {
+        "isValid": true,
+        "recordLinkFieldId": "fldl9Pzx0SnlSrkXv",
+        "fieldIdInLinkedTable": "fldKeDrS1XiJ47Prc",
+        "result": {
+          "type": "singleLineText"
+        }
+      }
+    },
+    {
+      "name": "Assegnatario",
+      "type": "multipleRecordLinks",
+      "id": "fldY0qOsEB266QoZ8",
+      "description": null,
+      "options": {
+        "linkedTableId": "tbl141xF7ZQskCqGh",
+        "isReversed": false,
+        "prefersSingleRecordLink": true,
+        "inverseLinkFieldId": "flddIU6nf39fivElY"
+      }
+    },
+    {
+      "name": "Nome Assegnatario",
+      "type": "multipleLookupValues",
+      "id": "fld1tvUfoVtr9G9PK",
+      "description": null,
+      "options": {
+        "isValid": true,
+        "recordLinkFieldId": "fldY0qOsEB266QoZ8",
+        "fieldIdInLinkedTable": "fldPuUTYFd9Ln9LyK",
+        "result": {
+          "type": "singleLineText"
+        }
+      }
+    },
+    {
+      "name": "Titolo",
+      "type": "formula",
+      "id": "fldMHDDUqDvOOCLTt",
+      "description": "Crea un titolo combinando obiettivo, tipo e un segnaposto per il nome del lead.",
+      "options": {
+        "isValid": true,
+        "formula": "{fldcR1a25ViHoT3mY} & \" - \" & {fldjTRENBzctRrCGL}",
+        "referencedFieldIds": [
+          "fldcR1a25ViHoT3mY",
+          "fldjTRENBzctRrCGL"
+        ],
+        "result": {
+          "type": "singleLineText"
+        }
+      }
+    },
+    {
+      "name": "Tipo",
+      "type": "singleSelect",
+      "id": "fldcR1a25ViHoT3mY",
+      "description": null,
+      "options": {
+        "choices": [
+          {
+            "id": "selh4hcXUcSTqIeja",
+            "name": "Chiamata"
+          },
+          {
+            "id": "sell1DGXpBIhf6gGc",
+            "name": "WhatsApp"
+          },
+          {
+            "id": "selBOT0kksO9tFwHx",
+            "name": "Email"
+          },
+          {
+            "id": "selSq22haD7C0XuLY",
+            "name": "SMS"
+          },
+          {
+            "id": "selP090c7koWJtMJK",
+            "name": "Consulenza"
+          },
+          {
+            "id": "sel3OG6estfLqcNRM",
+            "name": "Follow-up"
+          },
+          {
+            "id": "selOMWh4gGTW4qRhF",
+            "name": "Altro"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Stato",
+      "type": "singleSelect",
+      "id": "fldcEU2D7zwwj28bS",
+      "description": null,
+      "options": {
+        "choices": [
+          {
+            "id": "selmPSfxX4ZlqlWj0",
+            "name": "Da Pianificare"
+          },
+          {
+            "id": "sell1DGXpBIhf6gGc",
+            "name": "Pianificata"
+          },
+          {
+            "id": "sel6i5q728gFXUzRX",
+            "name": "In corso"
+          },
+          {
+            "id": "selPLPJxq3EH8wGj6",
+            "name": "In attesa"
+          },
+          {
+            "id": "selh4hcXUcSTqIeja",
+            "name": "Completata"
+          },
+          {
+            "id": "selBOT0kksO9tFwHx",
+            "name": "Annullata"
+          },
+          {
+            "id": "seliH3G82ErTqyW5S",
+            "name": "Rimandata"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Data",
+      "type": "dateTime",
+      "id": "fldPvGAPV9iYGKvtJ",
+      "description": null,
+      "options": {
+        "dateFormat": {
+          "name": "local",
+          "format": "l"
+        },
+        "timeFormat": {
+          "name": "24hour",
+          "format": "HH:mm"
+        },
+        "timeZone": "client"
+      }
+    },
+    {
+      "name": "Durata stimata",
+      "type": "duration",
+      "id": "fldpBB4UKATOiXLru",
+      "description": null,
+      "options": {
+        "durationFormat": "h:mm"
+      }
+    },
+    {
+      "name": "Obiettivo",
+      "type": "singleSelect",
+      "id": "fldDA3bPMzKloIWa2",
+      "description": null,
+      "options": {
+        "choices": [
+          {
+            "id": "selIbwF8hyoSZr3Xx",
+            "name": "Primo contatto"
+          },
+          {
+            "id": "seldhPt4L5JEgRckz",
+            "name": "Qualificazione lead"
+          },
+          {
+            "id": "sel1NxcyL8BnS0G6i",
+            "name": "Presentazione prodotto"
+          },
+          {
+            "id": "sel0e6ifokVgr5nVv",
+            "name": "Invio preventivo"
+          },
+          {
+            "id": "selrzREb2ElIOqPfr",
+            "name": "Follow-up preventivo"
+          },
+          {
+            "id": "selfilHYcBqXWncpR",
+            "name": "Negoziazione"
+          },
+          {
+            "id": "sel1ET0KfDZvPQOBp",
+            "name": "Chiusura ordine"
+          },
+          {
+            "id": "selFm8ViANI7Ik77i",
+            "name": "Fissare appuntamento"
+          },
+          {
+            "id": "selDW2tjHogjRI3PT",
+            "name": "Confermare appuntamento"
+          },
+          {
+            "id": "selQWLogWZP6LpjWZ",
+            "name": "Promemoria appuntamento"
+          },
+          {
+            "id": "selLhgUtgO9GjxhwJ",
+            "name": "Consegna prodotto"
+          },
+          {
+            "id": "seloxGBJDTIKVWIKv",
+            "name": "Assistenza tecnica"
+          },
+          {
+            "id": "selHft0kCQZLsz4Zo",
+            "name": "Controllo soddisfazione"
+          },
+          {
+            "id": "seljKRO4Jd9m1mtsi",
+            "name": "Upsell Cross-sell"
+          },
+          {
+            "id": "selis1dYUPSj7d3OY",
+            "name": "Richiesta recensione"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Priorità",
+      "type": "singleSelect",
+      "id": "fldjihrvpzgl1bc4h",
+      "description": null,
+      "options": {
+        "choices": [
+          {
+            "id": "sellkAiv70gepiRPd",
+            "name": "Bassa"
+          },
+          {
+            "id": "selmjvfo3CulzzvDJ",
+            "name": "Media"
+          },
+          {
+            "id": "selUtGLEYZ83becuO",
+            "name": "Alta"
+          },
+          {
+            "id": "sellKM4ZLSQFtpVba",
+            "name": "Urgente"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Note",
+      "type": "multilineText",
+      "id": "fldrcsQBXJAbwXtJX",
+      "description": null,
+      "options": null
+    },
+    {
+      "name": "Esito",
+      "type": "singleSelect",
+      "id": "fldaY6kTm1VVtZgGm",
+      "description": null,
+      "options": {
+        "choices": [
+          {
+            "id": "selVB6wt8nBmYcyjj",
+            "name": "Contatto riuscito"
+          },
+          {
+            "id": "seld8cIdyXuSeYUgf",
+            "name": "Nessuna risposta"
+          },
+          {
+            "id": "selZJayh0QmhZofkT",
+            "name": "Numero errato"
+          },
+          {
+            "id": "selVuHuaA8FERYu1e",
+            "name": "Non disponibile"
+          },
+          {
+            "id": "selAf23wrvvL0Sbja",
+            "name": "Non presentato"
+          },
+          {
+            "id": "selW2KLU11985uy1H",
+            "name": "Molto interessato"
+          },
+          {
+            "id": "selEvW5eC2tuAj5UM",
+            "name": "Interessato"
+          },
+          {
+            "id": "seliUoHiE3nD7OjHG",
+            "name": "Poco interessato"
+          },
+          {
+            "id": "selv783iyPfK22JEO",
+            "name": "Non interessato"
+          },
+          {
+            "id": "selMUhsMy4pWjeXNf",
+            "name": "Informazioni raccolte"
+          },
+          {
+            "id": "selyNOLE8pWpaQkma",
+            "name": "Preventivo richiesto"
+          },
+          {
+            "id": "selZBskt74KIR4L5m",
+            "name": "Preventivo inviato"
+          },
+          {
+            "id": "selTkCvn6lLlro9p3",
+            "name": "Appuntamento fissato"
+          },
+          {
+            "id": "selX7rihWzAhRkgGs",
+            "name": "Ordine confermato"
+          },
+          {
+            "id": "selOi8DodZ4dBDqjI",
+            "name": "Opportunità persa"
+          },
+          {
+            "id": "selitAKZtQBJhpTX0",
+            "name": "Servizio completato"
+          },
+          {
+            "id": "selXOvoiU9YGBhGH7",
+            "name": "Problema risolto"
+          },
+          {
+            "id": "selGVkVhr5uXCUSQb",
+            "name": "Cliente soddisfatto"
+          },
+          {
+            "id": "selCZZvfxY38Jnzte",
+            "name": "Recensione ottenuta"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Prossima azione",
+      "type": "singleSelect",
+      "id": "fldrJg8nLxcJP4hbF",
+      "description": null,
+      "options": {
+        "choices": [
+          {
+            "id": "selDXbcpmEmMLZ0vA",
+            "name": "Chiamata"
+          },
+          {
+            "id": "sel7TNBNxM5IszekJ",
+            "name": "WhatsApp"
+          },
+          {
+            "id": "selj6pR9gRq6eMxVR",
+            "name": "Email"
+          },
+          {
+            "id": "sel36RS8T68x06asR",
+            "name": "SMS"
+          },
+          {
+            "id": "seln7hBtuMf5Hk4Aj",
+            "name": "Consulenza"
+          },
+          {
+            "id": "selDIo8qcIpsMcCz6",
+            "name": "Follow-up"
+          },
+          {
+            "id": "selnZr9ztdpEaUKyz",
+            "name": "Nessuna"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Data prossima azione",
+      "type": "dateTime",
+      "id": "fldS3v6etzoTOExOP",
+      "description": null,
+      "options": {
+        "dateFormat": {
+          "name": "local",
+          "format": "l"
+        },
+        "timeFormat": {
+          "name": "24hour",
+          "format": "HH:mm"
+        },
+        "timeZone": "client"
+      }
+    },
+    {
+      "name": "Allegati",
+      "type": "multipleAttachments",
+      "id": "fldPcEwR5jCyIhPvC",
+      "description": null,
+      "options": {
+        "isReversed": false
+      }
+    },
+    {
+      "name": "Creato il ",
+      "type": "createdTime",
+      "id": "fldy429iW236noQ8B",
+      "description": null,
+      "options": {
+        "result": {
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "client"
+          }
+        }
+      }
+    },
+    {
+      "name": "Ultima modifica",
+      "type": "lastModifiedTime",
+      "id": "fldzEZhPBXa68idd0",
+      "description": null,
+      "options": {
+        "isValid": true,
+        "referencedFieldIds": [],
+        "result": {
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "client"
+          }
+        }
+      }
+    }
+  ],
+  "sampleRecord": {
+    "id": "recWl3c8uUWDN5Bcf",
+    "createdTime": "2025-08-30T15:18:37.000Z",
+    "fields": {
+      "ID": "recWl3c8uUWDN5Bcf",
+      "Tipo": "Chiamata",
+      "Data": "2025-08-31T15:18:34.652Z",
+      "Stato": "Pianificata",
+      "ID Lead": [
+        "recjrAD9cSuFi2k3X"
+      ],
+      "Titolo": "Chiamata - Maria Assunta Landi",
+      "Durata stimata": 600,
+      "Obiettivo": "Primo contatto",
+      "Priorità": "Alta",
+      "Creato il ": "2025-08-30T15:18:37.000Z",
+      "Ultima modifica": "2025-08-30T15:18:37.000Z",
+      "Nome Lead": [
+        "Maria Assunta Landi"
+      ]
+    }
+  }
+}

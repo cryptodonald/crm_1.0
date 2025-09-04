@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   LeadData,
   LeadsStats,
@@ -20,13 +20,19 @@ function buildQueryParams(
 ): URLSearchParams {
   const params = new URLSearchParams();
 
-  // Filtri di base
+  // Filtri di base - supporta valori multipli
   if (filters.stato && filters.stato.length > 0) {
-    params.set('stato', filters.stato[0]); // Per semplicità usiamo solo il primo
+    // Aggiungi ogni stato come parametro separato
+    filters.stato.forEach(stato => {
+      params.append('stato', stato);
+    });
   }
 
   if (filters.provenienza && filters.provenienza.length > 0) {
-    params.set('provenienza', filters.provenienza[0]); // Per semplicità usiamo solo il primo
+    // Aggiungi ogni provenienza come parametro separato
+    filters.provenienza.forEach(provenienza => {
+      params.append('provenienza', provenienza);
+    });
   }
 
   if (filters.dataInizio) {
@@ -95,7 +101,7 @@ export function useLeadsData({
   // buildQueryParams è ora definita globalmente sopra
 
   // Funzione per recuperare i leads tramite API
-  const fetchLeads = async (resetData = false) => {
+  const fetchLeads = useCallback(async (resetData = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -131,7 +137,12 @@ export function useLeadsData({
         hasOffset: !!data.offset,
         loadAll: loadAll,
         resetData: resetData,
+        fromCache: data.fromCache || false, // Indica se i dati vengono dalla cache
       });
+      
+      if (data.fromCache) {
+        console.log('⚡ [FAST LOAD] Data served from server cache!');
+      }
 
       if (loadAll || resetData) {
         // Se loadAll è true, sostituisci sempre tutti i dati
@@ -156,12 +167,23 @@ export function useLeadsData({
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, loadAll, pageSize, sortField, sortDirection]);
 
-  // Ricarica quando cambiano filtri, ordinamento o loadAll
+  // Ricarica solo quando cambiano filtri che richiedono nuova query Airtable
+  // I filtri client-side (search) non dovrebbero triggerare nuove chiamate API
   useEffect(() => {
     fetchLeads(true);
-  }, [filters, sortField, sortDirection, loadAll]);
+  }, [
+    filters.stato,
+    filters.provenienza, 
+    filters.dataInizio,
+    filters.dataFine,
+    filters.città,
+    loadAll,
+    pageSize,
+    sortField,
+    sortDirection
+  ]); // Rimuoviamo 'filters.search' per evitare chiamate API inutili
 
   // Funzione per caricare più dati (disponibile solo se loadAll=false)
   const loadMore = () => {

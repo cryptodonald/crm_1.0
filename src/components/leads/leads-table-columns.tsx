@@ -38,6 +38,7 @@ import {
   getInitials,
   getAvatarFallbackColor,
 } from '@/lib/avatar-utils';
+import { AvatarLead } from '@/components/ui/avatar-lead';
 
 // Componente per colonna CLIENTE
 interface ClienteColumnProps {
@@ -62,12 +63,12 @@ export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
   // Colori per badge Stato usando shadcn/ui
   const getStatoBadgeColor = (stato: LeadStato): string => {
     const colors: Record<LeadStato, string> = {
-      Nuovo: 'bg-slate-500 text-white hover:bg-slate-600',
-      Attivo: 'bg-blue-500 text-white hover:bg-blue-600',
-      Qualificato: 'bg-amber-500 text-white hover:bg-amber-600',
-      Cliente: 'bg-green-500 text-white hover:bg-green-600',
-      Chiuso: 'bg-red-500 text-white hover:bg-red-600',
-      Sospeso: 'bg-purple-500 text-white hover:bg-purple-600',
+      Nuovo: 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600',
+      Attivo: 'bg-blue-200 text-blue-800 hover:bg-blue-300 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700',
+      Qualificato: 'bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-500 dark:text-white dark:hover:bg-orange-400',
+      Cliente: 'bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:text-white dark:hover:bg-green-400',
+      Chiuso: 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:text-white dark:hover:bg-red-400',
+      Sospeso: 'bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-500 dark:text-white dark:hover:bg-purple-400',
     };
     return colors[stato];
   };
@@ -75,12 +76,12 @@ export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
   // Colori per badge Provenienza usando shadcn/ui
   const getProvenenzaBadgeColor = (provenienza: LeadProvenienza): string => {
     const colors: Record<LeadProvenienza, string> = {
-      Meta: 'bg-blue-100 text-blue-800 hover:bg-blue-200',
-      Instagram: 'bg-pink-100 text-pink-800 hover:bg-pink-200',
-      Google: 'bg-red-100 text-red-800 hover:bg-red-200',
-      Sito: 'bg-green-100 text-green-800 hover:bg-green-200',
-      Referral: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
-      Organico: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
+      Meta: 'bg-blue-200 text-blue-800 hover:bg-blue-300 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700',
+      Instagram: 'bg-purple-200 text-purple-800 hover:bg-purple-300 dark:bg-purple-800 dark:text-purple-200 dark:hover:bg-purple-700',
+      Google: 'bg-red-200 text-red-800 hover:bg-red-300 dark:bg-red-800 dark:text-red-200 dark:hover:bg-red-700',
+      Sito: 'bg-teal-100 text-teal-800 hover:bg-teal-200 dark:bg-teal-800 dark:text-teal-200 dark:hover:bg-teal-700',
+      Referral: 'bg-orange-200 text-orange-800 hover:bg-orange-300 dark:bg-orange-800 dark:text-orange-200 dark:hover:bg-orange-700',
+      Organico: 'bg-green-200 text-green-800 hover:bg-green-300 dark:bg-green-800 dark:text-green-200 dark:hover:bg-green-700',
     };
     return colors[provenienza];
   };
@@ -130,15 +131,38 @@ export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
           </div>
         </div>
 
-        {/* Indirizzo */}
+        {/* Indirizzo con badge stilizzati per CAP e Città */}
         {hasAddress && (
-          <div className="text-muted-foreground mt-1 flex items-center text-xs">
-            <MapPin className="mr-1 h-3 w-3 flex-shrink-0" />
-            <span className="truncate">
-              {[lead.Città, lead.CAP && `${lead.CAP}`, lead.Indirizzo]
-                .filter(Boolean)
-                .join(', ')}
-            </span>
+          <div className="mt-1 space-y-1">
+            {/* Indirizzo principale */}
+            {lead.Indirizzo && (
+              <div className="text-muted-foreground flex items-center text-xs">
+                <MapPin className="mr-1 h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{lead.Indirizzo}</span>
+              </div>
+            )}
+            
+            {/* Badge per Città e CAP - stile neutro */}
+            {(lead.Città || lead.CAP) && (
+              <div className="flex items-center gap-1.5">
+                {lead.Città && (
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs h-5 px-2 text-muted-foreground border-border hover:bg-muted"
+                  >
+                    {lead.Città}
+                  </Badge>
+                )}
+                {lead.CAP && (
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs h-5 px-2 text-muted-foreground border-border hover:bg-muted"
+                  >
+                    {lead.CAP}
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -152,15 +176,41 @@ interface ContattiColumnProps {
 }
 
 export function ContattiColumn({ lead }: ContattiColumnProps) {
-  const handlePhoneClick = (phone: string) => {
-    window.open(`tel:${phone}`, '_self');
+  const handlePhoneClick = async (phone: string) => {
+    try {
+      await navigator.clipboard.writeText(phone);
+      // Potresti aggiungere qui un toast notification per il feedback
+      console.log('✅ Telefono copiato negli appunti:', phone);
+    } catch (error) {
+      console.error('❌ Errore nella copia del telefono:', error);
+      // Fallback per browser che non supportano clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = phone;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
   };
 
-  const handleEmailClick = (email: string) => {
-    window.open(`mailto:${email}`, '_blank');
+  const handleEmailClick = async (email: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      // Potresti aggiungere qui un toast notification per il feedback
+      console.log('✅ Email copiata negli appunti:', email);
+    } catch (error) {
+      console.error('❌ Errore nella copia dell\'email:', error);
+      // Fallback per browser che non supportano clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = email;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
   };
 
-  // Formatta numero di telefono italiano
+  // Formatta numero di telefono italiano (versione compatta)
   const formatPhoneNumber = (phone: string): string => {
     // Rimuovi tutti i caratteri non numerici
     const cleaned = phone.replace(/\D/g, '');
@@ -168,12 +218,12 @@ export function ContattiColumn({ lead }: ContattiColumnProps) {
     // Se inizia con 39, è già con prefisso internazionale
     if (cleaned.startsWith('39') && cleaned.length === 12) {
       const number = cleaned.substring(2); // Rimuovi 39
-      return `+39 ${number.substring(0, 3)} ${number.substring(3, 6)} ${number.substring(6)}`;
+      return `+39 ${number.substring(0, 3)} ${number.substring(3)}`;
     }
 
     // Se inizia con 3 (mobile) e ha 10 cifre
     if (cleaned.startsWith('3') && cleaned.length === 10) {
-      return `+39 ${cleaned.substring(0, 3)} ${cleaned.substring(3, 6)} ${cleaned.substring(6)}`;
+      return `+39 ${cleaned.substring(0, 3)} ${cleaned.substring(3)}`;
     }
 
     // Se inizia con 0 (fisso) e ha 9-11 cifre
@@ -183,9 +233,9 @@ export function ContattiColumn({ lead }: ContattiColumnProps) {
       cleaned.length <= 11
     ) {
       if (cleaned.length === 10) {
-        return `+39 ${cleaned.substring(0, 3)} ${cleaned.substring(3, 6)} ${cleaned.substring(6)}`;
+        return `+39 ${cleaned.substring(0, 3)} ${cleaned.substring(3)}`;
       }
-      return `+39 ${cleaned.substring(0, 2)} ${cleaned.substring(2, 6)} ${cleaned.substring(6)}`;
+      return `+39 ${cleaned.substring(0, 4)} ${cleaned.substring(4)}`;
     }
 
     // Fallback: restituisce il numero originale
@@ -193,21 +243,30 @@ export function ContattiColumn({ lead }: ContattiColumnProps) {
   };
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {/* Telefono */}
       {lead.Telefono && (
         <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hover:bg-muted text-foreground h-auto w-full justify-start p-1"
-            onClick={() => handlePhoneClick(lead.Telefono!)}
-          >
-            <Phone className="text-muted-foreground mr-2 h-3 w-3" />
-            <span className="font-mono text-xs">
-              {formatPhoneNumber(lead.Telefono)}
-            </span>
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="group hover:bg-muted text-foreground h-auto w-full justify-start px-2 py-1 min-h-[22px] transition-all duration-150 rounded-sm"
+                  onClick={() => handlePhoneClick(lead.Telefono!)}
+                >
+                  <Phone className="text-muted-foreground group-hover:text-foreground mr-1.5 h-3 w-3 flex-shrink-0 transition-colors duration-150" />
+                  <span className="font-mono text-xs group-hover:font-medium transition-all duration-150">
+                    {formatPhoneNumber(lead.Telefono)}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Clicca per copiare il numero</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
 
@@ -220,17 +279,17 @@ export function ContattiColumn({ lead }: ContattiColumnProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="hover:bg-muted text-foreground h-auto w-full justify-start p-1"
+                  className="group hover:bg-muted text-foreground h-auto w-full justify-start px-2 py-1 min-h-[22px] transition-all duration-150 rounded-sm"
                   onClick={() => handleEmailClick(lead.Email!)}
                 >
-                  <Mail className="text-muted-foreground mr-2 h-3 w-3" />
-                  <span className="max-w-[140px] truncate text-xs">
+                  <Mail className="text-muted-foreground group-hover:text-foreground mr-1.5 h-3 w-3 flex-shrink-0 transition-colors duration-150" />
+                  <span className="max-w-[130px] truncate text-xs group-hover:font-medium transition-all duration-150">
                     {lead.Email}
                   </span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{lead.Email}</p>
+                <p>Clicca per copiare: {lead.Email}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -239,7 +298,7 @@ export function ContattiColumn({ lead }: ContattiColumnProps) {
 
       {/* Fallback se nessun contatto */}
       {!lead.Telefono && !lead.Email && (
-        <div className="flex h-8 items-center justify-center px-2">
+        <div className="flex h-8 items-center justify-start px-2">
           <span className="text-muted-foreground text-xs italic">
             Nessun contatto disponibile
           </span>
@@ -336,7 +395,7 @@ export function RelazioniColumn({
   // Se entrambi sono zero, mostra solo il fallback
   if (ordiniCount === 0 && attivitàCount === 0) {
     return (
-      <div className="flex h-8 items-center justify-center px-2">
+      <div className="flex h-8 items-center justify-start px-2">
         <span className="text-muted-foreground text-xs italic">
           Nessuna relazione presente
         </span>
@@ -345,19 +404,19 @@ export function RelazioniColumn({
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {/* Ordini - solo se > 0 */}
       {ordiniCount > 0 && (
         <div className="flex items-center">
           <Button
             variant="ghost"
             size="sm"
-            className="hover:bg-muted text-foreground h-auto w-full justify-start p-1"
+            className="hover:bg-muted text-foreground h-auto w-full justify-start p-1 min-h-[24px]"
             onClick={() => onOrdersClick?.(lead.id)}
           >
-            <Building className="text-muted-foreground mr-2 h-3 w-3" />
+            <Building className="text-muted-foreground mr-2 h-3 w-3 flex-shrink-0" />
             <span className="text-xs font-medium">{ordiniCount} ordini</span>
-            <ExternalLink className="text-muted-foreground ml-1 h-2 w-2" />
+            <ExternalLink className="text-muted-foreground ml-1 h-2 w-2 flex-shrink-0" />
           </Button>
         </div>
       )}
@@ -368,14 +427,14 @@ export function RelazioniColumn({
           <Button
             variant="ghost"
             size="sm"
-            className="hover:bg-muted text-foreground h-auto w-full justify-start p-1"
+            className="hover:bg-muted text-foreground h-auto w-full justify-start p-1 min-h-[24px]"
             onClick={() => onActivitiesClick?.(lead.id)}
           >
-            <Clock className="text-muted-foreground mr-2 h-3 w-3" />
+            <Clock className="text-muted-foreground mr-2 h-3 w-3 flex-shrink-0" />
             <span className="text-xs font-medium">
               {attivitàCount} attività
             </span>
-            <ExternalLink className="text-muted-foreground ml-1 h-2 w-2" />
+            <ExternalLink className="text-muted-foreground ml-1 h-2 w-2 flex-shrink-0" />
           </Button>
         </div>
       )}
@@ -420,34 +479,33 @@ export function AssegnatarioColumn({
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-start py-1">
       {userData ? (
         <Button
           variant="ghost"
-          className="hover:bg-muted h-auto justify-start p-1"
+          className="hover:bg-muted h-auto w-full justify-start p-1 min-h-[44px]"
           onClick={() => onAssigneeClick?.(assegnatarioId)}
         >
-          {/* Avatar */}
-          <Avatar className="mr-2 h-6 w-6">
-            <AvatarImage
-              src={userData.avatar || '/avatars/admin.png'}
-              alt={userData.nome}
-            />
-            <AvatarFallback className="bg-gray-200 text-xs">
-              {getInitials(userData.nome)}
-            </AvatarFallback>
-          </Avatar>
+          {/* Avatar usando AvatarLead */}
+          <AvatarLead
+            nome={userData.nome}
+            customAvatar={userData.avatar}
+            isAdmin={userData.ruolo === 'Admin'}
+            size="sm"
+            className="mr-2 flex-shrink-0"
+            showTooltip={false}
+          />
 
-          <div className="text-left">
+          <div className="flex-1 text-left min-w-0">
             {/* Nome */}
-            <div className="text-foreground text-xs font-medium">
+            <div className="text-foreground text-xs font-medium truncate">
               {userData.nome}
             </div>
             {/* Ruolo */}
             <Badge
               variant="outline"
               className={cn(
-                'h-4 px-1 text-[10px]',
+                'mt-0.5 h-4 px-1 text-[10px]',
                 getRuoloBadgeColor(userData.ruolo)
               )}
             >
@@ -455,34 +513,37 @@ export function AssegnatarioColumn({
             </Badge>
           </div>
 
-          <ExternalLink className="text-muted-foreground ml-1 h-3 w-3" />
+          <ExternalLink className="text-muted-foreground ml-1 h-3 w-3 flex-shrink-0" />
         </Button>
       ) : (
         // Fallback quando non abbiamo i dati utente - mostra nome generico
         <Button
           variant="ghost"
-          className="hover:bg-muted h-auto justify-start p-1"
+          className="hover:bg-muted h-auto w-full justify-start p-1 min-h-[44px]"
           onClick={() => onAssigneeClick?.(assegnatarioId)}
         >
-          <Avatar className="mr-2 h-6 w-6">
-            <AvatarImage src="/avatars/admin.png" alt="Utente sconosciuto" />
-            <AvatarFallback className="bg-gray-200 text-xs">?</AvatarFallback>
-          </Avatar>
-          <div className="text-left">
-            <div className="text-foreground text-xs font-medium">
+          <AvatarLead
+            nome="Utente sconosciuto"
+            isAdmin={false}
+            size="sm"
+            className="mr-2 flex-shrink-0"
+            showTooltip={false}
+          />
+          <div className="flex-1 text-left min-w-0">
+            <div className="text-foreground text-xs font-medium truncate">
               Utente sconosciuto
             </div>
             <Badge
               variant="outline"
               className={cn(
-                'h-4 px-1 text-[10px]',
+                'mt-0.5 h-4 px-1 text-[10px]',
                 getRuoloBadgeColor('Staff')
               )}
             >
               Staff
             </Badge>
           </div>
-          <ExternalLink className="text-muted-foreground ml-1 h-3 w-3" />
+          <ExternalLink className="text-muted-foreground ml-1 h-3 w-3 flex-shrink-0" />
         </Button>
       )}
     </div>
@@ -500,20 +561,20 @@ export function NoteAllegatiColumn({
   onNotesClick,
 }: NoteAllegatiColumnProps) {
   return (
-    <div className="w-full max-w-[180px] space-y-1.5">
+    <div className="w-full max-w-[250px] space-y-1">
       {/* Esigenza (prioritaria) */}
       {lead.Esigenza && lead.Esigenza.trim() && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <div
-                className="hover:bg-muted flex cursor-pointer items-start space-x-2 rounded p-1"
+                className="hover:bg-muted flex cursor-pointer items-start space-x-2 rounded p-1 min-h-[20px]"
                 onClick={() => onNotesClick?.(lead.id)}
               >
                 <Lightbulb className="text-muted-foreground mt-0.5 h-3 w-3 flex-shrink-0" />
-                <span className="text-foreground truncate text-xs leading-4">
-                  {lead.Esigenza.length > 45
-                    ? lead.Esigenza.substring(0, 45) + '...'
+                <span className="text-foreground text-xs leading-4 truncate">
+                  {lead.Esigenza.length > 70
+                    ? lead.Esigenza.substring(0, 70) + '...'
                     : lead.Esigenza}
                 </span>
               </div>
@@ -534,13 +595,13 @@ export function NoteAllegatiColumn({
           <Tooltip>
             <TooltipTrigger asChild>
               <div
-                className="hover:bg-muted flex cursor-pointer items-start space-x-2 rounded p-1"
+                className="hover:bg-muted flex cursor-pointer items-start space-x-2 rounded p-1 min-h-[20px]"
                 onClick={() => onNotesClick?.(lead.id)}
               >
                 <FileText className="text-muted-foreground mt-0.5 h-3 w-3 flex-shrink-0" />
-                <span className="text-foreground truncate text-xs leading-4">
-                  {lead.Note.length > 40
-                    ? lead.Note.substring(0, 40) + '...'
+                <span className="text-foreground text-xs leading-4 truncate">
+                  {lead.Note.length > 65
+                    ? lead.Note.substring(0, 65) + '...'
                     : lead.Note}
                 </span>
               </div>
@@ -560,7 +621,7 @@ export function NoteAllegatiColumn({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center space-x-2 p-1">
+              <div className="flex items-center space-x-2 p-1 min-h-[20px]">
                 <Paperclip className="text-muted-foreground h-3 w-3 flex-shrink-0" />
                 <span className="text-muted-foreground text-xs">
                   {lead.Allegati.length} allegat
@@ -583,7 +644,7 @@ export function NoteAllegatiColumn({
       {(!lead.Note || !lead.Note.trim()) &&
         (!lead.Esigenza || !lead.Esigenza.trim()) &&
         (!lead.Allegati || lead.Allegati.length === 0) && (
-          <div className="flex h-8 items-center justify-center px-2">
+          <div className="flex h-8 items-center justify-start px-2">
             <span className="text-muted-foreground text-xs italic">
               Nessuna nota disponibile
             </span>

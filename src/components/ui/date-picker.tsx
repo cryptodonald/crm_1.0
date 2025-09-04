@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -77,30 +77,57 @@ export function DateRangePicker({
   disabled = false,
   className,
 }: DateRangePickerProps) {
+  const formatDateRange = (from: Date, to?: Date) => {
+    const fromFormatted = format(from, 'dd MMM yyyy', { locale: it });
+    if (to) {
+      const toFormatted = format(to, 'dd MMM yyyy', { locale: it });
+      return `${fromFormatted} - ${toFormatted}`;
+    }
+    return fromFormatted;
+  };
+
+  const handleReset = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onChange?.(undefined);
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
           variant={'outline'}
           className={cn(
-            'w-full justify-start text-left font-normal',
+            'w-full justify-start text-left font-normal relative pr-8',
             !value && 'text-muted-foreground',
             className
           )}
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {value?.from ? (
-            value.to ? (
-              <>
-                {format(value.from, 'dd/MM/yyyy', { locale: it })} -{' '}
-                {format(value.to, 'dd/MM/yyyy', { locale: it })}
-              </>
+          <span className="flex-1">
+            {value?.from ? (
+              formatDateRange(value.from, value.to)
             ) : (
-              format(value.from, 'dd/MM/yyyy', { locale: it })
-            )
-          ) : (
-            <span>{placeholder}</span>
+              <span>{placeholder}</span>
+            )}
+          </span>
+          {value?.from && (
+            <div
+              onClick={handleReset}
+              className="absolute right-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleReset(e as any);
+                }
+              }}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Reset periodo</span>
+            </div>
           )}
         </Button>
       </PopoverTrigger>
@@ -110,8 +137,22 @@ export function DateRangePicker({
           defaultMonth={value?.from}
           selected={value}
           onSelect={onChange}
-          numberOfMonths={2}
+          numberOfMonths={1}
+          locale={it}
           initialFocus
+          formatters={{
+            formatMonthCaption: (date) => {
+              const monthNames = [
+                'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+                'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+              ];
+              return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+            },
+            formatWeekdayName: (date) => {
+              const weekdays = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+              return weekdays[date.getDay()];
+            }
+          }}
         />
       </PopoverContent>
     </Popover>
