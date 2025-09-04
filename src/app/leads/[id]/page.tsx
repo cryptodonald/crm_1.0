@@ -3,16 +3,22 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
+import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { useLeadDetail, useLeadActivity } from '@/hooks/use-lead-detail';
 import { useUsers } from '@/hooks/use-users';
-import { LeadHeroHeader } from '@/components/leads-detail/lead-hero-header';
-import { LeadInfoSections } from '@/components/leads-detail/lead-info-sections';
-import { LeadActivityTimeline } from '@/components/leads-detail/lead-activity-timeline';
+import { LeadDetailHeader } from '@/components/leads-detail/Header';
+import { SummaryCards } from '@/components/leads-detail/SummaryCards';
+import { OverviewPanel } from '@/components/leads-detail/OverviewPanel';
+import { ActivityPanel } from '@/components/leads-detail/ActivityPanel';
+import { FilesPanel } from '@/components/leads-detail/FilesPanel';
+import { OrdersPanel } from '@/components/leads-detail/OrdersPanel';
+import { NotesPanel } from '@/components/leads-detail/NotesPanel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +46,8 @@ export default function LeadDetailPage() {
   
   // Stati locali
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
 
   // Hook personalizzati
   const {
@@ -192,43 +200,31 @@ export default function LeadDetailPage() {
 
   // Layout mobile con tabs
   const MobileLayout = () => (
-    <Tabs defaultValue="info" className="flex-1">
+    <Tabs defaultValue="overview" className="flex-1">
       <div className="sticky top-0 z-10 bg-background border-b">
-        <TabsList className="w-full grid grid-cols-3">
-          <TabsTrigger value="info" className="flex items-center">
-            <FileText className="mr-2 h-4 w-4" />
-            Info
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center">
-            <Clock className="mr-2 h-4 w-4" />
-            Timeline
-          </TabsTrigger>
-          <TabsTrigger value="files" className="flex items-center">
-            <Paperclip className="mr-2 h-4 w-4" />
-            Allegati
-          </TabsTrigger>
+        <TabsList className="w-full grid grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
+          <TabsTrigger value="notes">Note</TabsTrigger>
+          <TabsTrigger value="orders">Ordini</TabsTrigger>
         </TabsList>
       </div>
 
-      <TabsContent value="info" className="flex-1">
+      <TabsContent value="overview" className="flex-1">
         <div className="p-4 space-y-6">
-          <LeadInfoSections
+          <OverviewPanel
             lead={lead}
-            usersData={usersData}
-            onEdit={() => {}}
-            onReferenceClick={(refId) => console.log('Reference:', refId)}
+            usersData={usersData || undefined}
             onAssigneeClick={(userId) => console.log('Assignee:', userId)}
-            onOrdersClick={() => console.log('Orders for lead:', lead.id)}
-            onActivitiesClick={() => console.log('Activities for lead:', lead.id)}
           />
         </div>
       </TabsContent>
 
       <TabsContent value="timeline" className="flex-1">
         <div className="p-4">
-          <LeadActivityTimeline
-            leadId={id}
-            activities={activities}
+          <ActivityPanel
+            activities={activities as any}
             loading={loadingActivities}
             onAddActivity={addActivity}
           />
@@ -237,13 +233,19 @@ export default function LeadDetailPage() {
 
       <TabsContent value="files" className="flex-1">
         <div className="p-4">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Paperclip className="mx-auto h-12 w-12 text-muted-foreground/30" />
-              <p className="mt-4 text-sm text-muted-foreground">Gestione allegati</p>
-              <p className="text-xs text-muted-foreground">Funzionalità in sviluppo</p>
-            </CardContent>
-          </Card>
+          <FilesPanel lead={lead} />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="notes" className="flex-1">
+        <div className="p-4">
+          <NotesPanel lead={lead} onUpdate={updateLead} />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="orders" className="flex-1">
+        <div className="p-4">
+          <OrdersPanel lead={lead} />
         </div>
       </TabsContent>
     </Tabs>
@@ -253,32 +255,22 @@ export default function LeadDetailPage() {
   const DesktopLayout = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1 space-y-6">
-        <LeadInfoSections
+        <OverviewPanel
           lead={lead}
-          usersData={usersData}
-          onEdit={() => {}}
-          onReferenceClick={(refId) => console.log('Reference:', refId)}
+          usersData={usersData || undefined}
           onAssigneeClick={(userId) => console.log('Assignee:', userId)}
-          onOrdersClick={() => console.log('Orders for lead:', lead.id)}
-          onActivitiesClick={() => console.log('Activities for lead:', lead.id)}
         />
-
-        <Card>
-          <div className="p-6 text-center">
-            <Paperclip className="mx-auto h-8 w-8 text-muted-foreground/30" />
-            <p className="mt-2 text-sm text-muted-foreground">Documenti e allegati</p>
-            <p className="text-xs text-muted-foreground">Nessun file allegato</p>
-          </div>
-        </Card>
+        <FilesPanel lead={lead} />
       </div>
 
-      <div className="lg:col-span-2">
-        <LeadActivityTimeline
-          leadId={id}
-          activities={activities}
+      <div className="lg:col-span-2 space-y-6">
+        <ActivityPanel
+          activities={activities as any}
           loading={loadingActivities}
           onAddActivity={addActivity}
         />
+        <NotesPanel lead={lead} onUpdate={updateLead} />
+        <OrdersPanel lead={lead} />
       </div>
     </div>
   );
@@ -286,15 +278,22 @@ export default function LeadDetailPage() {
   return (
     <AppLayoutCustom>
       <div className="flex-1 space-y-6 p-4 md:p-6">
-        {/* Hero Header */}
-        <LeadHeroHeader
+        <PageBreadcrumb pageName={`Lead: ${lead.Nome || lead.ID}`} />
+
+        {/* Header */}
+        <LeadDetailHeader
           lead={lead}
+          usersData={usersData || undefined}
           onBack={handleBack}
-          onEdit={() => {}}
+          onEdit={() => setShowEditDialog(true)}
           onDelete={() => setShowDeleteDialog(true)}
           onCall={handleCall}
           onEmail={handleEmail}
+          onUpdate={updateLead}
         />
+
+        {/* Summary */}
+        <SummaryCards lead={lead} activities={activities as any} />
 
         {/* Notifiche intelligenti */}
         {smartNotifications.length > 0 && (
@@ -345,6 +344,91 @@ export default function LeadDetailPage() {
           <DesktopLayout />
         </div>
       </div>
+
+      {/* Dialog modifica */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifica Lead</DialogTitle>
+            <DialogDescription>Imposta Stato e Assegnatario, poi salva.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Stato */}
+            <div className="space-y-1">
+              <div className="text-sm font-medium">Stato</div>
+              <Select defaultValue={lead.Stato} onValueChange={(value) => (lead.Stato = value as any)}>
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Stato" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Nuovo">Nuovo</SelectItem>
+                  <SelectItem value="Attivo">Attivo</SelectItem>
+                  <SelectItem value="Qualificato">Qualificato</SelectItem>
+                  <SelectItem value="Cliente">Cliente</SelectItem>
+                  <SelectItem value="Chiuso">Chiuso</SelectItem>
+                  <SelectItem value="Sospeso">Sospeso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Assegnatario */}
+            <div className="space-y-1">
+              <div className="text-sm font-medium">Assegnatario</div>
+              <Select
+                defaultValue={lead.Assegnatario?.[0] || 'none'}
+                onValueChange={(value) => {
+                  // store temporarily on lead object; will be read on save
+                  if (value === 'none') {
+                    lead.Assegnatario = [] as any;
+                  } else {
+                    lead.Assegnatario = [value] as any;
+                  }
+                }}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Seleziona assegnatario" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Non assegnato</SelectItem>
+                  {usersData &&
+                    Object.entries(usersData).map(([id, u]: any) => (
+                      <SelectItem key={id} value={id}>
+                        {u.nome}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={editSaving}>
+              Annulla
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  setEditSaving(true);
+                  const payload: any = {
+                    Stato: lead.Stato,
+                    Assegnatario: lead.Assegnatario || [],
+                  };
+                  const ok = await updateLead(payload);
+                  if (ok) {
+                    toast.success('Lead aggiornato');
+                    setShowEditDialog(false);
+                  } else {
+                    toast.error('Errore durante l\'aggiornamento');
+                  }
+                } finally {
+                  setEditSaving(false);
+                }
+              }}
+              disabled={editSaving}
+            >
+              {editSaving ? 'Salvataggio…' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog eliminazione */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
