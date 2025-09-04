@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAirtableKey, getAirtableBaseId, getAirtableActivitiesTableId } from '@/lib/api-keys-service';
+import { activitiesCache } from '@/lib/activities-cache';
 
 // Helper function to build Airtable filter for activities
 function buildAirtableFilter(searchParams: URLSearchParams): string {
@@ -109,17 +110,12 @@ async function fetchAllRecords(
 
     const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${currentParams.toString()}`;
 
-    console.log(
-      `📡 [Activities] Fetching records${offset ? ` (offset: ${offset.substring(0, 10)}...)` : ' (first page)'}`
-    );
-    console.log(`🔗 URL: ${airtableUrl}`);
-
     const response = await fetch(airtableUrl, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      cache: 'no-store',
+      next: { revalidate: 120 },
     });
 
     if (!response.ok) {
@@ -192,10 +188,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`🔧 [Activities API] Request parameters:`, {
       loadAll: loadAll,
-      loadAllParam: searchParams.get('loadAll'),
       url: request.url,
-      baseId: baseId.substring(0, 6) + '...',
-      tableId: tableId.substring(0, 6) + '...',
     });
 
     // Build base query parameters (without pagination)
@@ -217,23 +210,24 @@ export async function GET(request: NextRequest) {
     // regardless of any view filters that might be applied in Airtable UI
 
     if (loadAll) {
-      // Fetch ALL records using recursive pagination
-      console.log('🔄 [Activities] Loading ALL activities from Airtable...');
+      // Cache key (avoid offset)
+      const cacheKey = activitiesCache.generateKey(searchParams);
+      const cached = activitiesCache.get(cacheKey);
+      if (cached) {
+        return NextResponse.json({ records: cached, offset: undefined, fromCache: true });
+      }
+
       const allRecords = await fetchAllRecords(apiKey, baseId, tableId, baseParams);
 
-      // Transform the data to match our ActivityData interface
-      const transformedData = {
-        records: allRecords.map((record: any) => ({
-          id: record.id,
-          createdTime: record.createdTime,
-          ...record.fields,
-        })),
-        // No offset since we loaded everything
-        offset: undefined,
-      };
+      // Transform and cache
+      const transformedRecords = allRecords.map((record: any) => ({
+        id: record.id,
+        createdTime: record.createdTime,
+        ...record.fields,
+      }));
+      activitiesCache.set(cacheKey, transformedRecords);
 
-      console.log(`✅ [Activities] Loaded ${allRecords.length} activities total`);
-      return NextResponse.json(transformedData);
+      return NextResponse.json({ records: transformedRecords, offset: undefined, fromCache: false });
     } else {
       // Standard paginated request
       const maxRecords = searchParams.get('maxRecords') || '25';
@@ -247,14 +241,22 @@ export async function GET(request: NextRequest) {
       // Call Airtable API
       const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${baseParams}`;
 
-      console.log(`📡 [Activities] Fetching from: ${airtableUrl}`);
+      // Cache only first page (no offset)
+      const isFirstPage = !searchParams.get('offset');
+      if (isFirstPage) {
+        const cacheKey = activitiesCache.generateKey(searchParams);
+        const cached = activitiesCache.get(cacheKey);
+        if (cached) {
+          return NextResponse.json({ records: cached, offset: undefined, fromCache: true });
+        }
+      }
 
       const response = await fetch(airtableUrl, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        cache: 'no-store',
+        next: { revalidate: 120 },
       });
 
       if (!response.ok) {
@@ -278,7 +280,12 @@ export async function GET(request: NextRequest) {
         })),
       };
 
-      console.log(`📦 [Activities] Retrieved ${data.records.length} activities`);
+      // Cache first page
+      if (!searchParams.get('offset')) {
+        const cacheKey = activitiesCache.generateKey(searchParams);
+        activitiesCache.set(cacheKey, transformedData.records);
+      }
+
       return NextResponse.json(transformedData);
     }
   } catch (error) {
@@ -376,7 +383,9 @@ export async function POST(request: NextRequest) {
       ...created.fields,
     };
 
-    console.log('✅ [Activities] Created activity:', transformed.id);
+    // Invalidate cache after mutation
+    activitiesCache.clear();
+
     return NextResponse.json({ success: true, activity: transformed });
   } catch (error) {
     console.error('❌ [Activities] Error creating activity:', error);
