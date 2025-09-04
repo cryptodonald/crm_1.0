@@ -1,13 +1,27 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AvatarLead } from '@/components/ui/avatar-lead';
-import { Phone, Mail, ArrowLeft, Trash2, Pencil } from 'lucide-react';
+import { Phone, Mail, ArrowLeft, Trash2, Pencil, ChevronDown, Check, User as UserIcon } from 'lucide-react';
 import { LeadData, LeadFormData, LeadStato, LeadProvenienza } from '@/types/leads';
 import { cn } from '@/lib/utils';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 
 interface UsersLookup {
   [userId: string]: {
@@ -66,8 +80,14 @@ export function LeadDetailHeader({
   onEmail,
   onUpdate,
 }: HeaderProps) {
+  const [assigneeOpen, setAssigneeOpen] = useState(false);
   const assegnatarioId = lead.Assegnatario?.[0];
   const assegnatarioName = assegnatarioId && usersData ? usersData[assegnatarioId]?.nome : undefined;
+
+  const usersArray = useMemo(() => {
+    if (!usersData) return [] as Array<{ id: string; nome: string; ruolo: string }>;
+    return Object.entries(usersData).map(([id, u]) => ({ id, nome: u.nome, ruolo: u.ruolo }));
+  }, [usersData]);
 
   return (
     <Card className="p-4 md:p-6">
@@ -133,21 +153,79 @@ export function LeadDetailHeader({
                 </SelectContent>
               </Select>
 
-              {/* Assegnatario */}
-              <Select
-                value={assegnatarioId || 'none'}
-                onValueChange={(value) => onUpdate({ Assegnatario: value === 'none' ? [] : [value] })}
-              >
-                <SelectTrigger className="h-7 w-auto min-w-[200px]">
-                  <SelectValue placeholder={assegnatarioName || 'Non assegnato'} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="none" value="none">Non assegnato</SelectItem>
-                  {usersData && Object.entries(usersData).map(([id, u]) => (
-                    <SelectItem key={id} value={id}>{u.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Assegnatario (stile dialog nuovo lead - Step 2) */}
+              <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="h-7 w-auto min-w-[220px] justify-between">
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="h-4 w-4 text-muted-foreground" />
+                      {assegnatarioName ? (
+                        <span className="truncate">{assegnatarioName}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Non assegnato</span>
+                      )}
+                    </div>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Cerca utente..." />
+                    <CommandList>
+                      <CommandEmpty>Nessun utente trovato.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          key="none"
+                          onSelect={() => {
+                            onUpdate({ Assegnatario: [] });
+                            setAssigneeOpen(false);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3 w-full">
+                            <AvatarLead nome="Non assegnato" size="md" showTooltip={false} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm truncate">Non assegnato</span>
+                              </div>
+                            </div>
+                            <Check className={cn(
+                              'h-4 w-4 flex-shrink-0',
+                              !assegnatarioId ? 'opacity-100' : 'opacity-0'
+                            )} />
+                          </div>
+                        </CommandItem>
+                        {usersArray.map((user) => (
+                          <CommandItem
+                            key={user.id}
+                            onSelect={() => {
+                              onUpdate({ Assegnatario: [user.id] });
+                              setAssigneeOpen(false);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 w-full">
+                              <div className="flex-shrink-0">
+                                <AvatarLead nome={user.nome} size="md" showTooltip={false} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm truncate">{user.nome}</span>
+                                  <Badge variant="outline" className="text-[10px]">{user.ruolo}</Badge>
+                                </div>
+                              </div>
+                              <Check className={cn(
+                                'h-4 w-4 flex-shrink-0',
+                                assegnatarioId === user.id ? 'opacity-100' : 'opacity-0'
+                              )} />
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </div>
