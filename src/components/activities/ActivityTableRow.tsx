@@ -102,18 +102,18 @@ export function ActivityTableRow({
   return (
     <tr className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}>
       {/* Checkbox */}
-      <td className=\"px-4 py-4\">
+      <td className="px-4 py-4">
         <input
-          type=\"checkbox\"
+          type="checkbox"
           checked={isSelected}
           onChange={onSelect}
-          className=\"rounded border-gray-300 text-blue-600 focus:ring-blue-500\"
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
       </td>
 
       {/* Cliente Column */}
       {visibleColumns.includes('cliente') && (
-        <td className=\"px-4 py-4\">
+        <td className="px-4 py-4">
           <ClientCell 
             client={clientData}
             showAvatar={true}
@@ -125,7 +125,7 @@ export function ActivityTableRow({
 
       {/* Data Column */}
       {visibleColumns.includes('data') && (
-        <td className=\"px-4 py-4\">
+        <td className="px-4 py-4">
           <DateCell 
             date={dateData}
             showTime={true}
@@ -136,7 +136,7 @@ export function ActivityTableRow({
 
       {/* Obiettivi Column */}
       {visibleColumns.includes('obiettivi') && (
-        <td className=\"px-4 py-4\">
+        <td className="px-4 py-4">
           <BadgeCell 
             badges={objectivesBadges}
             maxVisible={2}
@@ -146,7 +146,7 @@ export function ActivityTableRow({
 
       {/* Assegnatario Column */}
       {visibleColumns.includes('assegnatario') && (
-        <td className=\"px-4 py-4\">
+        <td className="px-4 py-4">
           <AssigneeCell 
             assignee={assigneeData}
             showRole={true}
@@ -156,7 +156,7 @@ export function ActivityTableRow({
 
       {/* Follow-up Column */}
       {visibleColumns.includes('followup') && (
-        <td className=\"px-4 py-4\">
+        <td className="px-4 py-4">
           <FollowUpCell 
             followUp={followUpData}
           />
@@ -165,7 +165,7 @@ export function ActivityTableRow({
 
       {/* Documenti Column */}
       {visibleColumns.includes('documenti') && (
-        <td className=\"px-4 py-4\">
+        <td className="px-4 py-4">
           <DocumentCell 
             document={documentData}
             maxPreviewLength={50}
@@ -174,7 +174,7 @@ export function ActivityTableRow({
       )}
 
       {/* Actions */}
-      <td className=\"px-4 py-4\">
+      <td className="px-4 py-4">
         <ActionDropdown actions={actions} />
       </td>
     </tr>

@@ -25,17 +25,17 @@ export function FollowUpCell({ followUp }: FollowUpCellProps) {
 
   if (!nextAction && !nextDate) {
     return (
-      <div className=\"text-gray-400 text-sm\">
+      <div className="text-gray-400 text-sm">
         Nessun follow-up
       </div>
     );
   }
 
   return (
-    <div className=\"space-y-2\">
+    <div className="space-y-2">
       {/* Next Date */}
       {nextDate && (
-        <div className=\"text-sm text-gray-900\">
+        <div className="text-sm text-gray-900">
           {formatDate(nextDate, { 
             includeTime: true,
             format: 'dd/MM/yyyy HH:mm'
@@ -45,13 +45,13 @@ export function FollowUpCell({ followUp }: FollowUpCellProps) {
 
       {/* Next Action Badge */}
       {nextAction && nextAction !== ActivityNextAction.NESSUNA && (
-        <div className=\"inline-flex items-center\">
+        <div className="inline-flex items-center">
           <span 
             className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
               NextActionConfig[nextAction]?.color || 'bg-gray-100 text-gray-800'
             }`}
           >
-            <span className=\"mr-1\">
+            <span className="mr-1">
               {NextActionConfig[nextAction]?.icon}
             </span>
             {nextAction}
@@ -61,9 +61,9 @@ export function FollowUpCell({ followUp }: FollowUpCellProps) {
 
       {/* No Action Badge */}
       {nextAction === ActivityNextAction.NESSUNA && (
-        <div className=\"inline-flex items-center\">
-          <span className=\"inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800\">
-            <span className=\"mr-1\">✖️</span>
+        <div className="inline-flex items-center">
+          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+            <span className="mr-1">✖️</span>
             Nessuna
           </span>
         </div>
