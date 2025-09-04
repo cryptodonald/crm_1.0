@@ -141,10 +141,23 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
       // Parse address components
       const parsedAddress = parseAddressComponents(details.addressComponents);
       
-      // Populate form fields
-      setValue('Indirizzo', details.formattedAddress);
-      setAddressQuery(details.formattedAddress);
-      setLastSelectedAddress(details.formattedAddress); // Traccia l'ultimo indirizzo selezionato
+      // Extract only street name and number for the address field
+      let streetAddress = '';
+      if (parsedAddress.route && parsedAddress.streetNumber) {
+        // Combine route (street name) and street number
+        streetAddress = `${parsedAddress.route}, ${parsedAddress.streetNumber}`;
+      } else if (parsedAddress.route) {
+        // Only street name available
+        streetAddress = parsedAddress.route;
+      } else {
+        // Fallback: use only the first part of the formatted address (usually the street)
+        streetAddress = details.formattedAddress.split(',')[0]?.trim() || details.formattedAddress;
+      }
+      
+      // Populate form fields with street address only (not full formatted address)
+      setValue('Indirizzo', streetAddress);
+      setAddressQuery(streetAddress);
+      setLastSelectedAddress(streetAddress); // Traccia l'ultimo indirizzo selezionato
       
       if (parsedAddress.zipCode) {
         setValue('CAP', parseInt(parsedAddress.zipCode));
@@ -156,10 +169,11 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
 
     } catch (error) {
       console.error('Error getting place details:', error);
-      // Fallback: use only the suggestion description
-      setValue('Indirizzo', suggestion.description);
-      setAddressQuery(suggestion.description);
-      setLastSelectedAddress(suggestion.description);
+      // Fallback: use only the first part of the suggestion (usually the street)
+      const fallbackAddress = suggestion.description.split(',')[0]?.trim() || suggestion.description;
+      setValue('Indirizzo', fallbackAddress);
+      setAddressQuery(fallbackAddress);
+      setLastSelectedAddress(fallbackAddress);
     } finally {
       // Reset il flag dopo aver completato la selezione
       setTimeout(() => setIsSelectingFromGooglePlaces(false), 100);

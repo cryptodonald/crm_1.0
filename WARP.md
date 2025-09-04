@@ -1,6 +1,11 @@
 # WARP.md — Operational Rules
 > Fonte: docs/index.yaml (version 1) — generato automaticamente
 
+### 0ter) Onboarding repo (all’avvio)
+- Leggi `AGENT_README.md`.
+- Leggi `docs/index.yaml` e poi i file in `priority`.
+- Applica `WARP.md` come estratto operativo locale (override dove specificato).
+- **Ignora** `docs/source/` e qualunque cartella che inizi con `_`.
 
 ## Sicurezza & Anti-allucinazioni
 

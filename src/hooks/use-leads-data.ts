@@ -193,9 +193,57 @@ export function useLeadsData({
   };
 
   // Refresh manuale
-  const refresh = () => {
+  const refresh = (forceRefresh = false) => {
     setOffset(undefined);
-    fetchLeads(true);
+    
+    if (forceRefresh) {
+      // Force refresh: bypassa la cache facendo una chiamata diretta con parametro cache-busting
+      const forceRefreshFetch = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+
+          // Costruisci parametri con force refresh
+          const queryParams = buildQueryParams(
+            filters,
+            loadAll,
+            loadAll ? undefined : pageSize,
+            undefined, // no offset per force refresh
+            sortField,
+            sortDirection
+          );
+          
+          // Aggiungi parametro per bypassare cache
+          queryParams.set('_forceRefresh', Date.now().toString());
+
+          const response = await fetch(`/api/leads?${queryParams.toString()}`);
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          const mappedLeads = data.records || [];
+          
+          console.log('🔄 [FORCE REFRESH] Received fresh data:', mappedLeads.length, 'leads');
+          
+          setLeads(mappedLeads);
+          setTotalCount(mappedLeads.length);
+          setHasMore(false);
+          setOffset(undefined);
+        } catch (err) {
+          console.error('Errore nel force refresh:', err);
+          setError(err instanceof Error ? err.message : 'Errore sconosciuto');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      forceRefreshFetch();
+    } else {
+      fetchLeads(true);
+    }
   };
 
   return {

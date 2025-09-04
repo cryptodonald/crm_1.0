@@ -88,16 +88,20 @@ const formatName = (name: string): string => {
 const formatPhone = (phone: string): string => {
   if (!phone) return phone;
   
-  // Remove all non-digit characters
+  const original = phone.trim();
+  
+  // Remove all non-digit characters for processing
   const cleaned = phone.replace(/[^\d]/g, '');
   
-  // Remove +39 prefix if present and return only the number
-  if (cleaned.startsWith('39') && cleaned.length > 2) {
-    return cleaned.substring(2); // Remove '39' prefix
-  } else if (cleaned.startsWith('3')) {
-    return cleaned; // Already without prefix
+  // Only remove international prefix if the original had '+39' or '0039' prefix
+  // This prevents removing '39' from numbers like '3923511538' which is a valid Italian mobile
+  if (original.startsWith('+39') && cleaned.startsWith('39') && cleaned.length > 2) {
+    return cleaned.substring(2); // Remove '39' prefix from '+39xxxxxxxxx'
+  } else if (original.startsWith('0039') && cleaned.startsWith('0039') && cleaned.length > 4) {
+    return cleaned.substring(4); // Remove '0039' prefix from '0039xxxxxxxxx'
   }
   
+  // For all other cases (including '39xxxxxxxx' without + prefix), return as-is
   return cleaned;
 };
 

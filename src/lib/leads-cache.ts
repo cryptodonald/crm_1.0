@@ -54,6 +54,7 @@ class LeadsCache {
     const relevantParams = new URLSearchParams();
     
     // Solo i parametri che cambiano il dataset da Airtable
+    // Escludiamo _forceRefresh perché è solo un cache-busting parameter
     const filterParams = ['stato', 'provenienza', 'dataInizio', 'dataFine', 'citta', 'sortField', 'sortDirection'];
     
     for (const param of filterParams) {

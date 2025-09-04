@@ -79,7 +79,7 @@ export default function LeadsPage() {
   const error = leadsError;
 
   const refresh = () => {
-    refreshLeads();
+    refreshLeads(true); // Forza il refresh bypassando la cache
   };
 
   // Handle create new lead

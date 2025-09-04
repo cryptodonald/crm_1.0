@@ -52,11 +52,19 @@ export async function GET(
       const errorText = await response.text();
       console.error(`❌ Airtable API error: ${response.status} - ${errorText}`);
       
-      if (response.status === 404) {
-        return NextResponse.json(
-          { error: 'Lead not found' },
-          { status: 404 }
-        );
+      // Airtable può restituire 403 per record non esistenti o inaccessibili
+      if (response.status === 404 || response.status === 403) {
+        // Controlla se l'errore indica che il modello/record non è stato trovato
+        const is404Error = response.status === 404 || 
+          errorText.includes('INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND') ||
+          errorText.includes('model was not found');
+          
+        if (is404Error) {
+          return NextResponse.json(
+            { error: 'Lead not found' },
+            { status: 404 }
+          );
+        }
       }
       
       return NextResponse.json(
@@ -168,11 +176,19 @@ export async function PUT(
       const errorText = await response.text();
       console.error(`❌ Airtable update error: ${response.status} - ${errorText}`);
       
-      if (response.status === 404) {
-        return NextResponse.json(
-          { error: 'Lead not found' },
-          { status: 404 }
-        );
+      // Airtable può restituire 403 per record non esistenti o inaccessibili
+      if (response.status === 404 || response.status === 403) {
+        // Controlla se l'errore indica che il modello/record non è stato trovato
+        const is404Error = response.status === 404 || 
+          errorText.includes('INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND') ||
+          errorText.includes('model was not found');
+          
+        if (is404Error) {
+          return NextResponse.json(
+            { error: 'Lead not found' },
+            { status: 404 }
+          );
+        }
       }
       
       return NextResponse.json(
@@ -257,11 +273,19 @@ export async function DELETE(
       const errorText = await response.text();
       console.error(`❌ Airtable delete error: ${response.status} - ${errorText}`);
       
-      if (response.status === 404) {
-        return NextResponse.json(
-          { error: 'Lead not found' },
-          { status: 404 }
-        );
+      // Airtable può restituire 403 per record non esistenti o inaccessibili
+      if (response.status === 404 || response.status === 403) {
+        // Controlla se l'errore indica che il modello/record non è stato trovato
+        const is404Error = response.status === 404 || 
+          errorText.includes('INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND') ||
+          errorText.includes('model was not found');
+          
+        if (is404Error) {
+          return NextResponse.json(
+            { error: 'Lead not found' },
+            { status: 404 }
+          );
+        }
       }
       
       return NextResponse.json(

@@ -290,19 +290,30 @@ export async function GET(request: NextRequest) {
     // regardless of any view filters that might be applied in Airtable UI
 
     if (loadAll) {
-      // Genera chiave cache basata sui parametri
-      const cacheKey = leadsCache.generateKey(searchParams);
+      // Controlla se è richiesto un force refresh (bypass cache)
+      const forceRefresh = searchParams.get('_forceRefresh');
       
-      // Controlla cache prima
-      const cachedData = leadsCache.get(cacheKey);
-      if (cachedData) {
-        console.log(`🚀 [CACHE HIT] Serving ${cachedData.length} leads from cache`);
-        const transformedData = {
-          records: cachedData,
-          offset: undefined,
-          fromCache: true, // Flag per debug
-        };
-        return NextResponse.json(transformedData);
+      let cachedData = null;
+      let cacheKey = '';
+      
+      if (!forceRefresh) {
+        // Genera chiave cache basata sui parametri
+        cacheKey = leadsCache.generateKey(searchParams);
+        
+        // Controlla cache prima
+        cachedData = leadsCache.get(cacheKey);
+        if (cachedData) {
+          console.log(`🚀 [CACHE HIT] Serving ${cachedData.length} leads from cache`);
+          const transformedData = {
+            records: cachedData,
+            offset: undefined,
+            fromCache: true, // Flag per debug
+          };
+          return NextResponse.json(transformedData);
+        }
+      } else {
+        console.log(`🔄 [FORCE REFRESH] Bypassing cache and fetching fresh data from Airtable`);
+        cacheKey = leadsCache.generateKey(searchParams);
       }
       
       console.log(`💾 [CACHE MISS] Fetching from Airtable...`);
