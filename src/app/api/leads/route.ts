@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAirtableKey } from '@/lib/api-keys-service';
+import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
 import { leadsCache } from '@/lib/leads-cache';
 import { LeadFormData } from '@/types/leads';
-
-const AIRTABLE_BASE_ID = 'app359c17lK0Ta8Ws';
-const LEADS_TABLE_ID = 'tblKIZ9CDjcQorONA';
 
 // Helper function to build Airtable filter
 function buildAirtableFilter(searchParams: URLSearchParams): string {
@@ -69,6 +66,8 @@ function buildAirtableFilter(searchParams: URLSearchParams): string {
 // Copied from working CRM original implementation
 async function fetchAllRecords(
   apiKey: string,
+  baseId: string,
+  tableId: string,
   baseParams: URLSearchParams
 ): Promise<any[]> {
   let offset: string | undefined;
@@ -82,7 +81,7 @@ async function fetchAllRecords(
       currentParams.set('offset', offset);
     }
 
-    const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${LEADS_TABLE_ID}?${currentParams.toString()}`;
+    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${currentParams.toString()}`;
 
     console.log(
       `📡 Fetching records${offset ? ` (offset: ${offset.substring(0, 10)}...)` : ' (first page)'}`
@@ -159,11 +158,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Get Airtable API key
-    const apiKey = await getAirtableKey();
-    if (!apiKey) {
+    // Get Airtable credentials
+    const [apiKey, baseId, tableId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+      getAirtableLeadsTableId(),
+    ]);
+    if (!apiKey || !baseId || !tableId) {
       return NextResponse.json(
-        { error: 'Airtable API key not available' },
+        { error: 'Airtable credentials not available' },
         { status: 500 }
       );
     }
@@ -184,7 +187,7 @@ export async function DELETE(request: NextRequest) {
       try {
         // Costruisci URL con query params per ogni ID
         const deleteParams = batch.map((id) => `records[]=${encodeURIComponent(id)}`).join('&');
-        const deleteUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${LEADS_TABLE_ID}?${deleteParams}`;
+        const deleteUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${deleteParams}`;
 
         console.log(`🔄 Deleting batch of ${batch.length} records...`);
         
@@ -246,11 +249,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    // Get Airtable API key
-    const apiKey = await getAirtableKey();
-    if (!apiKey) {
+    // Get Airtable credentials
+    const [apiKey, baseId, tableId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+      getAirtableLeadsTableId(),
+    ]);
+    if (!apiKey || !baseId || !tableId) {
       return NextResponse.json(
-        { error: 'Airtable API key not available' },
+        { error: 'Airtable credentials not available' },
         { status: 500 }
       );
     }
@@ -301,7 +308,7 @@ export async function GET(request: NextRequest) {
       console.log(`💾 [CACHE MISS] Fetching from Airtable...`);
       // Fetch ALL records using recursive pagination
       console.log('🔄 Loading ALL leads from Airtable...');
-      const allRecords = await fetchAllRecords(apiKey, baseParams);
+      const allRecords = await fetchAllRecords(apiKey, baseId, tableId, baseParams);
 
       // Transform the data to match our LeadData interface
       const transformedRecords = allRecords.map((record: any) => ({
@@ -332,7 +339,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Call Airtable API
-      const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${LEADS_TABLE_ID}?${baseParams}`;
+      const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${baseParams}`;
 
       const response = await fetch(airtableUrl, {
         headers: {
@@ -402,11 +409,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Airtable API key
-    const apiKey = await getAirtableKey();
-    if (!apiKey) {
+    // Get Airtable credentials
+    const [apiKey, baseId, tableId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+      getAirtableLeadsTableId(),
+    ]);
+    if (!apiKey || !baseId || !tableId) {
       return NextResponse.json(
-        { error: 'Airtable API key not available' },
+        { error: 'Airtable credentials not available' },
         { status: 500 }
       );
     }
@@ -462,7 +473,7 @@ export async function POST(request: NextRequest) {
     console.log('📤 [CREATE LEAD] Sending to Airtable:', airtableData);
 
     // Chiamata API Airtable per creare il record
-    const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${LEADS_TABLE_ID}`;
+    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}`;
     
     const response = await fetch(airtableUrl, {
       method: 'POST',

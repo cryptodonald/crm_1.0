@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAirtableKey } from '@/lib/api-keys-service';
+import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
 import { leadsCache } from '@/lib/leads-cache';
 import { LeadFormData } from '@/types/leads';
-
-const AIRTABLE_BASE_ID = 'app359c17lK0Ta8Ws';
-const LEADS_TABLE_ID = 'tblKIZ9CDjcQorONA';
 
 /**
  * GET /api/leads/[id] - Get single lead by ID
@@ -13,8 +10,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { id } = await params;
   try {
-    const leadId = params.id;
+    const leadId = id;
     
     if (!leadId) {
       return NextResponse.json(
@@ -23,11 +21,15 @@ export async function GET(
       );
     }
 
-    // Get Airtable API key
-    const apiKey = await getAirtableKey();
-    if (!apiKey) {
+    // Get Airtable credentials
+    const [apiKey, baseId, tableId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+      getAirtableLeadsTableId(),
+    ]);
+    if (!apiKey || !baseId || !tableId) {
       return NextResponse.json(
-        { error: 'Airtable API key not available' },
+        { error: 'Airtable credentials not available' },
         { status: 500 }
       );
     }
@@ -35,7 +37,7 @@ export async function GET(
     console.log(`🔍 [GET LEAD] Fetching lead: ${leadId}`);
 
     // Call Airtable API to get single record
-    const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${LEADS_TABLE_ID}/${leadId}`;
+    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
     
     const response = await fetch(airtableUrl, {
       headers: {
@@ -94,8 +96,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { id } = await params;
   try {
-    const leadId = params.id;
+    const leadId = id;
     const body: Partial<LeadFormData> = await request.json();
     
     if (!leadId) {
@@ -107,11 +110,15 @@ export async function PUT(
 
     console.log('🔄 [UPDATE LEAD] Received data:', { leadId, body });
 
-    // Get Airtable API key
-    const apiKey = await getAirtableKey();
-    if (!apiKey) {
+    // Get Airtable credentials
+    const [apiKey, baseId, tableId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+      getAirtableLeadsTableId(),
+    ]);
+    if (!apiKey || !baseId || !tableId) {
       return NextResponse.json(
-        { error: 'Airtable API key not available' },
+        { error: 'Airtable credentials not available' },
         { status: 500 }
       );
     }
@@ -139,7 +146,7 @@ export async function PUT(
     console.log('📤 [UPDATE LEAD] Sending to Airtable:', airtableData);
 
     // Chiamata API Airtable per aggiornare il record
-    const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${LEADS_TABLE_ID}/${leadId}`;
+    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
     
     const response = await fetch(airtableUrl, {
       method: 'PATCH',
@@ -202,8 +209,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { id } = await params;
   try {
-    const leadId = params.id;
+    const leadId = id;
     
     if (!leadId) {
       return NextResponse.json(
@@ -212,11 +220,15 @@ export async function DELETE(
       );
     }
 
-    // Get Airtable API key
-    const apiKey = await getAirtableKey();
-    if (!apiKey) {
+    // Get Airtable credentials
+    const [apiKey, baseId, tableId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+      getAirtableLeadsTableId(),
+    ]);
+    if (!apiKey || !baseId || !tableId) {
       return NextResponse.json(
-        { error: 'Airtable API key not available' },
+        { error: 'Airtable credentials not available' },
         { status: 500 }
       );
     }
@@ -224,7 +236,7 @@ export async function DELETE(
     console.log(`🗑️ [DELETE LEAD] Attempting to delete lead: ${leadId}`);
 
     // Chiamata API Airtable per eliminare il record
-    const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${LEADS_TABLE_ID}/${leadId}`;
+    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
     
     const response = await fetch(airtableUrl, {
       method: 'DELETE',
