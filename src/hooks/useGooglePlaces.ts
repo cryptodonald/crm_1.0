@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { debounce } from 'lodash';
 
 export interface PlaceResult {
@@ -40,7 +40,7 @@ class GooglePlacesService {
 
   private async loadGoogleMapsAPI(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (typeof window !== 'undefined' && window.google?.maps) {
+      if (typeof window !== 'undefined' && (window as any).google?.maps) {
         this.initializeServices();
         resolve();
         return;
@@ -52,7 +52,7 @@ class GooglePlacesService {
       script.defer = true;
       
       script.onload = () => {
-        if (window.google?.maps) {
+        if ((window as any).google?.maps) {
           this.initializeServices();
           resolve();
         } else {
@@ -69,11 +69,11 @@ class GooglePlacesService {
   }
 
   private initializeServices(): void {
-    if (window.google?.maps) {
+    if ((window as any).google?.maps) {
       // Create a dummy div for the PlacesService (it needs a map or div)
       const dummyDiv = document.createElement('div');
-      this.placesService = new window.google.maps.places.PlacesService(dummyDiv);
-      this.autocompleteService = new window.google.maps.places.AutocompleteService();
+      this.placesService = new (window as any).google.maps.places.PlacesService(dummyDiv);
+      this.autocompleteService = new (window as any).google.maps.places.AutocompleteService();
     }
   }
 
@@ -94,8 +94,9 @@ class GooglePlacesService {
           types: ['address'],
         },
         (predictions, status) => {
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-            const results: PlaceResult[] = predictions.map(prediction => ({
+          const maps = (window as any).google?.maps;
+          if (maps && status === maps.places.PlacesServiceStatus.OK && predictions) {
+            const results: PlaceResult[] = predictions.map((prediction: any) => ({
               placeId: prediction.place_id,
               description: prediction.description,
               structuredFormatting: {
@@ -104,7 +105,7 @@ class GooglePlacesService {
               },
             }));
             resolve(results);
-          } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+          } else if (maps && status === maps.places.PlacesServiceStatus.ZERO_RESULTS) {
             resolve([]);
           } else {
             reject(new Error(`Places API error: ${status}`));
@@ -128,10 +129,11 @@ class GooglePlacesService {
           fields: ['formatted_address', 'address_components'],
         },
         (place, status) => {
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
+          const maps = (window as any).google?.maps;
+          if (maps && status === maps.places.PlacesServiceStatus.OK && place) {
             const details: PlaceDetails = {
-              formattedAddress: place.formatted_address || '',
-              addressComponents: (place.address_components || []).map(component => ({
+              formattedAddress: (place as any).formatted_address || '',
+              addressComponents: ((place as any).address_components || []).map((component: any) => ({
                 longName: component.long_name,
                 shortName: component.short_name,
                 types: component.types,
@@ -155,16 +157,12 @@ class GooglePlacesService {
       } else if (component.types.includes('route')) {
         result.route = component.longName;
       } else if (component.types.includes('locality')) {
-        // Prima priorità: locality (es. Milano, Roma)
         result.city = component.longName;
       } else if (component.types.includes('administrative_area_level_3') && !result.city) {
-        // Seconda priorità: administrative_area_level_3 (es. comuni più piccoli)
         result.city = component.longName;
       } else if (component.types.includes('administrative_area_level_2') && !result.city) {
-        // Terza priorità: administrative_area_level_2 (es. province, ma a volte contiene città)
         result.city = component.longName;
       } else if (component.types.includes('sublocality') && !result.city) {
-        // Quarta priorità: sublocality (quartieri, ma a volte è la città più specifica)
         result.city = component.longName;
       } else if (component.types.includes('postal_code')) {
         result.zipCode = component.longName;
@@ -180,19 +178,16 @@ class GooglePlacesService {
 export function useGooglePlaces() {
   const [isSearching, setIsSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<PlaceResult[]>([]);
-  
 
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API;
-  
-  if (!apiKey) {
-    throw new Error('NEXT_PUBLIC_GOOGLE_MAPS_API environment variable is not set');
-  }
+  // Supporta entrambe le varianti del nome della env
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  const service = useMemo(() => new GooglePlacesService(apiKey), [apiKey]);
+  // Se manca la chiave, degrada in modo elegante: nessun autocomplete, nessun throw
+  const service = useMemo(() => (apiKey ? new GooglePlacesService(apiKey) : null), [apiKey]);
 
   const searchPlaces = useCallback(
     debounce(async (query: string) => {
-      if (!query.trim() || query.length < 3) {
+      if (!query.trim() || query.length < 3 || !service) {
         setSuggestions([]);
         setIsSearching(false);
         return;
@@ -214,13 +209,10 @@ export function useGooglePlaces() {
 
   const getPlaceDetails = useCallback(
     async (placeId: string): Promise<PlaceDetails> => {
-      try {
-        const details = await service.getPlaceDetails(placeId);
-        return details;
-      } catch (error) {
-        console.error('Error getting place details:', error);
-        throw error;
+      if (!service) {
+        throw new Error('Google Maps key not configured');
       }
+      return service.getPlaceDetails(placeId);
     },
     [service]
   );
