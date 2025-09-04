@@ -25,7 +25,8 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
 
   useEffect(() => {
     if (activity) {
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         titolo: activity.titolo,
         tipo: activity.tipo,
         stato: activity.stato,
@@ -33,13 +34,13 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
         data: activity.data.slice(0, 16), // Format for datetime-local
         durataStimata: activity.durataStimata,
         obiettivo: activity.obiettivo,
-        esito: activity.esito,
         idLead: activity.idLead[0] || '',
-        assegnatario: activity.assegnatario?.[0],
-        prossimaAzione: activity.prossimaAzione,
-        dataProssimaAzione: activity.dataProssimaAzione?.slice(0, 16),
-        note: activity.note
-      });
+        ...(activity.esito ? { esito: activity.esito } : {}),
+        ...(activity.assegnatario?.[0] ? { assegnatario: activity.assegnatario[0] } : {}),
+        ...(activity.prossimaAzione ? { prossimaAzione: activity.prossimaAzione } : {}),
+        ...(activity.dataProssimaAzione ? { dataProssimaAzione: activity.dataProssimaAzione.slice(0, 16) } : {}),
+        ...(activity.note ? { note: activity.note } : {})
+      }));
     }
   }, [activity]);
 
@@ -77,55 +78,78 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
   };
 
   const handleChange = (field: keyof ActivityFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+    setFormData(prev => {
+      const next: ActivityFormData = { ...prev };
+
+      const REQUIRED_FIELDS: (keyof ActivityFormData)[] = [
+        'tipo', 'stato', 'priorita', 'data', 'obiettivo', 'idLead'
+      ];
+
+      const isEmpty = value === '' || value === null || typeof value === 'undefined';
+
+      if (isEmpty) {
+        if (REQUIRED_FIELDS.includes(field)) {
+          // Per i campi required manteniamo il valore (può essere stringa vuota per input testo)
+          (next as any)[field] = value as any;
+        } else {
+          // Rimuove i campi opzionali quando vuoti, evitando proprietà presenti con undefined
+          delete (next as any)[field];
+        }
+      } else {
+        (next as any)[field] = value as any;
+      }
+
+      return next;
+    });
+
+    if (errors[field as string]) {
+      setErrors(prev => ({ ...prev, [field as string]: '' }));
     }
   };
 
   return (
-    <div className=\"fixed inset-0 z-50 overflow-y-auto\">
-      <div className=\"flex min-h-screen items-center justify-center p-4\">
-        <div className=\"fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity\" onClick={onClose}></div>
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
         
-        <div className=\"relative w-full max-w-2xl transform rounded-lg bg-white p-6 shadow-xl transition-all\">
-          <div className=\"flex items-center justify-between mb-6\">
-            <h2 className=\"text-xl font-semibold text-gray-900\">
+        <div className="relative w-full max-w-2xl transform rounded-lg bg-white p-6 shadow-xl transition-all">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">
               {activity ? 'Modifica Attività' : 'Nuova Attività'}
             </h2>
             <button
               onClick={onClose}
-              className=\"text-gray-400 hover:text-gray-600\"
+              className="text-gray-400 hover:text-gray-600"
             >
               ✕
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className=\"space-y-6\">
-            <div className=\"grid grid-cols-1 md:grid-cols-2 gap-6\">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Titolo */}
-              <div className=\"md:col-span-2\">
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Titolo
                 </label>
                 <input
-                  type=\"text\"
+                  type="text"
                   value={formData.titolo || ''}
                   onChange={(e) => handleChange('titolo', e.target.value)}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
-                  placeholder=\"Auto-generato se vuoto\"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Auto-generato se vuoto"
                 />
               </div>
 
               {/* Tipo */}
               <div>
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tipo *
                 </label>
                 <select
                   value={formData.tipo}
                   onChange={(e) => handleChange('tipo', e.target.value as ActivityType)}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {Object.values(ActivityType).map(type => (
                     <option key={type} value={type}>{type}</option>
@@ -135,13 +159,13 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
 
               {/* Stato */}
               <div>
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Stato *
                 </label>
                 <select
                   value={formData.stato}
                   onChange={(e) => handleChange('stato', e.target.value as ActivityStatus)}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {Object.values(ActivityStatus).map(status => (
                     <option key={status} value={status}>{status}</option>
@@ -151,13 +175,13 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
 
               {/* Priorità */}
               <div>
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Priorità *
                 </label>
                 <select
                   value={formData.priorita}
                   onChange={(e) => handleChange('priorita', e.target.value as ActivityPriority)}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {Object.values(ActivityPriority).map(priority => (
                     <option key={priority} value={priority}>{priority}</option>
@@ -167,11 +191,11 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
 
               {/* Data */}
               <div>
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Data e Ora *
                 </label>
                 <input
-                  type=\"datetime-local\"
+                  type="datetime-local"
                   value={formData.data}
                   onChange={(e) => handleChange('data', e.target.value)}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -179,38 +203,38 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
                   }`}
                 />
                 {errors.data && (
-                  <p className=\"text-red-500 text-sm mt-1\">{errors.data}</p>
+                  <p className="text-red-500 text-sm mt-1">{errors.data}</p>
                 )}
               </div>
 
               {/* Lead */}
-              <div className=\"md:col-span-2\">
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Lead *
                 </label>
                 <input
-                  type=\"text\"
+                  type="text"
                   value={formData.idLead}
                   onChange={(e) => handleChange('idLead', e.target.value)}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.idLead ? 'border-red-300' : 'border-gray-300'
                   }`}
-                  placeholder=\"Seleziona o inserisci ID Lead\"
+                  placeholder="Seleziona o inserisci ID Lead"
                 />
                 {errors.idLead && (
-                  <p className=\"text-red-500 text-sm mt-1\">{errors.idLead}</p>
+                  <p className="text-red-500 text-sm mt-1">{errors.idLead}</p>
                 )}
               </div>
 
               {/* Obiettivo */}
               <div>
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Obiettivo *
                 </label>
                 <select
                   value={formData.obiettivo}
                   onChange={(e) => handleChange('obiettivo', e.target.value as ActivityObjective)}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {Object.values(ActivityObjective).map(objective => (
                     <option key={objective} value={objective}>{objective}</option>
@@ -220,15 +244,15 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
 
               {/* Esito */}
               <div>
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Esito
                 </label>
                 <select
-                  value={formData.esito || ''}
-                  onChange={(e) => handleChange('esito', e.target.value as ActivityOutcome)}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
+                  value={formData.esito ?? ''}
+                  onChange={(e) => handleChange('esito', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value=\"\">Seleziona esito...</option>
+                  <option value="">Seleziona esito...</option>
                   {Object.values(ActivityOutcome).map(outcome => (
                     <option key={outcome} value={outcome}>{outcome}</option>
                   ))}
@@ -237,30 +261,37 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
 
               {/* Durata */}
               <div>
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Durata stimata (minuti)
                 </label>
                 <input
-                  type=\"number\"
+                  type="number"
                   value={formData.durataStimata ? Math.floor(formData.durataStimata / 60) : ''}
-                  onChange={(e) => handleChange('durataStimata', parseInt(e.target.value) * 60)}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
-                  min=\"0\"
-                  step=\"5\"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      handleChange('durataStimata', undefined);
+                    } else {
+                      handleChange('durataStimata', parseInt(val, 10) * 60);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                  step="5"
                 />
               </div>
 
               {/* Prossima Azione */}
               <div>
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Prossima Azione
                 </label>
                 <select
-                  value={formData.prossimaAzione || ''}
-                  onChange={(e) => handleChange('prossimaAzione', e.target.value as ActivityNextAction)}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
+                  value={formData.prossimaAzione ?? ''}
+                  onChange={(e) => handleChange('prossimaAzione', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value=\"\">Seleziona azione...</option>
+                  <option value="">Seleziona azione...</option>
                   {Object.values(ActivityNextAction).map(action => (
                     <option key={action} value={action}>{action}</option>
                   ))}
@@ -270,46 +301,46 @@ export function ActivityModal({ activity, onClose, onSave }: ActivityModalProps)
               {/* Data Prossima Azione */}
               {formData.prossimaAzione && formData.prossimaAzione !== ActivityNextAction.NESSUNA && (
                 <div>
-                  <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Data Prossima Azione
                   </label>
                   <input
-                    type=\"datetime-local\"
+                    type="datetime-local"
                     value={formData.dataProssimaAzione || ''}
                     onChange={(e) => handleChange('dataProssimaAzione', e.target.value)}
-                    className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               )}
 
               {/* Note */}
-              <div className=\"md:col-span-2\">
-                <label className=\"block text-sm font-medium text-gray-700 mb-2\">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Note
                 </label>
                 <textarea
                   value={formData.note || ''}
                   onChange={(e) => handleChange('note', e.target.value)}
                   rows={4}
-                  className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"
-                  placeholder=\"Aggiungi note per l'attività...\"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Aggiungi note per l'attività..."
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className=\"flex justify-end space-x-3 pt-6 border-t\">
+            <div className="flex justify-end space-x-3 pt-6 border-t">
               <button
-                type=\"button\"
+                type="button"
                 onClick={onClose}
-                className=\"px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500\"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
               >
                 Annulla
               </button>
               <button
-                type=\"submit\"
-                className=\"px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50\"
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 disabled={loading}
               >
                 {loading ? 'Salvando...' : activity ? 'Salva Modifiche' : 'Crea Attività'}
