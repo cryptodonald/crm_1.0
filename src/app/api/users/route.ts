@@ -37,6 +37,12 @@ async function fetchAllUsers(
   try {
     do {
       const url = new URL(`https://api.airtable.com/v0/${baseId}/${tableId}`);
+      // Limit fields to reduce payload and improve performance
+      url.searchParams.append('fields[]', 'Nome');
+      url.searchParams.append('fields[]', 'Email');
+      url.searchParams.append('fields[]', 'Ruolo');
+      url.searchParams.append('fields[]', 'Avatar');
+      url.searchParams.append('fields[]', 'Telefono');
 
       if (offset) {
         url.searchParams.append('offset', offset);
@@ -49,6 +55,7 @@ async function fetchAllUsers(
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
+        next: { revalidate: 300 },
       });
 
       if (!response.ok) {
