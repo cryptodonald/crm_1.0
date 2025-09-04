@@ -66,6 +66,13 @@ function buildAirtableFilter(searchParams: URLSearchParams): string {
     conditions.push(`SEARCH('${assegnatario.toLowerCase()}', LOWER(ARRAYJOIN({Nome Assegnatario}, ', ')))`);
   }
 
+  // Filtro per leadId (campo link "ID Lead")
+  const leadId = searchParams.get('leadId');
+  if (leadId) {
+    // Cerca l'ID record all'interno dell'array linkato
+    conditions.push(`SEARCH('${leadId}', ARRAYJOIN({ID Lead}, ', '))`);
+  }
+
   // Search globale
   const search = searchParams.get('search');
   if (search) {
@@ -278,6 +285,103 @@ export async function GET(request: NextRequest) {
     console.error('[Activities] Error fetching activities:', error);
     return NextResponse.json(
       { error: 'Failed to fetch activities' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/activities - Create a new activity linked to a Lead
+ * Body: { leadId: string; type: 'call'|'email'|'note'|'meeting'; title?: string; description?: string; date?: string }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const { leadId, type, title, description, date } = body as {
+      leadId?: string;
+      type?: 'call' | 'email' | 'note' | 'meeting';
+      title?: string;
+      description?: string;
+      date?: string; // ISO string
+    };
+
+    if (!leadId) {
+      return NextResponse.json({ error: 'leadId is required' }, { status: 400 });
+    }
+    if (!type) {
+      return NextResponse.json({ error: 'type is required' }, { status: 400 });
+    }
+
+    // Credenziali Airtable
+    const [apiKey, baseId, tableId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+      getAirtableActivitiesTableId(),
+    ]);
+
+    if (!apiKey || !baseId || !tableId) {
+      return NextResponse.json(
+        { error: 'Airtable credentials not available' },
+        { status: 500 }
+      );
+    }
+
+    // Mapping type (UI) -> Tipo (Airtable)
+    const tipoMap: Record<string, string> = {
+      call: 'Chiamata',
+      email: 'Email',
+      meeting: 'Consulenza',
+      note: 'Follow-up',
+    };
+    const airtableTipo = tipoMap[type] || 'Altro';
+
+    // Costruisci fields per Airtable
+    const fields: Record<string, any> = {
+      'ID Lead': [leadId],
+      Tipo: airtableTipo,
+    };
+
+    if (description && typeof description === 'string') {
+      fields['Note'] = description;
+    }
+
+    // Data attività: se arriva dal client, usa quella, altrimenti now
+    const when = date && typeof date === 'string' ? date : new Date().toISOString();
+    fields['Data'] = when;
+
+    // POST verso Airtable
+    const url = `https://api.airtable.com/v0/${baseId}/${tableId}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [Activities] Create error: ${response.status} - ${errorText}`);
+      return NextResponse.json(
+        { error: `Failed to create activity: ${response.status}` },
+        { status: response.status }
+      );
+    }
+
+    const created = await response.json();
+    const transformed = {
+      id: created.id,
+      createdTime: created.createdTime,
+      ...created.fields,
+    };
+
+    console.log('✅ [Activities] Created activity:', transformed.id);
+    return NextResponse.json({ success: true, activity: transformed });
+  } catch (error) {
+    console.error('❌ [Activities] Error creating activity:', error);
+    return NextResponse.json(
+      { error: 'Failed to create activity' },
       { status: 500 }
     );
   }

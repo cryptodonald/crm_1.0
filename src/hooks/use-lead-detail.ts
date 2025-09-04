@@ -165,55 +165,92 @@ export function useLeadActivity(leadId: string) {
   const [activities, setActivities] = useState<any[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
 
+  // Mapping tra etichette Airtable e tipi UI
+  const airtableTipoToUi: Record<string, 'call' | 'email' | 'note' | 'meeting'> = {
+    'Chiamata': 'call',
+    'Email': 'email',
+    'Consulenza': 'meeting',
+    'Follow-up': 'note',
+  };
+  const uiToAirtableTipo: Record<'call' | 'email' | 'note' | 'meeting', string> = {
+    call: 'Chiamata',
+    email: 'Email',
+    meeting: 'Consulenza',
+    note: 'Follow-up',
+  };
+
+  const mapApiRecordToActivity = (rec: any) => {
+    const fields = rec || {};
+    const tipo: string | undefined = fields['Tipo'];
+    const titolo: string | undefined = fields['Titolo'];
+    const note: string | undefined = fields['Note'];
+    const data: string | undefined = fields['Data'] || rec.createdTime;
+
+    return {
+      id: rec.id,
+      type: (tipo && airtableTipoToUi[tipo]) || 'note',
+      title: titolo || fields['Obiettivo'] || tipo || 'Attività',
+      description: note || '',
+      date: data,
+    };
+  };
+
+  const loadActivities = useCallback(async () => {
+    if (!leadId) return;
+    setLoadingActivities(true);
+    try {
+      const params = new URLSearchParams({
+        leadId,
+        sortField: 'Data',
+        sortDirection: 'desc',
+        maxRecords: '50',
+      });
+      const res = await fetch(`/api/activities?${params.toString()}`, { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      const records = (json.records || []).map((r: any) => ({ id: r.id, createdTime: r.createdTime, ...r.fields }));
+      const mapped = records.map(mapApiRecordToActivity);
+      setActivities(mapped);
+    } catch (e) {
+      console.error('❌ [useLeadActivity] Error loading activities:', e);
+      setActivities([]);
+    } finally {
+      setLoadingActivities(false);
+    }
+  }, [leadId]);
+
   const addActivity = useCallback(async (activity: {
     type: 'call' | 'email' | 'note' | 'meeting';
     title: string;
     description?: string;
     result?: string;
   }) => {
-    // TODO: Implementare chiamata API per aggiungere attività
-    console.log(`📝 [useLeadActivity] Adding activity for lead ${leadId}:`, activity);
-    
-    // Per ora aggiungiamo localmente - da sostituire con chiamata API reale
-    const newActivity = {
-      id: Date.now().toString(),
-      ...activity,
-      date: new Date().toISOString(),
-      leadId,
-    };
-    
-    setActivities(prev => [newActivity, ...prev]);
-    return true;
-  }, [leadId]);
-
-  const loadActivities = useCallback(async () => {
-    // TODO: Implementare caricamento attività reali da Airtable
-    setLoadingActivities(true);
-    
-    // Mock data per ora
-    const mockActivities = [
-      {
-        id: '1',
-        type: 'call',
-        title: 'Chiamata iniziale',
-        description: 'Primo contatto telefonico',
-        result: 'Interessato ai servizi, fissato appuntamento',
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: '2',
-        type: 'email',
-        title: 'Invio preventivo',
-        description: 'Inviato preventivo personalizzato',
-        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
-    
-    setTimeout(() => {
-      setActivities(mockActivities);
-      setLoadingActivities(false);
-    }, 500);
-  }, [leadId]);
+    try {
+      const payload = {
+        leadId,
+        type: activity.type,
+        title: activity.title,
+        description: activity.description,
+      };
+      const res = await fetch('/api/activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      // Ricarica elenco per coerenza
+      await loadActivities();
+      return true;
+    } catch (e) {
+      console.error('❌ [useLeadActivity] Error adding activity:', e);
+      return false;
+    }
+  }, [leadId, loadActivities]);
 
   useEffect(() => {
     if (leadId) {
