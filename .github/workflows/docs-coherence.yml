@@ -1,0 +1,28 @@
+name: docs-coherence
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Ensure deps (js-yaml)
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm init -y >/dev/null 2>&1 || true
+            npm i -D js-yaml
+          fi
+      - name: Regenerate docs
+        run: node scripts/generate-docs.mjs
+      - name: Verify derivatives in sync
+        run: |
+          git diff --exit-code README.md WARP.md
