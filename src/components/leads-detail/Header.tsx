@@ -89,6 +89,10 @@ export function LeadDetailHeader({
     return Object.entries(usersData).map(([id, u]) => ({ id, nome: u.nome, ruolo: u.ruolo }));
   }, [usersData]);
 
+  const selectedUser = useMemo(() => {
+    return usersArray.find((u) => u.id === assegnatarioId) || null;
+  }, [usersArray, assegnatarioId]);
+
   return (
     <Card className="p-4 md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -156,13 +160,23 @@ export function LeadDetailHeader({
               {/* Assegnatario (stile dialog nuovo lead - Step 2) */}
               <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="h-7 w-auto min-w-[220px] justify-between">
-                    <div className="flex items-center gap-2">
-                      <UserIcon className="h-4 w-4 text-muted-foreground" />
-                      {assegnatarioName ? (
-                        <span className="truncate">{assegnatarioName}</span>
+                  <Button variant="outline" role="combobox" className="h-9 w-auto min-w-[240px] justify-between px-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {selectedUser ? (
+                        <>
+                          <AvatarLead nome={selectedUser.nome} size="sm" showTooltip={false} />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className="truncate text-sm font-medium">{selectedUser.nome}</span>
+                              <Badge variant="outline" className="text-[10px] whitespace-nowrap">{selectedUser.ruolo}</Badge>
+                            </div>
+                          </div>
+                        </>
                       ) : (
-                        <span className="text-muted-foreground">Non assegnato</span>
+                        <>
+                          <UserIcon className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Non assegnato</span>
+                        </>
                       )}
                     </div>
                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
