@@ -138,6 +138,13 @@ export async function PUT(
     if (body.Note !== undefined) fieldsToUpdate.Note = body.Note.trim();
     if (body.Assegnatario !== undefined) fieldsToUpdate.Assegnatario = body.Assegnatario;
     if (body.Referenza !== undefined) fieldsToUpdate.Referenza = body.Referenza;
+    if (body.Allegati !== undefined && Array.isArray(body.Allegati)) {
+      // Airtable accetta array di oggetti con almeno { url, filename }
+      fieldsToUpdate.Allegati = body.Allegati.map((a: any) => ({
+        url: a.url,
+        filename: a.filename,
+      })).filter((a: any) => a.url);
+    }
 
     const airtableData = {
       fields: fieldsToUpdate,
