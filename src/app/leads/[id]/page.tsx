@@ -280,6 +280,16 @@ export default function LeadDetailPage() {
       <div className="flex-1 space-y-6 p-4 md:p-6">
         <PageBreadcrumb pageName={`Lead: ${lead.Nome || lead.ID}`} />
 
+        {/* Top actions outside header (align right like Leads page) */}
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Indietro
+          </Button>
+          <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+            <AlertTriangle className="mr-2 h-4 w-4" /> Elimina
+          </Button>
+        </div>
+
         {/* Header */}
         <LeadDetailHeader
           lead={lead}
