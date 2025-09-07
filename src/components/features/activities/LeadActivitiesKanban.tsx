@@ -294,39 +294,57 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
     >
       <Card className="border-none shadow-none bg-transparent">
         <CardContent className="p-3 sm:p-4">
-          {/* Header migliorato: Data di creazione, Tipo, Badge Stato e pulsante azioni */}
+          {/* Header: Tipo e Badge Stato con pulsante azioni in alto a destra */}
           <div className="flex items-start justify-between mb-2 sm:mb-3">
-            <div className="flex flex-col gap-1.5 sm:gap-2">
-              {/* Data di creazione sopra il tipo */}
-              <div className="flex items-center gap-1">
-                <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-400 dark:text-gray-500" />
-                <span className="text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                  Creato: {formatDate(activity.createdTime)}
-                </span>
-              </div>
-              
-              {/* Badge Tipo e Nome Lead */}
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                  {activity.Tipo}
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                {activity.Tipo}
+              </Badge>
+              {activity['Nome Lead'] && activity['Nome Lead'][0] && (
+                <Badge variant="outline" className="text-[10px] sm:text-xs hidden sm:inline-flex">
+                  {activity['Nome Lead'][0]}
                 </Badge>
-                {activity['Nome Lead'] && activity['Nome Lead'][0] && (
-                  <Badge variant="outline" className="text-[10px] sm:text-xs hidden sm:inline-flex">
-                    {activity['Nome Lead'][0]}
-                  </Badge>
-                )}
-                {activity.Data && (
-                  <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
-                    <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                    <span className="hidden sm:inline">{formatScheduledDate(activity.Data)}</span>
-                    <span className="sm:hidden">{new Date(activity.Data).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</span>
-                  </span>
-                )}
-              </div>
+              )}
             </div>
             
-            {/* Badge Stato posizionato in alto a destra */}
-            <div className="flex flex-col items-end gap-2">
+            {/* Pulsante azioni e Badge Stato in alto a destra */}
+            <div className="flex flex-col items-end gap-1 sm:gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-36">
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(activity);
+                    }}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Edit className="h-3 w-3" />
+                    Modifica
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(activity);
+                    }}
+                    className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Elimina
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
               {(() => {
                 const statusProps = getStatusBadgeProps(activity.Stato);
                 return (
@@ -338,51 +356,27 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
                   </Badge>
                 );
               })()}
-              
-              <div className="flex items-center gap-2">
-                {activity['Durata stimata'] && (
-                  <span className="px-2 py-1 text-xs bg-gray-800 text-white rounded dark:bg-gray-200 dark:text-gray-800">
-                    {activity['Durata stimata']}
-                  </span>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreHorizontal className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-36">
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(activity);
-                      }}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <Edit className="h-3 w-3" />
-                      Modifica
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(activity);
-                      }}
-                      className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Elimina
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
             </div>
           </div>
+
+          {/* Data programmata e Durata (sopra il titolo) */}
+          {(activity.Data || activity['Durata stimata']) && (
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
+              {activity.Data && (
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
+                  <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                  <span className="hidden sm:inline">{formatScheduledDate(activity.Data)}</span>
+                  <span className="sm:hidden">{new Date(activity.Data).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</span>
+                </span>
+              )}
+              {activity['Durata stimata'] && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-800 text-white rounded dark:bg-gray-200 dark:text-gray-800">
+                  <Clock className="w-2.5 h-2.5" />
+                  {activity['Durata stimata']}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Titolo principale */}
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 sm:text-base md:text-lg line-clamp-2">
@@ -483,17 +477,22 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
             </div>
           )}
 
-          {/* Ultima modifica (se presente e diversa dalla data creazione) */}
-          {activity['Ultima modifica'] && (
-            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-zinc-700 text-[9px] text-gray-400 dark:text-gray-500 sm:mt-3 sm:text-[10px]">
-              <span>Modificato: {formatDate(activity['Ultima modifica'])}</span>
-            </div>
-          )}
+          {/* Timestamp audit - data di creazione ripristinata qui */}
+          <div className="mt-3 pt-2 border-t border-gray-100 dark:border-zinc-700 text-[9px] text-gray-400 dark:text-gray-500 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2 sm:mt-4 sm:pt-3 sm:text-[10px]">
+            <span>Creato: {formatDate(activity.createdTime)}</span>
+            {activity['Ultima modifica'] && (
+              <>
+                <span className="hidden sm:inline">•</span>
+                <span>Modificato: {formatDate(activity['Ultima modifica'])}</span>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
     </KanbanItem>
   );
 };
+
 
 
 export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
