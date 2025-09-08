@@ -969,6 +969,7 @@ export function LeadsDataTable({
                           console.log('Reference clicked:', refId)
                         }
                         onNameClick={handleViewLead}
+                        router={router}
                       />
                     </TableCell>
                   )}

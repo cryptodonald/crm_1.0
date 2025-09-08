@@ -45,9 +45,10 @@ interface ClienteColumnProps {
   lead: LeadData;
   onReferenceClick?: (referenceId: string) => void;
   onNameClick?: (leadId: string) => void;
+  router?: any;
 }
 
-export function ClienteColumn({ lead, onReferenceClick, onNameClick }: ClienteColumnProps) {
+export function ClienteColumn({ lead, onReferenceClick, onNameClick, router }: ClienteColumnProps) {
   // Genera colore avatar dalla provenienza
   const getAvatarColor = (provenienza: LeadProvenienza): string => {
     const colors: Record<LeadProvenienza, string> = {
@@ -118,10 +119,13 @@ export function ClienteColumn({ lead, onReferenceClick, onNameClick }: ClienteCo
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('🔍 [DEBUG] Nome cliccato:', lead.id, lead.Nome);
-              console.log('🔍 [DEBUG] onNameClick function:', onNameClick);
-              alert(`Cliccato lead: ${lead.Nome} (ID: ${lead.id})`);
-              onNameClick?.(lead.id);
+              console.log('🚀 [ClienteColumn] Navigating to /leads/' + lead.id);
+              if (router) {
+                router.push(`/leads/${lead.id}`);
+              } else {
+                console.error('⚠️ Router not available, using callback');
+                onNameClick?.(lead.id);
+              }
             }}
           >
             {lead.Nome}
