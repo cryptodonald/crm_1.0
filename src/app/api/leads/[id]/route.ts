@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
 import { leadsCache } from '@/lib/leads-cache';
+import { getCachedLead, invalidateLeadCache } from '@/lib/cache';
+// import { fetchAirtableRecord } from '@/lib/airtable-batch'; // Temporaneamente disabilitato
+import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 import { LeadFormData } from '@/types/leads';
 
 /**
@@ -11,6 +14,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const { id } = await params;
+  const requestStart = performance.now();
+  
   try {
     const leadId = id;
     
@@ -21,77 +26,111 @@ export async function GET(
       );
     }
 
-    // Get Airtable credentials
-    const [apiKey, baseId, tableId] = await Promise.all([
-      getAirtableKey(),
-      getAirtableBaseId(),
-      getAirtableLeadsTableId(),
-    ]);
-    if (!apiKey || !baseId || !tableId) {
-      return NextResponse.json(
-        { error: 'Airtable credentials not available' },
-        { status: 500 }
-      );
-    }
+    console.log(`🔍 [GET LEAD] Starting fetch for: ${leadId}`);
 
-    console.log(`🔍 [GET LEAD] Fetching lead: ${leadId}`);
+    // 🚀 Usa batch processing ottimizzato con caching
+    const result = await getCachedLead(leadId, async () => {
+      const credentialsStart = performance.now();
+      
+      // Get Airtable credentials
+      const [apiKey, baseId, tableId] = await Promise.all([
+        getAirtableKey(),
+        getAirtableBaseId(), 
+        getAirtableLeadsTableId(),
+      ]);
+      
+      const credentialsTime = performance.now() - credentialsStart;
+      console.log(`🔑 [TIMING] Credentials fetch: ${credentialsTime.toFixed(2)}ms`);
+      
+      if (!apiKey || !baseId || !tableId) {
+        throw new Error('Airtable credentials not available');
+      }
 
-    // Call Airtable API to get single record
-    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
-    
-    const response = await fetch(airtableUrl, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      // Usa caching per 30 secondi per migliorare performance
-      next: { revalidate: 30 },
+      // 🔄 Usa chiamata diretta Airtable (più affidabile) con ottimizzazioni
+      const airtableStart = performance.now();
+      
+      // Call Airtable API direttamente senza limitazioni sui campi
+      const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
+      
+      const response = await fetch(airtableUrl, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip, deflate, br', // 🚀 Mantieni compressione
+        },
+      });
+
+      const airtableTime = performance.now() - airtableStart;
+      console.log(`🌐 [TIMING] Airtable API call: ${airtableTime.toFixed(2)}ms`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Airtable API error: ${response.status} - ${errorText}`);
+        
+        if (response.status === 404 || response.status === 403) {
+          const is404Error = response.status === 404 || 
+            errorText.includes('INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND') ||
+            errorText.includes('model was not found');
+            
+          if (is404Error) {
+            throw new Error('Lead not found');
+          }
+        }
+        
+        throw new Error(`Airtable API error: ${response.status}`);
+      }
+
+      const parseStart = performance.now();
+      const record = await response.json();
+
+      // Transform the data to match our LeadData interface
+      const transformedLead = {
+        id: record.id,
+        createdTime: record.createdTime,
+        ...record.fields, // 🚀 Tutti i campi senza limitazioni
+      };
+      
+      const parseTime = performance.now() - parseStart;
+      console.log(`📝 [TIMING] JSON parsing: ${parseTime.toFixed(2)}ms`);
+
+      return transformedLead;
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Airtable API error: ${response.status} - ${errorText}`);
-      
-      // Airtable può restituire 403 per record non esistenti o inaccessibili
-      if (response.status === 404 || response.status === 403) {
-        // Controlla se l'errore indica che il modello/record non è stato trovato
-        const is404Error = response.status === 404 || 
-          errorText.includes('INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND') ||
-          errorText.includes('model was not found');
-          
-        if (is404Error) {
-          return NextResponse.json(
-            { error: 'Lead not found' },
-            { status: 404 }
-          );
-        }
-      }
-      
-      return NextResponse.json(
-        { error: `Airtable API error: ${response.status}` },
-        { status: response.status }
-      );
-    }
-
-    const record = await response.json();
-
-    // Transform the data to match our LeadData interface
-    const transformedLead = {
-      id: record.id,
-      createdTime: record.createdTime,
-      ...record.fields,
-    };
-
-    console.log(`✅ [GET LEAD] Successfully fetched lead: ${leadId}`);
+    const totalTime = performance.now() - requestStart;
+    const wasCached = totalTime < 100; // Assume cached if under 100ms
+    
+    // 📈 Record performance metrics
+    recordApiLatency('lead_api', totalTime, wasCached);
+    
+    console.log(`✅ [GET LEAD] Completed: ${leadId} in ${totalTime.toFixed(2)}ms (cached: ${wasCached})`);
+    
     return NextResponse.json({
       success: true,
-      lead: transformedLead,
+      lead: result,
+      _timing: {
+        total: Math.round(totalTime),
+        cached: wasCached,
+      }
     });
 
   } catch (error) {
-    console.error('❌ [GET LEAD] Error:', error);
+    const totalTime = performance.now() - requestStart;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // 📈 Record error metrics
+    recordError('lead_api', errorMessage);
+    recordApiLatency('lead_api', totalTime, false); // Non-cached error
+    
+    console.error(`❌ [GET LEAD] Error in ${totalTime.toFixed(2)}ms:`, error);
+    
     return NextResponse.json(
-      { error: 'Failed to fetch lead' },
+      { 
+        error: 'Failed to fetch lead',
+        _timing: {
+          total: Math.round(totalTime),
+          cached: false,
+        }
+      },
       { status: 500 }
     );
   }
@@ -160,8 +199,15 @@ export async function PUT(
 
     console.log('📤 [UPDATE LEAD] Sending to Airtable:', airtableData);
 
-    // Chiamata API Airtable per aggiornare il record
+    // Chiamata API Airtable per aggiornare il record con timeout
     const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
+    
+    // Controller per timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log('⏰ [UPDATE LEAD] Airtable request timeout after 12s, aborting...');
+      controller.abort();
+    }, 12000); // 12s timeout per Airtable (meno dei 15s client)
     
     const response = await fetch(airtableUrl, {
       method: 'PATCH',
@@ -170,7 +216,10 @@ export async function PUT(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(airtableData),
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -202,6 +251,7 @@ export async function PUT(
 
     // Invalida la cache dopo l'aggiornamento
     leadsCache.clear();
+    await invalidateLeadCache(leadId); // 🚀 Invalida cache KV specifica
     console.log('🧹 Cache cleared after lead update');
 
     // Transform per risposta coerente
@@ -216,8 +266,18 @@ export async function PUT(
       lead: transformedRecord,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [UPDATE LEAD] Error:', error);
+    
+    // Gestione specifica per timeout
+    if (error.name === 'AbortError') {
+      console.error('⏰ [UPDATE LEAD] Request timed out after 12s');
+      return NextResponse.json(
+        { error: 'Request timeout - operation may still be in progress' },
+        { status: 408 } // Request Timeout
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to update lead' },
       { status: 500 }
@@ -299,6 +359,7 @@ export async function DELETE(
 
     // Invalida la cache dopo l'eliminazione
     leadsCache.clear();
+    await invalidateLeadCache(leadId); // 🚀 Invalida cache KV specifica
     console.log('🧹 Cache cleared after lead deletion');
 
     return NextResponse.json({
