@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LeadData, LeadFormData } from '@/types/leads';
+import { useFetchWithRetry } from './use-fetch-with-retry';
+import { toast } from 'sonner';
 
 interface UseLeadDetailProps {
   leadId: string;
+  refreshKey?: number;
 }
 
 interface UseLeadDetailReturn {
@@ -18,17 +21,12 @@ interface UseLeadDetailReturn {
 
 export function useLeadDetail({ leadId }: UseLeadDetailProps): UseLeadDetailReturn {
   const [lead, setLead] = useState<LeadData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Funzione per caricare i dettagli del lead
-  const fetchLead = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
+  // 🚀 Sistema di fetch con retry automatico
+  const fetchLeadWithRetry = useFetchWithRetry(
+    async () => {
       console.log(`🔍 [useLeadDetail] Fetching lead: ${leadId}`);
 
       const response = await fetch(`/api/leads/${leadId}`);
@@ -47,17 +45,19 @@ export function useLeadDetail({ leadId }: UseLeadDetailProps): UseLeadDetailRetu
         throw new Error('Formato risposta non valido');
       }
 
-      setLead(data.lead);
       console.log(`✅ [useLeadDetail] Lead loaded successfully:`, data.lead.ID || leadId);
-
-    } catch (err) {
-      console.error('❌ [useLeadDetail] Error fetching lead:', err);
-      setError(err instanceof Error ? err.message : 'Errore sconosciuto');
-      setLead(null);
-    } finally {
-      setLoading(false);
+      return data.lead;
+    },
+    {
+      maxRetries: 2,
+      baseDelay: 1000,
+      timeout: 15000, // 15 secondi per lead API
+      onRetry: (attempt, error) => {
+        toast.warning(`Tentativo ${attempt} di ricaricamento...`);
+        console.warn(`⚠️ [useLeadDetail] Retry ${attempt}:`, error.message);
+      }
     }
-  }, [leadId]);
+  );
 
   // Funzione per aggiornare il lead
   const updateLead = useCallback(async (updateData: Partial<LeadFormData>): Promise<boolean> => {
@@ -136,22 +136,36 @@ export function useLeadDetail({ leadId }: UseLeadDetailProps): UseLeadDetailRetu
     }
   }, [leadId]);
 
-  // Funzione di refresh
-  const refresh = useCallback(async () => {
-    await fetchLead();
-  }, [fetchLead]);
+  // Sincronizza stato del lead con il fetch result
+  useEffect(() => {
+    if (fetchLeadWithRetry.data) {
+      setLead(fetchLeadWithRetry.data);
+    } else if (fetchLeadWithRetry.error) {
+      setLead(null);
+    }
+  }, [fetchLeadWithRetry.data, fetchLeadWithRetry.error]);
 
-  // Carica il lead al mount e quando cambia l'ID
+  // Auto-fetch quando cambia leadId
   useEffect(() => {
     if (leadId) {
-      fetchLead();
+      console.log(`🔄 [useLeadDetail] Auto-fetching for leadId: ${leadId}`);
+      fetchLeadWithRetry.execute();
     }
-  }, [leadId, fetchLead]);
+  }, [leadId]); // Non includere fetchLeadWithRetry.execute nelle deps
+
+  // Funzioni wrapper
+  const refresh = useCallback(async () => {
+    console.log('🔄 [useLeadDetail] Manual refresh triggered');
+    const result = await fetchLeadWithRetry.retry();
+    if (result) {
+      toast.success('Lead aggiornato con successo');
+    }
+  }, [fetchLeadWithRetry]);
 
   return {
     lead,
-    loading,
-    error,
+    loading: fetchLeadWithRetry.loading,
+    error: fetchLeadWithRetry.error,
     updating,
     deleting,
     refresh,

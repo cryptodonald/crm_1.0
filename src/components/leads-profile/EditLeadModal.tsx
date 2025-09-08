@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useFetchWithRetry } from '@/hooks/use-fetch-with-retry';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
@@ -97,264 +96,82 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
   };
   const goToPreviousStep = () => setCurrentStep((s) => Math.max(1, s - 1));
 
-  // 🚀 Creiamo un hook per il fetch con i dati correnti
-  const executeUpdate = useFetchWithRetry(
-    async () => {
-      throw new Error('This should not be called directly - use executeUpdateWithData instead');
-    },
-    {
-      maxRetries: 2,
-      baseDelay: 1000,
-      timeout: 15000,
-      onRetry: (attempt, error) => {
-        console.warn(`⚠️ [EditLeadModal] Retry ${attempt} per update:`, error.message);
-        toast.warning(`Tentativo ${attempt} di salvataggio...`);
-      }
-    }
-  );
 
-  // Funzione per eseguire update con dati specifici
-  const executeUpdateWithData = async (data: LeadFormData) => {
-    const startTime = performance.now();
-    const apiUrl = `/api/leads/${lead.id || lead.ID}`;
-    
-    console.log('🚀 [EditLeadModal] Executing optimized update with data:', {
-      url: apiUrl,
-      leadId: lead.id || lead.ID,
-      dataKeys: Object.keys(data)
-    });
-    
-    try {
-      console.log('🔥 [EditLeadModal] About to call fetch...');
-      
-      // Aggiungi timeout esplicito - 15s per dare tempo ad Airtable
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.log('⏰ [EditLeadModal] Fetch timeout after 15s, aborting...');
-        controller.abort();
-      }, 15000); // 15s timeout per operazioni Airtable
-      
-      console.log('📡 [EditLeadModal] Making fetch request...');
-      console.log('📝 [EditLeadModal] Request details:', {
-        url: apiUrl,
-        method: 'PUT',
-        bodySize: JSON.stringify(data).length,
-        dataKeys: Object.keys(data)
-      });
-      
-      const response = await fetch(apiUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-      
-      console.log('📡 [EditLeadModal] Fetch request completed!');
-      
-      clearTimeout(timeoutId);
-      const fetchTime = performance.now() - startTime;
-      
-      console.log('📡 [EditLeadModal] Fetch completed in', fetchTime.toFixed(2), 'ms');
-      console.log('📡 [EditLeadModal] API response status:', response.status);
-      console.log('📡 [EditLeadModal] API response ok:', response.ok);
-      
-      if (!response.ok) {
-        console.log('❌ [EditLeadModal] Response not ok, trying to parse error...');
-        const result = await response.json().catch((e) => {
-          console.log('❌ [EditLeadModal] Failed to parse error JSON:', e);
-          return {};
-        });
-        console.log('❌ [EditLeadModal] Error response:', result);
-        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      console.log('✅ [EditLeadModal] Response ok, parsing JSON...');
-      const result = await response.json();
-      console.log('📦 [EditLeadModal] API response data:', result);
-      
-      // Debug dettagliato per la struttura della risposta
-      console.log('🔍 [EditLeadModal] Response structure check:', {
-        hasSuccess: 'success' in result,
-        successValue: result.success,
-        hasLead: 'lead' in result,
-        hasError: 'error' in result,
-        allKeys: Object.keys(result)
-      });
-      
-      return result;
-      
-    } catch (error: any) {
-      const fetchTime = performance.now() - startTime;
-      console.error('❌ [EditLeadModal] Fetch error after', fetchTime.toFixed(2), 'ms:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack?.slice(0, 200),
-      });
-      throw error;
-    }
-  };
-
+  // Funzione di salvataggio completamente nuova seguendo la documentazione API
   const onSubmit = async (data: LeadFormData) => {
-    console.log('💾 [EditLeadModal] onSubmit called with data:', data);
+    if (isSubmitting) return;
     setIsSubmitting(true);
     
     try {
-      console.log('🚀 [EditLeadModal] Starting optimized update...');
+      console.log('🚀 [EditLeadModal] Starting lead update with data:', data);
       
-      // Eseguiamo il fetch con retry manuale
-      let result = null;
-      let lastError = null;
-      const maxRetries = 2;
+      // Prepara i dati per l'API PUT seguendo il formato documentato
+      const updateData = {
+        ...(data.Nome !== undefined && { Nome: data.Nome }),
+        ...(data.Telefono !== undefined && { Telefono: data.Telefono }),
+        ...(data.Email !== undefined && { Email: data.Email }),
+        ...(data.Indirizzo !== undefined && { Indirizzo: data.Indirizzo }),
+        ...(data.CAP !== undefined && { CAP: data.CAP }),
+        ...(data.Città !== undefined && { Città: data.Città }),
+        ...(data.Esigenza !== undefined && { Esigenza: data.Esigenza }),
+        ...(data.Stato !== undefined && { Stato: data.Stato }),
+        ...(data.Provenienza !== undefined && { Provenienza: data.Provenienza }),
+        ...(data.Note !== undefined && { Note: data.Note }),
+        ...(data.Assegnatario !== undefined && { Assegnatario: data.Assegnatario }),
+        ...(data.Referenza !== undefined && { Referenza: data.Referenza }),
+        ...(data.Allegati !== undefined && { Allegati: data.Allegati }),
+      };
       
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          console.log(`🔄 [EditLeadModal] Attempt ${attempt + 1}/${maxRetries + 1}`);
-          result = await executeUpdateWithData(data);
-          break; // Successo - esci dal loop
-        } catch (error: any) {
-          lastError = error;
-          console.warn(`⚠️ [EditLeadModal] Attempt ${attempt + 1} failed:`, error.message);
-          
-          // Gestione speciale per timeout: verifica se l'operazione è andata a buon fine
-          if (error.name === 'AbortError' || error.message.includes('timeout')) {
-            console.log('🔍 [EditLeadModal] Timeout detected, checking if update was successful...');
-            
-            try {
-              // Attendi un po' per dare tempo al server di completare
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              
-              // Verifica se il lead è stato aggiornato facendo un GET
-              const checkUrl = `/api/leads/${lead.id || lead.ID}`;
-              const checkResponse = await fetch(checkUrl);
-              
-              if (checkResponse.ok) {
-                const checkResult = await checkResponse.json();
-                const updatedLead = checkResult.lead;
-                
-                // Controlla se almeno uno dei campi che stavamo aggiornando è cambiato
-                const wasUpdated = Object.keys(data).some(key => {
-                  const newValue = data[key as keyof LeadFormData];
-                  const currentValue = updatedLead[key];
-                  
-                  // Normalizza i valori per il confronto
-                  const normalizedNew = typeof newValue === 'string' ? newValue.trim() : newValue;
-                  const normalizedCurrent = typeof currentValue === 'string' ? currentValue.trim() : currentValue;
-                  
-                  const matches = JSON.stringify(normalizedNew) === JSON.stringify(normalizedCurrent);
-                  console.log(`🔍 [EditLeadModal] Field "${key}" check:`, {
-                    newValue: normalizedNew,
-                    currentValue: normalizedCurrent,
-                    matches: matches
-                  });
-                  
-                  return matches; // Se trova una corrispondenza, l'update è riuscito
-                });
-                
-                console.log('🎯 [EditLeadModal] Update verification result:', {
-                  wasUpdated: wasUpdated,
-                  fieldsChecked: Object.keys(data),
-                  leadId: updatedLead.id || updatedLead.ID
-                });
-                
-                if (wasUpdated) {
-                  console.log('✅ [EditLeadModal] Update was successful despite timeout!');
-                  // Simula una risposta di successo
-                  result = { success: true, lead: updatedLead };
-                  break; // Esci dal loop di retry
-                } else {
-                  console.log('⚠️ [EditLeadModal] Update appears to have failed, will retry if possible');
-                }
-              }
-            } catch (checkError) {
-              console.warn('⚠️ [EditLeadModal] Could not verify update status:', checkError);
-            }
-          }
-          
-          if (attempt < maxRetries) {
-            const delay = 1000 * Math.pow(2, attempt); // 1s, 2s
-            console.log(`⏳ [EditLeadModal] Waiting ${delay}ms before retry...`);
-            toast.warning(`Tentativo ${attempt + 1} fallito, riprovo in ${delay/1000}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          }
-        }
-      }
+      console.log('📤 [EditLeadModal] Sending update request:', updateData);
       
-      console.log('🔍 [EditLeadModal] Final result check:', {
-        resultExists: !!result,
-        hasSuccessField: result && 'success' in result,
-        successValue: result?.success,
-        resultType: typeof result,
-        resultKeys: result ? Object.keys(result) : 'N/A',
-        leadExists: !!(result?.lead),
-        leadId: result?.lead?.id || result?.lead?.ID
+      // Chiamata API PUT come documentato
+      const leadId = lead.id || lead.ID;
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
       });
       
-      // Controlla il successo: campo success=true O presenza di un lead valido
-      const isSuccessful = (result && result.success === true) || 
-                          (result && result.lead && (result.lead.id || result.lead.ID));
+      console.log('📡 [EditLeadModal] API Response status:', response.status);
       
-      if (isSuccessful) {
-        console.log('✅ [EditLeadModal] Update successful, closing modal...');
-        console.log('🔍 [EditLeadModal] Success detected via:', {
-          explicitSuccess: result?.success === true,
-          leadPresent: !!(result?.lead && (result?.lead.id || result?.lead.ID)),
-          leadId: result?.lead?.id || result?.lead?.ID
-        });
-        
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ [EditLeadModal] API Error:', errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ [EditLeadModal] API Success:', result);
+      
+      // Verifica che la risposta contenga success: true come documentato
+      if (result.success) {
         toast.success('Lead aggiornato con successo!');
         
-        // Close modal first for better UX
+        // Chiudi il modal
         onOpenChange(false);
         
-        // Then trigger refresh
-        console.log('🔄 [EditLeadModal] Calling onUpdated...');
+        // Aggiorna la lista se callback fornito
         if (onUpdated) {
           await onUpdated();
-          console.log('✅ [EditLeadModal] onUpdated completed');
-        } else {
-          console.warn('⚠️ [EditLeadModal] onUpdated function not provided');
         }
       } else {
-        console.error('❌ [EditLeadModal] Update check failed:', {
-          result: result,
-          lastError: lastError?.message,
-          reason: !result ? 'No result' : 
-                  (!result.success && !result.lead) ? 'No success field and no lead data' : 
-                  'Unknown failure condition'
-        });
-        throw lastError || new Error('Update failed: response missing success field or lead data');
+        throw new Error('API response missing success field');
       }
       
-    } catch (e) {
-      console.error('❌ [EditLeadModal] Error during submission:', e);
-      const msg = e instanceof Error ? e.message : 'Errore sconosciuto';
+    } catch (error) {
+      console.error('❌ [EditLeadModal] Error during update:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
       
-      // Gestione speciale per errori di timeout
-      if (e instanceof Error && (e.name === 'AbortError' || e.message.includes('timeout'))) {
-        toast.error('Timeout durante il salvataggio', { 
-          description: 'L\'operazione potrebbe essere completata su Airtable. Verifica i dati prima di riprovare.',
-          action: {
-            label: 'Chiudi e verifica',
-            onClick: () => {
-              onOpenChange(false);
-              if (onUpdated) {
-                onUpdated();
-              }
-            },
-          },
-          duration: 8000 // Più tempo per leggere il messaggio
-        });
-      } else {
-        toast.error('Aggiornamento fallito', { 
-          description: msg,
-          action: {
-            label: 'Riprova',
-            onClick: () => form.handleSubmit(onSubmit)(),
-          }
-        });
-      }
+      toast.error('Errore durante l\'aggiornamento', {
+        description: errorMessage,
+        action: {
+          label: 'Riprova',
+          onClick: () => form.handleSubmit(onSubmit)(),
+        }
+      });
     } finally {
-      console.log('💯 [EditLeadModal] Setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };

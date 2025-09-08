@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUsers } from '@/hooks/use-users';
 import {
   Table,
@@ -112,6 +113,7 @@ export function LeadsDataTable({
   onLoadMore, // Not used since we load all data
   className,
 }: LeadsDataTableProps) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleColumns, setVisibleColumns] = useState(DEFAULT_VISIBLE_COLUMNS);
   const [currentPage, setCurrentPage] = useState(1);
@@ -629,7 +631,7 @@ export function LeadsDataTable({
 
   // Azioni sui lead
   const handleViewLead = (leadId: string) => {
-    console.log('View lead:', leadId);
+    router.push(`/leads/${leadId}`);
   };
 
   const handleEditLead = (leadId: string) => {

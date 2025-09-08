@@ -1,11 +1,15 @@
+import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
+import { LeadActivitiesList } from '@/components/features/activities/LeadActivitiesList';
+import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
+
 export default function ActivitiesPage() {
   return (
-    <div className="p-6">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-semibold text-gray-900">Attività</h1>
-        <p className="mt-2 text-gray-600">Questa sezione sarà riprogettata. Al momento la pagina è intenzionalmente vuota.</p>
+    <AppLayoutCustom>
+      <div className="flex-1 space-y-4 p-3 sm:space-y-6 sm:p-4 md:p-6">
+        <PageBreadcrumb pageName="Attività" />
+        <LeadActivitiesList leadId="" className="" />
       </div>
-    </div>
+    </AppLayoutCustom>
   );
 }
 

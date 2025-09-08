@@ -1,13 +1,16 @@
 version: 1
-generated_at: '2025-09-04'
+generated_at: '2025-01-07'
 priority:
 - rules/global-rules.md
 - rules/api-keys.md
+- performance-guidelines.md  # NEW: Performance optimization guide
+- audit-performance-completo.md  # NEW: Complete performance audit report
 - rules/repo-rules.md
 - domain/leads.md
 - domain/avatar-system.md
 - runbooks/local-dev.md
 - runbooks/migrations.md
+- runbooks/lead-performance.md  # NEW: Performance troubleshooting
 - runbooks/release.md
 - runbooks/incident.md
 - validation/mcp-validation.md
@@ -19,6 +22,9 @@ warp_extract:
   - heading: API Keys (estratto)
     includes:
     - rules/api-keys.md
+  - heading: Performance & Caching (estratto)
+    includes:
+    - performance-guidelines.md
   - heading: Regole di Repo
     includes:
     - rules/repo-rules.md

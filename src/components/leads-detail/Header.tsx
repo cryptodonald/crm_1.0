@@ -7,13 +7,15 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AvatarLead } from '@/components/ui/avatar-lead';
-import { Phone, Mail, ArrowLeft, Trash2, ChevronDown, Check, User as UserIcon, MapPin, Edit3, X } from 'lucide-react';
+import { Phone, Mail, ChevronDown, Check, User as UserIcon, MapPin, Edit3, X } from 'lucide-react';
 import { LeadData, LeadFormData, LeadStato, LeadProvenienza } from '@/types/leads';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 import { useLeadsData } from '@/hooks/use-leads-data';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 interface UsersLookup {
   [userId: string]: {
@@ -126,6 +128,10 @@ export function LeadDetailHeader({
     if (addressOpen) setAddressQuery(lead.Indirizzo || '');
   }, [addressOpen, lead.Indirizzo]);
 
+  // fallback manuale indirizzo
+  const [manualCAP, setManualCAP] = useState('');
+  const [manualCity, setManualCity] = useState('');
+
   useEffect(() => {
     if (addressQuery.length >= 3) searchPlaces(addressQuery);
   }, [addressQuery, searchPlaces]);
@@ -155,6 +161,34 @@ export function LeadDetailHeader({
   const [refOpen, setRefOpen] = useState(false);
   const { leads: allLeads = [], loading: leadsLoading } = useLeadsData({ loadAll: true } as any);
 
+  // Dialog conferma modifiche (nome/telefono/email/indirizzo, stato, provenienza, assegnatario, referenza)
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingChange, setPendingChange] = useState<{
+    data: Partial<LeadFormData>;
+    description?: string;
+  } | null>(null);
+
+  const requestConfirm = useCallback((data: Partial<LeadFormData>, description?: string) => {
+    setPendingChange({ data, description });
+    setConfirmOpen(true);
+  }, []);
+
+  const cancelChange = useCallback(() => {
+    setConfirmOpen(false);
+    setPendingChange(null);
+  }, []);
+
+  const confirmChange = useCallback(async () => {
+    if (!pendingChange) return;
+    try {
+      await onUpdate(pendingChange.data);
+      toast.success('Modifica salvata');
+    } finally {
+      setConfirmOpen(false);
+      setPendingChange(null);
+    }
+  }, [onUpdate, pendingChange]);
+
   return (
     <Card className="p-4 md:p-6">
       {/* Top row: identity + quick selectors + actions */}
@@ -163,21 +197,43 @@ export function LeadDetailHeader({
         <div className="flex items-center gap-4 min-w-0">
           <AvatarLead nome={lead.Nome || lead.ID} size="xl" showTooltip={false} />
           <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 flex-wrap">
               {editingName ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <Input value={nameValue} onChange={(e) => setNameValue(e.target.value)} onBlur={saveName} onKeyDown={(e) => e.key === 'Enter' && saveName()} className="h-9 w-[240px]" />
                   <Button variant="ghost" size="icon" onClick={() => setEditingName(false)} aria-label="Annulla"><X className="h-4 w-4" /></Button>
                 </div>
               ) : (
-                <h1 className="text-xl md:text-2xl font-semibold tracking-tight truncate flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-semibold tracking-tight truncate flex items-center gap-2 min-w-0">
                   {lead.Nome || lead.ID}
                   <Button variant="ghost" size="icon" onClick={() => setEditingName(true)} aria-label="Modifica nome"><Edit3 className="h-4 w-4" /></Button>
                 </h1>
               )}
               <Badge variant="secondary" className="text-xs">{lead.ID}</Badge>
+
+              {/* Stato accanto al nome, con label inside trigger */}
+              <Select defaultValue={lead.Stato} onValueChange={(value) => requestConfirm({ Stato: value as LeadStato }, `Confermi lo stato "${value}"?`)}>
+                <SelectTrigger className="h-7 w-auto min-w-[170px]">
+                  <SelectValue>
+                    <span className="text-xs text-muted-foreground mr-2">Stato</span>
+                    {lead.Stato && (
+                      <Badge className={cn('text-xs px-2 py-0.5', getStatoBadgeColor(lead.Stato))}>{lead.Stato}</Badge>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {STATI.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      <div className="flex items-center gap-2">
+                        <Badge className={cn('text-xs px-2 py-0.5', getStatoBadgeColor(s))}>{s}</Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            {/* Quick selectors with labels */}
+
+            {/* Quick selectors sotto il nome: Provenienza, Assegnatario, Referenza */}
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <span className="text-xs">Provenienza</span>
@@ -201,27 +257,7 @@ export function LeadDetailHeader({
                 </Select>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs">Stato</span>
-                <Select defaultValue={lead.Stato} onValueChange={(value) => onUpdate({ Stato: value as LeadStato })}>
-                  <SelectTrigger className="h-7 w-auto min-w-[150px]">
-                    <SelectValue placeholder="Stato">
-                      {lead.Stato && (
-                        <Badge className={cn('text-xs px-2 py-0.5', getStatoBadgeColor(lead.Stato))}>{lead.Stato}</Badge>
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATI.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        <div className="flex items-center gap-2">
-                          <Badge className={cn('text-xs px-2 py-0.5', getStatoBadgeColor(s))}>{s}</Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Stato rimosso da questa riga: ora è accanto al nome */}
 
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs">Assegnatario</span>
@@ -290,15 +326,8 @@ export function LeadDetailHeader({
           </div>
         </div>
 
-        {/* Right: actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Indietro</Button>
-          {lead.Telefono && (<Button variant="outline" onClick={onCall}><Phone className="mr-2 h-4 w-4" /> Chiama</Button>)}
-          {lead.Email && (<Button variant="outline" onClick={onEmail}><Mail className="mr-2 h-4 w-4" /> Email</Button>)}
-          <div className="flex items-center gap-2">
-            <Button variant="destructive" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" /> Elimina</Button>
-          </div>
-        </div>
+        {/* Right: actions - rimosse dall'header (spostate in pagina) */}
+        <div className="hidden" />
       </div>
 
       {/* Second row: campi dettagli con etichette e inline-edit */}
@@ -396,7 +425,20 @@ export function LeadDetailHeader({
                 <CommandInput placeholder="Digita un indirizzo..." value={addressQuery} onValueChange={setAddressQuery} />
                 <CommandList>
                   {isSearching && (<div className="flex items-center justify-center p-4 text-sm text-muted-foreground">Ricerca in corso...</div>)}
-                  {!isSearching && addressQuery.length >= 3 && suggestions.length === 0 && (<CommandEmpty>Nessun indirizzo trovato.</CommandEmpty>)}
+                  {!isSearching && addressQuery.length >= 3 && suggestions.length === 0 && (
+                    <div className="p-4 space-y-2">
+                      <div className="text-sm text-muted-foreground">Nessun indirizzo trovato. Inserisci manualmente:</div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <Input placeholder="Indirizzo" value={addressQuery} onChange={(e) => setAddressQuery(e.target.value)} />
+                        <Input placeholder="CAP" value={manualCAP} onChange={(e) => setManualCAP(e.target.value)} />
+                        <Input placeholder="Città" value={manualCity} onChange={(e) => setManualCity(e.target.value)} />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setAddressOpen(false)}>Annulla</Button>
+                        <Button size="sm" onClick={() => { requestConfirm({ Indirizzo: addressQuery, CAP: manualCAP ? parseInt(manualCAP) : undefined, Città: manualCity || undefined } as any, `Confermi l'indirizzo manuale?`); setAddressOpen(false); }}>Salva</Button>
+                      </div>
+                    </div>
+                  )}
                   {!isSearching && suggestions.length > 0 && (
                     <CommandGroup>
                       {suggestions.map((s) => (
@@ -418,6 +460,22 @@ export function LeadDetailHeader({
           </Popover>
         </div>
       </div>
+
+      {/* Dialog conferma modifiche */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conferma modifica</DialogTitle>
+            <DialogDescription>
+              {pendingChange?.description || 'Confermi la modifica?'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelChange}>Annulla</Button>
+            <Button onClick={confirmChange}>Conferma</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

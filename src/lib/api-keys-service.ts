@@ -1,5 +1,6 @@
 import { kvApiKeyService, ApiKeyData } from './kv';
 import { encryptionService } from './encryption';
+import { getCachedApiKeys } from './cache';
 
 /**
  * Centralized API Key Service
@@ -26,42 +27,46 @@ class ApiKeyService {
   }
 
   /**
-   * Get an API key by service name with caching
+   * 🚀 Get an API key by service name with enhanced caching
    */
   async getApiKey(serviceName: string): Promise<string | null> {
-    try {
-      // Check cache first
-      const cached = this.getCachedKey(serviceName);
-      if (cached) {
-        return cached;
-      }
+    return getCachedApiKeys(serviceName, async () => {
+      try {
+        // Check memory cache first for ultra-fast access
+        const cached = this.getCachedKey(serviceName);
+        if (cached) {
+          console.log(`⚡ [API-Keys] Memory cache HIT: ${serviceName}`);
+          return cached;
+        }
 
-      // Fetch from KV database
-      const keys = await kvApiKeyService.getUserApiKeys(this.userId);
-      const targetKey = keys.find(
-        key =>
-          key.service === serviceName && key.isActive && this.isNotExpired(key)
-      );
+        // Fetch from KV database
+        const keys = await kvApiKeyService.getUserApiKeys(this.userId);
+        const targetKey = keys.find(
+          key =>
+            key.service === serviceName && key.isActive && this.isNotExpired(key)
+        );
 
-      if (!targetKey) {
-        console.warn(`API key not found for service: ${serviceName}`);
+        if (!targetKey) {
+          console.warn(`⚠️ API key not found for service: ${serviceName}`);
+          return null;
+        }
+
+        // Decrypt the key
+        const decryptedKey = encryptionService.decrypt(targetKey.key);
+
+        // Cache the result in memory
+        this.setCachedKey(serviceName, decryptedKey);
+
+        // Record usage (non-blocking)
+        this.recordUsage(targetKey.id, serviceName).catch(console.error);
+
+        console.log(`✅ [API-Keys] Fetched and cached: ${serviceName}`);
+        return decryptedKey;
+      } catch (error) {
+        console.error(`💥 Error retrieving API key for ${serviceName}:`, error);
         return null;
       }
-
-      // Decrypt the key
-      const decryptedKey = encryptionService.decrypt(targetKey.key);
-
-      // Cache the result
-      this.setCachedKey(serviceName, decryptedKey);
-
-      // Record usage
-      await this.recordUsage(targetKey.id, serviceName);
-
-      return decryptedKey;
-    } catch (error) {
-      console.error(`Error retrieving API key for ${serviceName}:`, error);
-      return null;
-    }
+    });
   }
 
   /**

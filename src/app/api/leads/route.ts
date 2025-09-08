@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
 import { leadsCache } from '@/lib/leads-cache';
+import { invalidateLeadCache, invalidateUsersCache } from '@/lib/cache';
+import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 import { LeadFormData } from '@/types/leads';
 
 // Helper function to build Airtable filter
@@ -398,9 +400,12 @@ export async function GET(request: NextRequest) {
  * Expects JSON body with LeadFormData
  */
 export async function POST(request: NextRequest) {
+  const requestStart = performance.now();
+  
   try {
     const body: LeadFormData = await request.json();
     
+    console.log('🚀 [CREATE LEAD] Starting request');
     console.log('🔄 [CREATE LEAD] Received data:', JSON.stringify(body, null, 2));
     console.log('🔄 [CREATE LEAD] Data types:', {
       Nome: typeof body.Nome,
@@ -420,12 +425,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Airtable credentials
+    // Get Airtable credentials with timing
+    const credentialsStart = performance.now();
     const [apiKey, baseId, tableId] = await Promise.all([
       getAirtableKey(),
       getAirtableBaseId(),
       getAirtableLeadsTableId(),
     ]);
+    const credentialsTime = performance.now() - credentialsStart;
+    console.log(`🔑 [TIMING] Credentials fetch: ${credentialsTime.toFixed(2)}ms`);
+    
     if (!apiKey || !baseId || !tableId) {
       return NextResponse.json(
         { error: 'Airtable credentials not available' },
@@ -483,17 +492,22 @@ export async function POST(request: NextRequest) {
 
     console.log('📤 [CREATE LEAD] Sending to Airtable:', airtableData);
 
-    // Chiamata API Airtable per creare il record
+    // Chiamata API Airtable per creare il record con ottimizzazioni
+    const airtableStart = performance.now();
     const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}`;
     
     const response = await fetch(airtableUrl, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Accept-Encoding': 'gzip, deflate, br', // 🚀 Compressione
       },
       body: JSON.stringify(airtableData),
     });
+    
+    const airtableTime = performance.now() - airtableStart;
+    console.log(`🌐 [TIMING] Airtable API call: ${airtableTime.toFixed(2)}ms`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -518,12 +532,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const parseStart = performance.now();
     const createdRecord = await response.json();
+    const parseTime = performance.now() - parseStart;
+    console.log(`📝 [TIMING] JSON parsing: ${parseTime.toFixed(2)}ms`);
+    
     console.log('✅ [CREATE LEAD] Successfully created:', createdRecord.id);
 
-    // Invalida la cache dopo la creazione
+    // 🚀 Invalida entrambe le cache (legacy + KV)
     leadsCache.clear();
-    console.log('🧹 Cache cleared after lead creation');
+    await Promise.all([
+      invalidateLeadCache(), // Invalida tutta la cache lead KV
+      invalidateUsersCache(), // Gli users potrebbero avere conteggi aggiornati
+    ]);
+    console.log('🧹 All caches cleared after lead creation');
 
     // Transform per risposta coerente
     const transformedRecord = {
@@ -531,15 +553,40 @@ export async function POST(request: NextRequest) {
       createdTime: createdRecord.createdTime,
       ...createdRecord.fields,
     };
+    
+    const totalTime = performance.now() - requestStart;
+    
+    // 📈 Record performance metrics
+    recordApiLatency('create_lead_api', totalTime, false); // Never cached for creation
+    
+    console.log(`✅ [CREATE LEAD] Completed: ${createdRecord.id} in ${totalTime.toFixed(2)}ms`);
 
     return NextResponse.json({
       success: true,
       lead: transformedRecord,
+      _timing: {
+        total: Math.round(totalTime),
+        cached: false,
+      }
     });
   } catch (error) {
-    console.error('❌ [CREATE LEAD] Error:', error);
+    const totalTime = performance.now() - requestStart;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // 📈 Record error metrics
+    recordError('create_lead_api', errorMessage);
+    recordApiLatency('create_lead_api', totalTime, false);
+    
+    console.error(`❌ [CREATE LEAD] Error in ${totalTime.toFixed(2)}ms:`, error);
+    
     return NextResponse.json(
-      { error: 'Failed to create lead' },
+      { 
+        error: 'Failed to create lead',
+        _timing: {
+          total: Math.round(totalTime),
+          cached: false,
+        }
+      },
       { status: 500 }
     );
   }

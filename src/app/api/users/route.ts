@@ -4,6 +4,9 @@ import {
   getAirtableBaseId,
   getAirtableUsersTableId,
 } from '@/lib/api-keys-service';
+import { getCachedUsers } from '@/lib/cache';
+// import { fetchAirtableRecords } from '@/lib/airtable-batch'; // Temporaneamente disabilitato
+import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 
 interface AirtableUser {
   id: string;
@@ -114,49 +117,85 @@ async function fetchAllUsers(
 }
 
 export async function GET(request: NextRequest) {
+  const requestStart = performance.now();
+  
   try {
-    console.log('🔧 [Users API] Starting request');
+    console.log('👥 [GET USERS] Starting fetch...');
 
-    // Get Airtable credentials using dynamic service
-    const [apiKey, baseId, tableId] = await Promise.all([
-      getAirtableKey(),
-      getAirtableBaseId(),
-      getAirtableUsersTableId(),
-    ]);
+    // 🚀 Usa il sistema di caching per ottimizzare performance
+    const result = await getCachedUsers(async () => {
+      const credentialsStart = performance.now();
+      
+      // Get Airtable credentials using dynamic service
+      const [apiKey, baseId, tableId] = await Promise.all([
+        getAirtableKey(),
+        getAirtableBaseId(),
+        getAirtableUsersTableId(),
+      ]);
+      
+      const credentialsTime = performance.now() - credentialsStart;
+      console.log(`🔑 [TIMING] Users credentials: ${credentialsTime.toFixed(2)}ms`);
 
-    if (!apiKey || !baseId || !tableId) {
-      console.error('❌ Missing Airtable credentials:', {
-        hasApiKey: !!apiKey,
-        hasBaseId: !!baseId,
-        hasTableId: !!tableId,
+      if (!apiKey || !baseId || !tableId) {
+        throw new Error('Missing Airtable credentials');
+      }
+
+      const fetchStart = performance.now();
+      
+      // 🔄 Usa la funzione originale (più affidabile) mantenendo ottimizzazioni
+      const users = await fetchAllUsers(apiKey, baseId, tableId);
+      const fetchTime = performance.now() - fetchStart;
+      console.log(`🚀 [TIMING] Complete users fetch: ${fetchTime.toFixed(2)}ms`);
+
+      // Trasforma in un oggetto con chiave ID per lookup veloce
+      const usersById: Record<string, UserData> = {};
+      users.forEach(user => {
+        usersById[user.id] = user;
       });
-      return NextResponse.json(
-        { error: 'Missing Airtable credentials' },
-        { status: 500 }
-      );
-    }
 
-    const users = await fetchAllUsers(apiKey, baseId, tableId);
-
-    // Trasforma in un oggetto con chiave ID per lookup veloce
-    const usersById: Record<string, UserData> = {};
-    users.forEach(user => {
-      usersById[user.id] = user;
+      return {
+        users: usersById,
+        count: Object.keys(usersById).length,
+        success: true,
+      };
     });
-
-    console.log(`✅ [Users API] Returning ${users.length} users`);
+    
+    const totalTime = performance.now() - requestStart;
+    const wasCached = totalTime < 100; // Assume cached if under 100ms
+    
+    // 📈 Record performance metrics
+    recordApiLatency('users_api', totalTime, wasCached);
+    
+    console.log(`✅ [GET USERS] Completed: ${result.count} users in ${totalTime.toFixed(2)}ms (cached: ${wasCached})`);
 
     return NextResponse.json({
-      users: usersById,
-      count: users.length,
-      success: true,
+      ...result,
+      _timing: {
+        total: Math.round(totalTime),
+        cached: wasCached,
+      }
     });
   } catch (error) {
-    console.error('❌ [Users API] Error:', error);
+    const totalTime = performance.now() - requestStart;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // 📈 Record error metrics
+    recordError('users_api', errorMessage);
+    recordApiLatency('users_api', totalTime, false); // Non-cached error
+    
+    console.error(`❌ [GET USERS] Error in ${totalTime.toFixed(2)}ms:`, error);
+    
     return NextResponse.json(
       {
         error: 'Failed to fetch users',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        success: false,
+        users: {},
+        count: 0,
+        details: errorMessage,
+        _timing: {
+          total: Math.round(totalTime),
+          cached: false,
+        }
       },
       { status: 500 }
     );

@@ -1214,6 +1214,101 @@ _Sistema implementato il 31 Agosto 2025 - CRM 1.0 Enterprise Edition_
 - Vedi runbook: [/docs/runbooks/migrations.md](../runbooks/migrations.md)
 <!-- END:rules/api-keys.md -->
 
+## Performance & Caching (estratto)
+
+<!-- BEGIN:performance-guidelines.md -->
+# 🚀 Performance Guidelines — Enterprise
+
+> Aggiornato 2025-01-07 con ottimizzazioni implementate.
+
+## 🎯 Target Performance
+- **Lead API**: <100ms (cached) / <800ms (uncached)
+- **Users API**: <110ms (cached) / <600ms (uncached)
+- **Cache Hit Rate**: >85%
+- **Error Rate**: <2%
+
+## 🗄️ Sistema Caching
+
+### ✅ **SEMPRE usa il sistema di cache**
+
+```typescript
+// API Routes - Pattern ottimizzato
+import { getCachedLead, getCachedUsers, invalidateLeadCache } from '@/lib/cache';
+import { recordApiLatency, recordError } from '@/lib/performance-monitor';
+
+export async function GET(request: NextRequest) {
+  const startTime = performance.now();
+  
+  try {
+    // 🚀 Usa caching intelligente
+    const result = await getCachedLead(leadId, async () => {
+      // Fetch logic qui
+      return await fetchFromAirtable();
+    });
+    
+    const totalTime = performance.now() - startTime;
+    recordApiLatency('lead_api', totalTime, totalTime < 100);
+    
+    return NextResponse.json({ success: true, lead: result });
+  } catch (error) {
+    recordError('lead_api', error.message);
+    throw error;
+  }
+}
+
+// Invalidazione dopo update
+export async function PUT() {
+  // ... update logic
+  await invalidateLeadCache(leadId); // 🚀 Invalida cache
+}
+```
+
+### 🔄 **Retry Logic negli Hook**
+
+```typescript
+// Hook con retry automatico
+import { useFetchWithRetry } from '@/hooks/use-fetch-with-retry';
+
+const { data, loading, error, retry } = useFetchWithRetry(
+  async () => {
+    const response = await fetch(`/api/leads/${leadId}`);
+    return response.json();
+  },
+  {
+    maxRetries: 2,
+    baseDelay: 1000,
+    timeout: 15000
+  }
+);
+```
+
+## 📊 Monitoring & Alerts
+
+### ⚡ **Metriche automatiche**
+- Ogni API route deve registrare latency e errori
+- Alert automatici per soglie critiche (>5s)
+- Dashboard disponibile in `/docs/runbooks/lead-performance.md`
+
+### 🛡️ **Gestione Errori**
+```typescript
+// ✅ BUONA gestione errori
+try {
+  const result = await apiCall();
+} catch (error) {
+  recordError('api_name', error.message, error.status);
+  // Graceful degradation
+  return fallbackResponse;
+}
+```
+
+### ❌ **NON FARE**
+- Non disabilitare il caching senza motivo
+- Non fare chiamate API senza retry logic
+- Non ignorare le metriche di performance
+- Non hardcodare timeout bassi (<10s per Airtable)
+
+<!-- END:performance-guidelines.md -->
+
 ## Regole di Repo
 
 <!-- BEGIN:rules/repo-rules.md -->

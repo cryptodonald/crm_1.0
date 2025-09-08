@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { SimpleThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 import { LeadStato, LeadProvenienza } from '@/types/leads';
+import { ActivityProgress, ActivityProgressSamples } from '@/components/ui/activity-progress';
+import { ActivityStato } from '@/types/activities';
 
 export default function BadgeDemoPage() {
   // ATTIVITÀ - Funzioni esistenti
@@ -63,10 +65,62 @@ export default function BadgeDemoPage() {
     return colors[provenienza];
   };
 
+  // Funzione per i colori degli esiti (dalla logica del Kanban)
+  const getEsitoBadgeProps = (esito: string) => {
+    // Esiti positivi (verde)
+    const esitiPositivi = [
+      'Contatto riuscito', 'Molto interessato', 'Interessato',
+      'Informazioni raccolte', 'Preventivo richiesto', 'Preventivo inviato',
+      'Appuntamento fissato', 'Ordine confermato', 'Servizio completato',
+      'Problema risolto', 'Cliente soddisfatto', 'Recensione ottenuta'
+    ];
+    
+    // Esiti negativi (rosso)
+    const esitiNegativi = [
+      'Nessuna risposta', 'Numero errato', 'Non disponibile',
+      'Non presentato', 'Non interessato', 'Opportunità persa'
+    ];
+    
+    // Esiti neutri/in attesa (arancione)
+    const esitiNeutrali = ['Poco interessato'];
+    
+    if (esitiPositivi.includes(esito)) {
+      return { className: 'bg-green-200 text-green-800 hover:bg-green-300 dark:bg-green-800 dark:text-green-200 dark:hover:bg-green-700' };
+    }
+    if (esitiNegativi.includes(esito)) {
+      return { className: 'bg-red-200 text-red-800 hover:bg-red-300 dark:bg-red-800 dark:text-red-200 dark:hover:bg-red-700' };
+    }
+    if (esitiNeutrali.includes(esito)) {
+      return { className: 'bg-yellow-200 text-yellow-800 hover:bg-yellow-300 dark:bg-yellow-800 dark:text-yellow-200 dark:hover:bg-yellow-700' };
+    }
+    return { className: 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' };
+  };
+
   // Data arrays
   const statiAttivita = ['Completata', 'In corso', 'Annullata', 'Da Pianificare', 'Pianificata', 'In attesa', 'Rimandata'];
   const priorita = ['Urgente', 'Alta', 'Media', 'Bassa'];
   const tipi = ['Chiamata', 'WhatsApp', 'Email', 'SMS', 'Consulenza', 'Follow-up', 'Altro'];
+  
+  const obiettivi = [
+    'Primo contatto', 'Qualificazione lead', 'Presentazione prodotto',
+    'Invio preventivo', 'Follow-up preventivo', 'Negoziazione',
+    'Chiusura ordine', 'Fissare appuntamento', 'Confermare appuntamento',
+    'Promemoria appuntamento', 'Consegna prodotto', 'Assistenza tecnica',
+    'Controllo soddisfazione', 'Upsell Cross-sell', 'Richiesta recensione'
+  ];
+  
+  const esiti = [
+    'Contatto riuscito', 'Nessuna risposta', 'Numero errato', 'Non disponibile',
+    'Non presentato', 'Molto interessato', 'Interessato', 'Poco interessato',
+    'Non interessato', 'Informazioni raccolte', 'Preventivo richiesto',
+    'Preventivo inviato', 'Appuntamento fissato', 'Ordine confermato',
+    'Opportunità persa', 'Servizio completato', 'Problema risolto',
+    'Cliente soddisfatto', 'Recensione ottenuta'
+  ];
+  
+  const prossimaAzione = [
+    'Chiamata', 'WhatsApp', 'Email', 'SMS', 'Consulenza', 'Follow-up', 'Nessuna'
+  ];
   
   const statiLeads: LeadStato[] = ['Nuovo', 'Attivo', 'Qualificato', 'Cliente', 'Chiuso', 'Sospeso'];
   const provenienze: LeadProvenienza[] = ['Meta', 'Instagram', 'Google', 'Sito', 'Referral', 'Organico'];
@@ -131,6 +185,87 @@ export default function BadgeDemoPage() {
                 {tipo}
               </Badge>
             ))}
+          </div>
+        </div>
+
+        {/* Obiettivi */}
+        <div>
+          <h3 className="text-sm font-medium mb-2">Obiettivi</h3>
+          <div className="flex flex-wrap gap-2">
+            {obiettivi.map((obiettivo) => (
+              <Badge 
+                key={obiettivo}
+                variant="secondary"
+                className="text-xs"
+              >
+                {obiettivo}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        {/* Esiti */}
+        <div>
+          <h3 className="text-sm font-medium mb-2">Esiti (con colori semantici)</h3>
+          <div className="flex flex-wrap gap-2">
+            {esiti.map((esito) => {
+              const props = getEsitoBadgeProps(esito);
+              return (
+                <Badge 
+                  key={esito}
+                  variant="secondary"
+                  className={cn('text-xs', props.className)}
+                >
+                  {esito}
+                </Badge>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Prossima Azione */}
+        <div>
+          <h3 className="text-sm font-medium mb-2">Prossima Azione</h3>
+          <div className="flex flex-wrap gap-2">
+            {prossimaAzione.map((azione) => (
+              <Badge 
+                key={azione}
+                variant="outline"
+                className="text-xs"
+              >
+                {azione}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        {/* Progress Indicators */}
+        <div>
+          <h3 className="text-sm font-medium mb-4">Progress Indicators (Stati)</h3>
+          
+          {/* Samples come nell'immagine */}
+          <div className="mb-4">
+            <h4 className="text-xs text-gray-500 mb-2">Campioni di Progresso</h4>
+            <ActivityProgressSamples />
+          </div>
+          
+          {/* Tutti gli stati */}
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Tutti gli Stati</h4>
+            <div className="flex flex-wrap gap-4">
+              {statiAttivita.map((stato) => (
+                <div key={stato} className="flex flex-col items-center gap-2">
+                  <ActivityProgress 
+                    stato={stato as ActivityStato}
+                    size="md"
+                    showPercentage={true}
+                  />
+                  <span className="text-xs text-gray-600 text-center max-w-20">
+                    {stato}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

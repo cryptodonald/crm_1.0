@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { LeadFormData, LEAD_VALIDATION_RULES } from '@/types/leads';
 import {
@@ -57,6 +57,11 @@ export function DocumentiStep({ form }: DocumentiStepProps) {
   const [uploadedAttachments, setUploadedAttachments] = useState<any[]>([]);
 
   const { control, setValue } = form;
+
+  // Sincronizza uploadedAttachments con il form quando cambia
+  useEffect(() => {
+    setValue('Allegati', uploadedAttachments);
+  }, [uploadedAttachments, setValue]);
 
   const validateFile = (file: File): string | null => {
     if (file.size > MAX_FILE_SIZE) {
@@ -146,11 +151,7 @@ export function DocumentiStep({ form }: DocumentiStepProps) {
     );
     
     setFiles(prev => [...prev, ...successfulFiles]);
-    setUploadedAttachments(prev => {
-      const updated = [...prev, ...uploadedFiles];
-      setValue('Allegati', updated);
-      return updated;
-    });
+    setUploadedAttachments(prev => [...prev, ...uploadedFiles]);
     
     setUploading(false);
   }, [setValue]);
@@ -195,14 +196,10 @@ export function DocumentiStep({ form }: DocumentiStepProps) {
     });
     
     // Also remove from uploaded attachments
-    setUploadedAttachments(prev => {
-      const updated = prev.filter(attachment => 
-        attachment.id !== fileId && 
-        !attachment.filename.includes(fileId)
-      );
-      setValue('Allegati', updated);
-      return updated;
-    });
+    setUploadedAttachments(prev => prev.filter(attachment => 
+      attachment.id !== fileId && 
+      !attachment.filename.includes(fileId)
+    ));
   };
 
   const getFileIcon = (type: string) => {
