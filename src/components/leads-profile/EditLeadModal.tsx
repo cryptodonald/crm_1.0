@@ -240,7 +240,20 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
                   const normalizedNew = typeof newValue === 'string' ? newValue.trim() : newValue;
                   const normalizedCurrent = typeof currentValue === 'string' ? currentValue.trim() : currentValue;
                   
-                  return JSON.stringify(normalizedNew) === JSON.stringify(normalizedCurrent);
+                  const matches = JSON.stringify(normalizedNew) === JSON.stringify(normalizedCurrent);
+                  console.log(`🔍 [EditLeadModal] Field "${key}" check:`, {
+                    newValue: normalizedNew,
+                    currentValue: normalizedCurrent,
+                    matches: matches
+                  });
+                  
+                  return matches; // Se trova una corrispondenza, l'update è riuscito
+                });
+                
+                console.log('🎯 [EditLeadModal] Update verification result:', {
+                  wasUpdated: wasUpdated,
+                  fieldsChecked: Object.keys(data),
+                  leadId: updatedLead.id || updatedLead.ID
                 });
                 
                 if (wasUpdated) {
@@ -271,19 +284,21 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
         hasSuccessField: result && 'success' in result,
         successValue: result?.success,
         resultType: typeof result,
-        resultKeys: result ? Object.keys(result) : 'N/A'
+        resultKeys: result ? Object.keys(result) : 'N/A',
+        leadExists: !!(result?.lead),
+        leadId: result?.lead?.id || result?.lead?.ID
       });
       
       // Controlla il successo: campo success=true O presenza di un lead valido
       const isSuccessful = (result && result.success === true) || 
-                          (result && result.lead && result.lead.id);
+                          (result && result.lead && (result.lead.id || result.lead.ID));
       
       if (isSuccessful) {
         console.log('✅ [EditLeadModal] Update successful, closing modal...');
         console.log('🔍 [EditLeadModal] Success detected via:', {
           explicitSuccess: result?.success === true,
-          leadPresent: !!(result?.lead && result?.lead.id),
-          leadId: result?.lead?.id
+          leadPresent: !!(result?.lead && (result?.lead.id || result?.lead.ID)),
+          leadId: result?.lead?.id || result?.lead?.ID
         });
         
         toast.success('Lead aggiornato con successo!');
@@ -317,16 +332,17 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
       // Gestione speciale per errori di timeout
       if (e instanceof Error && (e.name === 'AbortError' || e.message.includes('timeout'))) {
         toast.error('Timeout durante il salvataggio', { 
-          description: 'L\'operazione potrebbe essere andata a buon fine. Controlla i dati o ricarica la pagina.',
+          description: 'L\'operazione potrebbe essere completata su Airtable. Verifica i dati prima di riprovare.',
           action: {
-            label: 'Chiudi e ricarica',
+            label: 'Chiudi e verifica',
             onClick: () => {
               onOpenChange(false);
               if (onUpdated) {
                 onUpdated();
               }
             },
-          }
+          },
+          duration: 8000 // Più tempo per leggere il messaggio
         });
       } else {
         toast.error('Aggiornamento fallito', { 
