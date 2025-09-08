@@ -316,10 +316,10 @@ export async function PUT(
     
     // Gestione specifica per timeout
     if (error.name === 'AbortError') {
-      console.error('⏰ [UPDATE LEAD] Request timed out after 18s');
+      console.error('⏰ [UPDATE LEAD] Request timed out after 6s (Fire & Verify)');
       return NextResponse.json(
         { 
-          error: 'Request timeout - operation may still be in progress',
+          error: 'Request timeout - client will verify if operation succeeded',
           _timing: {
             total: Math.round(totalTime),
           }

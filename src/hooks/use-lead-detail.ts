@@ -19,7 +19,7 @@ interface UseLeadDetailReturn {
   deleteLead: () => Promise<boolean>;
 }
 
-export function useLeadDetail({ leadId }: UseLeadDetailProps): UseLeadDetailReturn {
+export function useLeadDetail({ leadId, refreshKey }: UseLeadDetailProps): UseLeadDetailReturn {
   const [lead, setLead] = useState<LeadData | null>(null);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -29,7 +29,14 @@ export function useLeadDetail({ leadId }: UseLeadDetailProps): UseLeadDetailRetu
     async () => {
       console.log(`🔍 [useLeadDetail] Fetching lead: ${leadId}`);
 
-      const response = await fetch(`/api/leads/${leadId}`);
+      // Force cache busting per fresh data
+      const cacheBuster = Date.now();
+      const response = await fetch(`/api/leads/${leadId}?_t=${cacheBuster}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        }
+      });
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -145,13 +152,13 @@ export function useLeadDetail({ leadId }: UseLeadDetailProps): UseLeadDetailRetu
     }
   }, [fetchLeadWithRetry.data, fetchLeadWithRetry.error]);
 
-  // Auto-fetch quando cambia leadId
+  // Auto-fetch quando cambia leadId o refreshKey
   useEffect(() => {
     if (leadId) {
-      console.log(`🔄 [useLeadDetail] Auto-fetching for leadId: ${leadId}`);
+      console.log(`🔄 [useLeadDetail] Auto-fetching for leadId: ${leadId}, refreshKey: ${refreshKey}`);
       fetchLeadWithRetry.execute();
     }
-  }, [leadId]); // Non includere fetchLeadWithRetry.execute nelle deps
+  }, [leadId, refreshKey]); // Include refreshKey per force refresh
 
   // Funzioni wrapper
   const refresh = useCallback(async () => {

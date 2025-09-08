@@ -677,96 +677,160 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
     return filtered;
   }, [activities, searchTerm, statoFilter]);
 
-  // Aggiorna kanbanData quando cambiano le attività o i filtri
+  // Aggiorna kanbanData quando cambiano le attività o i filtri (usa la stessa logica del Kanban originale)
   useEffect(() => {
-    const newKanbanData: KanbanData = {
-      'to-do': [],
-      'in-progress': [],
-      'done': [],
+    const groupedActivities: KanbanData = {
+      'to-do': filteredActivities.filter(activity =>
+        KANBAN_COLUMNS['to-do'].states.includes(activity.Stato)
+      ),
+      'in-progress': filteredActivities.filter(activity =>
+        KANBAN_COLUMNS['in-progress'].states.includes(activity.Stato)
+      ),
+      'done': filteredActivities.filter(activity =>
+        KANBAN_COLUMNS.done.states.includes(activity.Stato)
+      ),
     };
-
-    filteredActivities.forEach(activity => {
-      const columnId = getKanbanColumnFromState(activity.Stato);
-      newKanbanData[columnId].push(activity);
-    });
-
-    setKanbanData(newKanbanData);
+    setKanbanData(groupedActivities);
   }, [filteredActivities]);
 
-  // Gestione drag and drop
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-    
-    if (!over || active.id === over.id) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-    
-    // Se stiamo trascinando su una colonna
-    if (overId.startsWith('column-')) {
-      const columnId = overId.replace('column-', '') as KanbanColumnId;
-      const activity = activities.find(a => a.id === activeId);
+  // Gestisce il drag & drop tra colonne (logica dal componente Kanban originale)
+  const handleKanbanChange = async (newKanbanData: KanbanData) => {
+    try {
+      // Cerca l'attività che è stata spostata confrontando con lo stato precedente
+      let movedActivity: ActivityData | null = null;
+      let targetColumnId: string | null = null;
       
-      if (!activity) return;
+      for (const [columnId, columnActivities] of Object.entries(newKanbanData)) {
+        const column = KANBAN_COLUMNS[columnId as KanbanColumnId];
+        
+        for (const activity of columnActivities) {
+          // Se l'attività non apparteneva a questa colonna prima, è stata spostata qui
+          if (!column.states.includes(activity.Stato)) {
+            movedActivity = activity;
+            targetColumnId = columnId;
+            break;
+          }
+        }
+        if (movedActivity) break;
+      }
       
-      const currentColumnId = getKanbanColumnFromState(activity.Stato);
-      if (currentColumnId === columnId) return; // Stessa colonna
-      
-      // Prepara il nuovo stato del Kanban
-      const newKanbanData = { ...kanbanData };
-      
-      // Rimuovi dalla colonna corrente
-      newKanbanData[currentColumnId] = newKanbanData[currentColumnId].filter(a => a.id !== activeId);
-      
-      // Aggiungi alla nuova colonna
-      newKanbanData[columnId] = [...newKanbanData[columnId], activity];
-      
-      // Se stiamo trascinando verso "done", mostra dialog per scegliere lo stato specifico
-      if (columnId === 'done') {
-        setPendingStateChange({ activity, columnId, newKanbanData });
-        setShowStateDialog(true);
+      if (!movedActivity || !targetColumnId) {
+        // Nessun cambio significativo, aggiorna semplicemente
+        setKanbanData(newKanbanData);
         return;
       }
       
-      // Altrimenti aggiorna direttamente
-      const newState = getStateFromKanbanColumn(columnId);
-      updateActivityState(activity, newState, newKanbanData);
+      const column = KANBAN_COLUMNS[targetColumnId as KanbanColumnId];
+      const defaultState = column.defaultState;
+      
+      // Gestione spostamenti tra colonne diverse
+      if (!column.states.includes(movedActivity.Stato)) {
+        console.log(`🔄 Spostamento: ${movedActivity.Stato} → ${targetColumnId} (${defaultState})`);
+        
+        // Caso speciale: drop su "Completate" richiede scelta tra Completata/Annullata
+        if (targetColumnId === 'done') {
+          console.log(`💬 Dialog: Scegliere stato finale per attività ${movedActivity.ID}`);
+          
+          setPendingStateChange({
+            activity: movedActivity,
+            columnId: targetColumnId,
+            newKanbanData,
+          });
+          setShowStateDialog(true);
+          return; // Il dialog gestirà il resto
+        }
+        
+        // Per tutti gli altri casi (da fare → in corso, ecc.), applica il defaultState
+        console.log(`✅ Cambio automatico: "${movedActivity.Stato}" → "${defaultState}"`);
+        await applyStateChange(movedActivity, defaultState, newKanbanData);
+        return;
+      }
+      
+      // Se l'attività è già nella colonna corretta, aggiorna solo la UI
+      console.log(`ℹ️ Riordinamento interno nella colonna ${targetColumnId}`);
+      setKanbanData(newKanbanData);
+      
+    } catch (err) {
+      console.error('Errore nello spostamento attività:', err);
+      toast.error('Errore nello spostamento dell\'attività');
+      
+      // Ripristina lo stato precedente in caso di errore
+      const groupedActivities: KanbanData = {
+        'to-do': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS['to-do'].states.includes(activity.Stato)
+        ),
+        'in-progress': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS['in-progress'].states.includes(activity.Stato)
+        ),
+        'done': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS.done.states.includes(activity.Stato)
+        ),
+      };
+      setKanbanData(groupedActivities);
     }
   };
   
-  // Funzione helper per ottenere lo stato da una colonna Kanban
-  const getStateFromKanbanColumn = (columnId: KanbanColumnId): ActivityStato => {
-    switch (columnId) {
-      case 'to-do': return 'Da Pianificare';
-      case 'in-progress': return 'In corso';
-      case 'done': return 'Completata';
-      default: return 'Da Pianificare';
+  // Funzione per applicare il cambio stato dopo la scelta nel dialog
+  const applyStateChange = async (activity: ActivityData, finalState: ActivityStato, kanbanData: KanbanData) => {
+    try {
+      // TODO: Chiamata API per aggiornare stato
+      // await fetch(`/api/activities/${activity.id}`, {
+      //   method: 'PATCH', 
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ Stato: finalState }),
+      // });
+      
+      console.log(`🎯 Attività ${activity.ID} aggiornata a "${finalState}"`);
+      
+      // Aggiorna le attività con il nuovo stato
+      const updatedActivities = activities.map(a => 
+        a.id === activity.id ? { ...a, Stato: finalState } : a
+      );
+      
+      setActivities(updatedActivities);
+      setKanbanData(kanbanData);
+      
+      toast.success(`Attività marcata come "${finalState}"`);
+    } catch (err) {
+      console.error('Errore nell\'aggiornamento stato:', err);
+      toast.error('Errore nell\'aggiornamento dello stato');
     }
   };
   
-  // Funzione per aggiornare lo stato dell'attività
-  const updateActivityState = (activity: ActivityData, newState: ActivityStato, newKanbanData: KanbanData) => {
-    // Aggiorna lo stato locale
-    setKanbanData(newKanbanData);
-    
-    // Aggiorna l'attività nell'array principale
-    setActivities(prev => prev.map(a => 
-      a.id === activity.id ? { ...a, Stato: newState } : a
-    ));
-    
-    // TODO: Chiamata API per aggiornare sul server
-    toast.success(`Attività spostata in: ${newState}`);
-  };
-  
-  // Gestione del dialog per stati completati
-  const handleCompleteStateSelect = (selectedState: ActivityStato) => {
+  // Gestione dialog scelta stato completate (dal componente Kanban originale)
+  const handleStateDialogChoice = async (chosenState: 'Completata' | 'Annullata') => {
     if (!pendingStateChange) return;
     
-    updateActivityState(pendingStateChange.activity, selectedState, pendingStateChange.newKanbanData);
+    const { activity, newKanbanData } = pendingStateChange;
     
-    // Reset stati
-    setPendingStateChange(null);
+    // Chiudi dialog
     setShowStateDialog(false);
+    setPendingStateChange(null);
+    
+    // Applica il cambio stato scelto
+    await applyStateChange(activity, chosenState, newKanbanData);
+  };
+  
+  const handleStateDialogCancel = () => {
+    // Ripristina lo stato precedente del Kanban
+    if (pendingStateChange) {
+      const groupedActivities: KanbanData = {
+        'to-do': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS['to-do'].states.includes(activity.Stato)
+        ),
+        'in-progress': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS['in-progress'].states.includes(activity.Stato)
+        ),
+        'done': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS.done.states.includes(activity.Stato)
+        ),
+      };
+      setKanbanData(groupedActivities);
+    }
+    
+    setShowStateDialog(false);
+    setPendingStateChange(null);
+    toast.info('Spostamento annullato');
   };
 
   // Gestione modifica attività
@@ -844,9 +908,8 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
       {/* Lista delle attività con Kanban verticale */}
       <Kanban 
         value={kanbanData}
-        onValueChange={setKanbanData}
-        getItemValue={(activity) => activity.id}
-        onDragEnd={handleDragEnd}
+        onValueChange={handleKanbanChange}
+        getItemValue={(activity: ActivityData) => activity.id as UniqueIdentifier}
         orientation="vertical"
       >
         <KanbanBoard>
@@ -938,36 +1001,56 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
         onClose={() => setShowNewActivityModal(false)}
       />
       
-      {/* Dialog per scelta stato completato */}
-      <Dialog open={showStateDialog} onOpenChange={setShowStateDialog}>
+      {/* Dialog per scegliere stato completate (stessa UI del Kanban originale) */}
+      <Dialog open={showStateDialog} onOpenChange={(open) => {
+        if (!open) handleStateDialogCancel();
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Scegli lo stato finale</DialogTitle>
+            <DialogTitle>Come vuoi completare l'attività?</DialogTitle>
             <DialogDescription>
-              L'attività è stata spostata nella sezione "Completata". Scegli lo stato specifico:
+              {pendingStateChange && (
+                <>
+                  Stai spostando l'attività <strong>"{pendingStateChange.activity.Titolo}"</strong> nella sezione Completate.
+                  <br />Scegli lo stato finale:
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid gap-2">
+          <div className="flex flex-col gap-3 py-4">
             <Button
+              onClick={() => handleStateDialogChoice('Completata')}
+              className="flex items-center justify-start gap-3 h-auto p-4 bg-green-50 border border-green-200 text-green-800 hover:bg-green-100"
               variant="outline"
-              onClick={() => handleCompleteStateSelect('Completata')}
-              className="justify-start"
             >
-              ✅ Completata
+              <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold">
+                ✓
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Completata</div>
+                <div className="text-sm text-green-600">L'attività è stata portata a termine con successo</div>
+              </div>
             </Button>
+            
             <Button
+              onClick={() => handleStateDialogChoice('Annullata')}
+              className="flex items-center justify-start gap-3 h-auto p-4 bg-red-50 border border-red-200 text-red-800 hover:bg-red-100"
               variant="outline"
-              onClick={() => handleCompleteStateSelect('Annullata')}
-              className="justify-start"
             >
-              ❌ Annullata
+              <div className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold">
+                ✕
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Annullata</div>
+                <div className="text-sm text-red-600">L'attività non è più necessaria o è stata cancellata</div>
+              </div>
             </Button>
           </div>
           
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowStateDialog(false)}>
-              Annulla
+          <DialogFooter className="sm:justify-between">
+            <Button variant="ghost" onClick={handleStateDialogCancel}>
+              Annulla spostamento
             </Button>
           </DialogFooter>
         </DialogContent>

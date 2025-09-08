@@ -153,9 +153,11 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
         controller.abort();
       }, 5000); // 5 secondi timeout per PUT, poi verifichiamo
       
+      let response;
+      
       try {
         console.log('🚀 [EditLeadModal] Starting fetch request...');
-        const fetchResponse = await fetch(apiUrl, {
+        response = await fetch(apiUrl, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -167,11 +169,9 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
         clearTimeout(timeoutId);
         console.log('✅ [EditLeadModal] Fetch request completed successfully');
         
-        console.log('📡 [EditLeadModal] Fetch completed - Response status:', fetchResponse.status);
-        console.log('📡 [EditLeadModal] Response ok:', fetchResponse.ok);
-        console.log('📡 [EditLeadModal] Response headers:', Object.fromEntries(fetchResponse.headers.entries()));
-        
-        const response = fetchResponse;
+        console.log('📡 [EditLeadModal] Fetch completed - Response status:', response.status);
+        console.log('📡 [EditLeadModal] Response ok:', response.ok);
+        console.log('📡 [EditLeadModal] Response headers:', Object.fromEntries(response.headers.entries()));
       } catch (fetchError) {
         clearTimeout(timeoutId);
         console.error('❌ [EditLeadModal] Fetch error:', fetchError);
@@ -211,7 +211,7 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
                 // Chiudi modal e aggiorna
                 onOpenChange(false);
                 if (onUpdated) await onUpdated();
-                return; // Esce dalla funzione con successo
+                return; // Esce dalla funzione con successo - non processare oltre
               }
             }
             
@@ -228,6 +228,12 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
         } else {
           throw fetchError; // Altri errori, re-throw normale
         }
+      }
+      
+      // Controllo che response sia definita (potrebbe non esserlo se Fire & Verify ha gestito il timeout)
+      if (!response) {
+        console.log('🚀 [EditLeadModal] Response is undefined - likely handled by Fire & Verify');
+        return; // Non processare oltre, Fire & Verify ha già gestito tutto
       }
       
       if (!response.ok) {

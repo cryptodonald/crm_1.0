@@ -965,7 +965,6 @@ export function LeadsDataTable({
                         onReferenceClick={refId =>
                           console.log('Reference clicked:', refId)
                         }
-                        onNameClick={handleViewLead}
                       />
                     </TableCell>
                   )}
