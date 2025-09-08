@@ -294,7 +294,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
     >
       <Card className="border-none shadow-none bg-transparent">
         <CardContent className="p-3 sm:p-4">
-          {/* Header: Data, Durata, Nome Lead, Stato e pulsante azioni */}
+          {/* Header: Data, Durata e pulsante azioni */}
           <div className="flex items-start justify-between mb-2 sm:mb-3">
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               {/* Data programmata e Durata nell'header */}
@@ -311,23 +311,6 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
                   {activity['Durata stimata']}
                 </span>
               )}
-              {/* Nome Lead e Badge Stato affiancati */}
-              {activity['Nome Lead'] && activity['Nome Lead'][0] && (
-                <Badge variant="outline" className="text-[10px] sm:text-xs">
-                  {activity['Nome Lead'][0]}
-                </Badge>
-              )}
-              {(() => {
-                const statusProps = getStatusBadgeProps(activity.Stato);
-                return (
-                  <Badge 
-                    variant={statusProps.variant}
-                    className={cn('text-[10px] sm:text-xs', statusProps.className)}
-                  >
-                    {activity.Stato}
-                  </Badge>
-                );
-              })()}
             </div>
             
             {/* Pulsante azioni in alto a destra */}
@@ -368,11 +351,27 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
             </DropdownMenu>
           </div>
 
-          {/* Tipo sopra il titolo */}
-          <div className="mb-2">
+          {/* Riga Tipo, Nome Lead e Stato */}
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
             <Badge variant="secondary" className="text-[10px] sm:text-xs">
               {activity.Tipo}
             </Badge>
+            {activity['Nome Lead'] && activity['Nome Lead'][0] && (
+              <Badge variant="outline" className="text-[10px] sm:text-xs">
+                {activity['Nome Lead'][0]}
+              </Badge>
+            )}
+            {(() => {
+              const statusProps = getStatusBadgeProps(activity.Stato);
+              return (
+                <Badge 
+                  variant={statusProps.variant}
+                  className={cn('text-[10px] sm:text-xs', statusProps.className)}
+                >
+                  {activity.Stato}
+                </Badge>
+              );
+            })()}
           </div>
 
           {/* Titolo principale */}
@@ -489,6 +488,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
     </KanbanItem>
   );
 };
+
 
 
 
