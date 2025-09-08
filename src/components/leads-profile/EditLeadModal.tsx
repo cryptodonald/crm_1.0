@@ -151,7 +151,7 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
       const timeoutId = setTimeout(() => {
         console.log('⏰ [EditLeadModal] Fetch timeout reached, aborting request');
         controller.abort();
-      }, 15000); // 15 secondi timeout
+      }, 20000); // 20 secondi timeout (server ha 18s)
       
       try {
         console.log('🚀 [EditLeadModal] Starting fetch request...');
@@ -227,7 +227,7 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           console.error('⏰ [EditLeadModal] Request aborted due to timeout');
-          errorMessage = 'Richiesta interrotta per timeout (15s). Il salvataggio potrebbe essere comunque riuscito.';
+          errorMessage = 'Richiesta interrotta per timeout (20s). Il salvataggio potrebbe essere comunque riuscito.';
         } else if (error.message.includes('fetch')) {
           console.error('❌ [EditLeadModal] Network/Fetch error detected');
           errorMessage = 'Errore di connessione. Verifica la connessione di rete.';

@@ -305,148 +305,197 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
     >
       <Card className="border-none shadow-none bg-transparent">
         <CardContent className="p-3">
-          {/* Header compatto: Titolo e pulsante azioni */}
-          <div className="flex items-start justify-between mb-2">
-            {/* Titolo principale */}
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 flex-1 pr-2">
-              {activity.Titolo}
-            </h3>
-            
-            {/* Pulsante azioni in alto a destra */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-5 w-5 p-0 text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-32">
-                <DropdownMenuItem 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(activity);
-                  }}
-                  className="flex items-center gap-2 cursor-pointer text-xs"
-                >
-                  <Edit className="h-3 w-3" />
-                  Modifica
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(activity);
-                  }}
-                  className="flex items-center gap-2 cursor-pointer text-xs text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
-                >
-                  <Trash2 className="h-3 w-3" />
-                  Elimina
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Prima riga: Badge compatti */}
-          <div className="flex items-center gap-1 mb-2 flex-wrap">
-            <Badge variant="secondary" className="text-[10px] h-5">
-              {activity.Tipo}
-            </Badge>
-            {activity['Nome Lead'] && activity['Nome Lead'][0] && (
-              <Badge variant="outline" className="text-[10px] h-5">
-                {activity['Nome Lead'][0]}
-              </Badge>
-            )}
-            {(() => {
-              const statusProps = getStatusBadgeProps(activity.Stato);
-              return (
-                <Badge 
-                  variant={statusProps.variant}
-                  className={cn('text-[10px] h-5', statusProps.className)}
-                >
-                  {activity.Stato}
-                </Badge>
-              );
-            })()}
-            {activity.Data && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 ml-auto">
-                <Calendar className="w-3 h-3" />
-                {new Date(activity.Data).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
-              </span>
-            )}
-          </div>
-
-          {/* Seconda riga: Assegnatario e Progress compatti */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
+          {/* Layout orizzontale principale */}
+          <div className="grid grid-cols-12 gap-3 items-center">
+            {/* Cliente + Avatar (3 colonne) */}
+            <div className="col-span-3 flex items-center gap-2">
               <AvatarLead
-                nome={assignee || 'Non assegnata'}
+                nome={assignee || activity['Nome Lead']?.[0] || 'Non assegnata'}
                 size="sm"
                 showTooltip={false}
-                className="w-5 h-5"
+                className="w-8 h-8 flex-shrink-0"
               />
-              <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{assignee || 'Non assegnata'}</span>
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                  {activity.Titolo}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-[9px] h-4 px-1">
+                    {activity.Tipo}
+                  </Badge>
+                  {(() => {
+                    const statusProps = getStatusBadgeProps(activity.Stato);
+                    return (
+                      <Badge 
+                        variant={statusProps.variant}
+                        className={cn('text-[9px] h-4 px-1', statusProps.className)}
+                      >
+                        {activity.Stato}
+                      </Badge>
+                    );
+                  })()}
+                </div>
+                {activity['Nome Lead'] && activity['Nome Lead'][0] && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {activity['Nome Lead'][0]}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded dark:bg-zinc-700">
-              <ActivityProgress 
-                stato={activity.Stato}
-                size="xs"
-                showPercentage={false}
-              />
-              <span className="text-[9px] font-medium text-gray-600 dark:text-gray-400">
-                {getPercentageFromState(activity.Stato)}
-              </span>
-            </div>
-          </div>
 
-          {/* Footer compatto: Priorità, Esito e Allegati */}
-          <div className="flex items-center justify-between text-[10px]">
-            <div className="flex items-center gap-1">
-              {activity.Priorità && (
-                <Badge 
-                  variant={getBadgeVariantForPriority(activity.Priorità)}
-                  className="text-[9px] h-4 px-1"
-                >
-                  {activity.Priorità}
-                </Badge>
-              )}
-              {activity.Esito && (
-                <Badge 
-                  variant="secondary" 
-                  className={cn('text-[9px] h-4 px-1', getEsitoBadgeProps(activity.Esito).className)}
-                >
-                  {activity.Esito}
-                </Badge>
-              )}
-              {activity['Durata stimata'] && (
-                <span className="text-gray-500 dark:text-gray-400 ml-1">
-                  {activity['Durata stimata']}
-                </span>
+            {/* Data (2 colonne) */}
+            <div className="col-span-2 text-center">
+              {activity.Data ? (
+                <div className="flex flex-col items-center">
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {new Date(activity.Data).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {new Date(activity.Data).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400">Nessuna data</span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              {activity.Allegati && activity.Allegati.length > 0 && (
+
+            {/* Obiettivo (2 colonne) */}
+            <div className="col-span-2">
+              {activity.Obiettivo ? (
+                <Badge variant="outline" className="text-xs">
+                  {activity.Obiettivo}
+                </Badge>
+              ) : (
+                <span className="text-xs text-gray-400">Nessun obiettivo</span>
+              )}
+            </div>
+
+            {/* Assegnatario (2 colonne) */}
+            <div className="col-span-2">
+              <div className="flex items-center gap-1">
+                <AvatarLead
+                  nome={assignee || 'Non assegnata'}
+                  size="sm"
+                  showTooltip={false}
+                  className="w-5 h-5"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                    {assignee || 'Non assegnata'}
+                  </div>
+                  {activity.Priorità && (
+                    <Badge 
+                      variant={getBadgeVariantForPriority(activity.Priorità)}
+                      className="text-[9px] h-4 px-1 mt-0.5"
+                    >
+                      {activity.Priorità}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Follow-up + Progress (2 colonne) */}
+            <div className="col-span-2">
+              <div className="flex flex-col gap-1">
+                {activity['Prossima azione'] ? (
+                  <Badge variant="outline" className="text-[9px] h-4 px-1 w-fit">
+                    {activity['Prossima azione']}
+                  </Badge>
+                ) : (
+                  <span className="text-xs text-gray-400">Nessun follow-up</span>
+                )}
+                <div className="flex items-center gap-1">
+                  <ActivityProgress 
+                    stato={activity.Stato}
+                    size="xs"
+                    showPercentage={false}
+                  />
+                  <span className="text-[9px] font-medium text-gray-600 dark:text-gray-400">
+                    {getPercentageFromState(activity.Stato)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Documenti + Azioni (1 colonna) */}
+            <div className="col-span-1 flex items-center justify-end gap-1">
+              {/* Allegati */}
+              {activity.Allegati && activity.Allegati.length > 0 ? (
                 <button 
-                  className="flex items-center gap-1 px-1 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 dark:bg-zinc-700 dark:hover:bg-zinc-600 dark:text-gray-400"
+                  className="flex items-center gap-1 px-1.5 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 dark:bg-zinc-700 dark:hover:bg-zinc-600 dark:text-gray-400 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     console.log('Apertura allegati:', activity.Allegati);
                   }}
+                  title={`${activity.Allegati.length} allegati`}
                 >
                   <Paperclip className="w-3 h-3" />
-                  <span className="text-[9px] font-medium">{activity.Allegati.length}</span>
+                  <span className="text-xs font-medium">{activity.Allegati.length}</span>
                 </button>
+              ) : (
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                </div>
               )}
-              {activity['Prossima azione'] && (
-                <Badge variant="outline" className="text-[9px] h-4 px-1">
-                  {activity['Prossima azione']}
+              
+              {/* Menu azioni */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-32">
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(activity);
+                    }}
+                    className="flex items-center gap-2 cursor-pointer text-xs"
+                  >
+                    <Edit className="h-3 w-3" />
+                    Modifica
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(activity);
+                    }}
+                    className="flex items-center gap-2 cursor-pointer text-xs text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Elimina
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {/* Riga aggiuntiva per Note/Esito (se presenti) */}
+          {(activity.Note || activity.Esito) && (
+            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-zinc-700 flex items-center justify-between">
+              {activity.Note && (
+                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 flex-1">
+                  {activity.Note}
+                </p>
+              )}
+              {activity.Esito && (
+                <Badge 
+                  variant="secondary" 
+                  className={cn('text-[9px] h-4 px-1 ml-2', getEsitoBadgeProps(activity.Esito).className)}
+                >
+                  {activity.Esito}
                 </Badge>
               )}
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </KanbanItem>
@@ -807,7 +856,7 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
             return (
               // Riquadro grigio completo che ingloba header + attività
               <div key={column.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                {/* Header della sezione */}
+                {/* Header della sezione con titolo */}
                 <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-600">
                   <div className="flex items-center gap-2">
                     <column.icon className={cn('h-4 w-4', column.iconColor)} />
@@ -827,6 +876,30 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
                     <Plus className="h-3 w-3" />
                   </Button>
                 </div>
+                
+                {/* Intestazioni colonne (solo se ci sono attività) */}
+                {columnActivities.length > 0 && (
+                  <div className="grid grid-cols-12 gap-3 px-3 py-2 bg-gray-100 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+                    <div className="col-span-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                      Cliente
+                    </div>
+                    <div className="col-span-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide text-center">
+                      Data
+                    </div>
+                    <div className="col-span-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                      Obiettivi
+                    </div>
+                    <div className="col-span-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                      Assegnatario
+                    </div>
+                    <div className="col-span-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                      Follow-up
+                    </div>
+                    <div className="col-span-1 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide text-center">
+                      Documenti
+                    </div>
+                  </div>
+                )}
                 
                 {/* Contenuto della sezione */}
                 <KanbanColumn value={column.id} className="min-h-[80px] border-none bg-transparent p-3">
