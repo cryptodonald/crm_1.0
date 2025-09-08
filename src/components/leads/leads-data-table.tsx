@@ -965,7 +965,7 @@ export function LeadsDataTable({
                         onReferenceClick={refId =>
                           console.log('Reference clicked:', refId)
                         }
-                        onNameClick={handleViewLead}
+                        onNameClick={(leadId) => router.push(`/leads/${leadId}`)}
                       />
                     </TableCell>
                   )}
