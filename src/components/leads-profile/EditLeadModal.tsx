@@ -127,12 +127,12 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
     try {
       console.log('🔥 [EditLeadModal] About to call fetch...');
       
-      // Aggiungi timeout esplicito
+      // Aggiungi timeout esplicito - 15s per dare tempo ad Airtable
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         console.log('⏰ [EditLeadModal] Fetch timeout after 15s, aborting...');
         controller.abort();
-      }, 8000); // Ridotto a 8s per debug - se non risponde in 8s c'è un problema
+      }, 15000); // 15s timeout per operazioni Airtable
       
       console.log('📡 [EditLeadModal] Making fetch request...');
       console.log('📝 [EditLeadModal] Request details:', {
