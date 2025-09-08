@@ -294,74 +294,10 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
     >
       <Card className="border-none shadow-none bg-transparent">
         <CardContent className="p-3 sm:p-4">
-          {/* Header: Tipo e Badge Stato con pulsante azioni in alto a destra */}
+          {/* Header: Data, Durata, Nome Lead, Stato e pulsante azioni */}
           <div className="flex items-start justify-between mb-2 sm:mb-3">
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-              <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                {activity.Tipo}
-              </Badge>
-              {activity['Nome Lead'] && activity['Nome Lead'][0] && (
-                <Badge variant="outline" className="text-[10px] sm:text-xs hidden sm:inline-flex">
-                  {activity['Nome Lead'][0]}
-                </Badge>
-              )}
-            </div>
-            
-            {/* Pulsante azioni e Badge Stato in alto a destra */}
-            <div className="flex flex-col items-end gap-1 sm:gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MoreHorizontal className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36">
-                  <DropdownMenuItem 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(activity);
-                    }}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <Edit className="h-3 w-3" />
-                    Modifica
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(activity);
-                    }}
-                    className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Elimina
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              {(() => {
-                const statusProps = getStatusBadgeProps(activity.Stato);
-                return (
-                  <Badge 
-                    variant={statusProps.variant}
-                    className={cn('text-[10px] sm:text-xs', statusProps.className)}
-                  >
-                    {activity.Stato}
-                  </Badge>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Data programmata e Durata (sopra il titolo) */}
-          {(activity.Data || activity['Durata stimata']) && (
-            <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
+              {/* Data programmata e Durata nell'header */}
               {activity.Data && (
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
                   <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
@@ -375,8 +311,69 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
                   {activity['Durata stimata']}
                 </span>
               )}
+              {/* Nome Lead e Badge Stato affiancati */}
+              {activity['Nome Lead'] && activity['Nome Lead'][0] && (
+                <Badge variant="outline" className="text-[10px] sm:text-xs">
+                  {activity['Nome Lead'][0]}
+                </Badge>
+              )}
+              {(() => {
+                const statusProps = getStatusBadgeProps(activity.Stato);
+                return (
+                  <Badge 
+                    variant={statusProps.variant}
+                    className={cn('text-[10px] sm:text-xs', statusProps.className)}
+                  >
+                    {activity.Stato}
+                  </Badge>
+                );
+              })()}
             </div>
-          )}
+            
+            {/* Pulsante azioni in alto a destra */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36">
+                <DropdownMenuItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(activity);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <Edit className="h-3 w-3" />
+                  Modifica
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(activity);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Elimina
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Tipo sopra il titolo */}
+          <div className="mb-2">
+            <Badge variant="secondary" className="text-[10px] sm:text-xs">
+              {activity.Tipo}
+            </Badge>
+          </div>
 
           {/* Titolo principale */}
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 sm:text-base md:text-lg line-clamp-2">
@@ -477,7 +474,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
             </div>
           )}
 
-          {/* Timestamp audit - data di creazione ripristinata qui */}
+          {/* Timestamp audit - data di creazione in basso */}
           <div className="mt-3 pt-2 border-t border-gray-100 dark:border-zinc-700 text-[9px] text-gray-400 dark:text-gray-500 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2 sm:mt-4 sm:pt-3 sm:text-[10px]">
             <span>Creato: {formatDate(activity.createdTime)}</span>
             {activity['Ultima modifica'] && (
@@ -492,6 +489,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
     </KanbanItem>
   );
 };
+
 
 
 
