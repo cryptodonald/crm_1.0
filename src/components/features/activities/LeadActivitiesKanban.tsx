@@ -306,12 +306,11 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
                 </span>
               )}
               {activity['Durata stimata'] && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-800 text-white rounded dark:bg-gray-200 dark:text-gray-800">
-                  <Clock className="w-2.5 h-2.5" />
+                <Badge variant="outline" className="text-[10px] sm:text-xs bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
                   {activity['Durata stimata']}
-                </span>
-              )}
-            </div>
+                </Badge>
+              )}            </div>
             
             {/* Pulsante azioni in alto a destra */}
             <DropdownMenu>
