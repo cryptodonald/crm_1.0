@@ -146,12 +146,12 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
         bodySize: JSON.stringify(updateData).length
       });
       
-      // Crea AbortController per timeout
+      // 🚀 Fire & Verify Strategy: timeout corto per PUT, poi verifica
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.log('⏰ [EditLeadModal] Fetch timeout reached, aborting request');
+        console.log('⏰ [EditLeadModal] PUT timeout after 5s - switching to verify mode');
         controller.abort();
-      }, 20000); // 20 secondi timeout (server ha 18s)
+      }, 5000); // 5 secondi timeout per PUT, poi verifichiamo
       
       try {
         console.log('🚀 [EditLeadModal] Starting fetch request...');
@@ -175,7 +175,59 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
       } catch (fetchError) {
         clearTimeout(timeoutId);
         console.error('❌ [EditLeadModal] Fetch error:', fetchError);
-        throw fetchError; // Re-throw per essere gestito dal catch esterno
+        
+        // 🚀 Fire & Verify: Se timeout, verifica se modifica è avvenuta
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.log('🔍 [EditLeadModal] PUT timeout - starting verification...');
+          toast.loading('Verificando salvataggio...', { id: 'verify-save' });
+          
+          // Aspetta un po' per dare tempo ad Airtable di processare
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          try {
+            // Verifica se la modifica è avvenuta con GET
+            const verifyResponse = await fetch(`/api/leads/${leadId}`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            
+            if (verifyResponse.ok) {
+              const verifyData = await verifyResponse.json();
+              console.log('🔍 [EditLeadModal] Verification data:', verifyData.lead);
+              
+              // Controlla se almeno un campo è stato aggiornato
+              const isUpdated = Object.entries(updateData).some(([key, value]) => {
+                const currentValue = verifyData.lead[key];
+                const matches = JSON.stringify(currentValue) === JSON.stringify(value);
+                console.log(`🔎 [EditLeadModal] Field ${key}: expected=${JSON.stringify(value)}, current=${JSON.stringify(currentValue)}, matches=${matches}`);
+                return matches;
+              });
+              
+              if (isUpdated) {
+                console.log('✅ [EditLeadModal] Verification successful - update was applied!');
+                toast.dismiss('verify-save');
+                toast.success('Lead aggiornato con successo!');
+                
+                // Chiudi modal e aggiorna
+                onOpenChange(false);
+                if (onUpdated) await onUpdated();
+                return; // Esce dalla funzione con successo
+              }
+            }
+            
+            // Se arriviamo qui, la verifica è fallita
+            console.log('❌ [EditLeadModal] Verification failed - update not detected');
+            toast.dismiss('verify-save');
+            throw new Error('Salvataggio non confermato dopo verifica');
+            
+          } catch (verifyError) {
+            console.error('❌ [EditLeadModal] Verification error:', verifyError);
+            toast.dismiss('verify-save');
+            throw new Error('Timeout durante salvataggio. Ricarica la pagina per verificare.');
+          }
+        } else {
+          throw fetchError; // Altri errori, re-throw normale
+        }
       }
       
       if (!response.ok) {
@@ -227,7 +279,7 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           console.error('⏰ [EditLeadModal] Request aborted due to timeout');
-          errorMessage = 'Richiesta interrotta per timeout (20s). Il salvataggio potrebbe essere comunque riuscito.';
+          errorMessage = 'Verifica del salvataggio fallita. Ricarica la pagina per controllare.';
         } else if (error.message.includes('fetch')) {
           console.error('❌ [EditLeadModal] Network/Fetch error detected');
           errorMessage = 'Errore di connessione. Verifica la connessione di rete.';

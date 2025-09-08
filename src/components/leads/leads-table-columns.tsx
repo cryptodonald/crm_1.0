@@ -45,10 +45,9 @@ interface ClienteColumnProps {
   lead: LeadData;
   onReferenceClick?: (referenceId: string) => void;
   onNameClick?: (leadId: string) => void;
-  router?: any;
 }
 
-export function ClienteColumn({ lead, onReferenceClick, onNameClick, router }: ClienteColumnProps) {
+export function ClienteColumn({ lead, onReferenceClick, onNameClick }: ClienteColumnProps) {
   // Genera colore avatar dalla provenienza
   const getAvatarColor = (provenienza: LeadProvenienza): string => {
     const colors: Record<LeadProvenienza, string> = {
@@ -116,15 +115,7 @@ export function ClienteColumn({ lead, onReferenceClick, onNameClick, router }: C
             variant="ghost"
             size="sm"
             className="w-full justify-start"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (router) {
-                router.push(`/leads/${lead.id}`);
-              } else {
-                onNameClick?.(lead.id);
-              }
-            }}
+            onClick={() => onNameClick?.(lead.id)}
           >
             {lead.Nome}
           </Button>

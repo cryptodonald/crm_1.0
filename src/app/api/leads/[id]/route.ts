@@ -209,12 +209,12 @@ export async function PUT(
     // Chiamata API Airtable per aggiornare il record con timeout
     const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
     
-    // Controller per timeout
+    // Controller per timeout - Fire & Verify strategy
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log('⏰ [UPDATE LEAD] Airtable request timeout after 18s, aborting...');
+      console.log('⏰ [UPDATE LEAD] Airtable request timeout after 6s (Fire & Verify), aborting...');
       controller.abort();
-    }, 18000); // 18s timeout per Airtable (meno dei 20s client)
+    }, 6000); // 6s timeout per Fire & Verify strategy
     
     const airtableStart = performance.now();
     
@@ -265,12 +265,21 @@ export async function PUT(
     
     console.log('✅ [UPDATE LEAD] Successfully updated:', updatedRecord.id);
 
-    // Invalida la cache dopo l'aggiornamento
+    // Invalida la cache in background (non-blocking)
     const cacheStart = performance.now();
-    leadsCache.clear();
-    await invalidateLeadCache(leadId); // 🚀 Invalida cache KV specifica
-    const cacheTime = performance.now() - cacheStart;
-    console.log(`🧹 [TIMING] Cache invalidation: ${cacheTime.toFixed(2)}ms`);
+    leadsCache.clear(); // Cache in-memory, veloce
+    
+    // Cache KV invalidation in background
+    invalidateLeadCache(leadId)
+      .then(() => {
+        const cacheTime = performance.now() - cacheStart;
+        console.log(`🧹 [TIMING] Cache invalidation completed: ${cacheTime.toFixed(2)}ms`);
+      })
+      .catch(err => {
+        console.warn('⚠️ [UPDATE LEAD] Cache invalidation failed (non-critical):', err.message);
+      });
+    
+    const cacheTime = performance.now() - cacheStart; // Solo parte sincrona
 
     // Transform per risposta coerente
     const transformedRecord = {
