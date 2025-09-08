@@ -194,6 +194,8 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
   const [draftSaved, setDraftSaved] = useState(false);
   const formChangedRef = useRef(false);
   const lastSavedDataRef = useRef<string>('');
+  // Flag per chiusura forzata senza mostrare dialog bozza
+  const suppressExitDialogRef = useRef(false);
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
@@ -333,39 +335,84 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       const formattedData = formatLeadData(data);
       console.log('Submitting formatted lead data:', formattedData);
       
+      console.log('🚀 [NewLeadModal] Sending POST request to /api/leads');
+      
+      // Crea AbortController per gestire timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ [NewLeadModal] Request timeout after 15s, aborting...');
+        controller.abort();
+      }, 15000); // 15 secondi timeout per creation
+      
       const response = await fetch('/api/leads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formattedData),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       const result = await response.json();
+
+      console.log('🔍 [NewLeadModal] API Response:', {
+        status: response.status,
+        ok: response.ok,
+        result: result
+      });
 
       if (!response.ok) {
         throw new Error(result.error || 'Errore durante la creazione del lead');
       }
 
-      // Successo
+      // Controlla se la risposta API indica successo
+      if (!result.success) {
+        throw new Error(result.error || 'La creazione del lead è fallita');
+      }
+
+      // Successo - verifica che abbiamo i dati del lead
+      if (!result.lead || !result.lead.id) {
+        console.warn('⚠️ [NewLeadModal] Lead creato ma dati incompleti:', result);
+      }
+
+      console.log('✅ [NewLeadModal] Lead creato con successo:', result.lead?.id || 'ID non disponibile');
+      
       toast.success('Lead creato con successo!', {
         description: `Il lead "${formattedData.Nome}" è stato aggiunto al CRM.`,
       });
       
       // Clear draft after successful submission
       clearDraft();
-      
+
+      // Chiama callback di successo per ricaricare la lista
       onSuccess?.();
-      onOpenChange(false);
       
-      // Reset form per la prossima creazione
-      form.reset(DEFAULT_LEAD_DATA);
-      setCurrentStep(1);
+      // Chiudi il modal direttamente usando closeModal (bypassa la logica di bozza)
+      closeModal();
     } catch (error) {
-      console.error('Error creating lead:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      console.error('❌ [NewLeadModal] Error creating lead:', error);
+      
+      let errorMessage = 'Errore sconosciuto';
+      let errorDescription = 'Si è verificato un problema durante la creazione del lead.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Gestione specifica per timeout
+        if (error.name === 'AbortError') {
+          errorMessage = 'Timeout della richiesta';
+          errorDescription = 'La creazione del lead è stata annullata per timeout. Riprova.';
+        } else if (error.message.includes('fetch')) {
+          errorMessage = 'Errore di connessione';
+          errorDescription = 'Impossibile connettersi al server. Controlla la connessione.';
+        }
+      }
+      
       toast.error('Errore nella creazione del lead', {
-        description: errorMessage,
+        description: `${errorMessage}: ${errorDescription}`,
+        duration: 5000, // Mostra il toast più a lungo per errori
       });
     } finally {
       setIsSubmitting(false);
@@ -374,6 +421,13 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
 
   const handleClose = () => {
     if (isSubmitting) return;
+
+    // Se stiamo chiudendo a seguito di un successo, bypassa il dialog di bozza
+    if (suppressExitDialogRef.current) {
+      suppressExitDialogRef.current = false;
+      closeModal();
+      return;
+    }
     
     // Controlla se ci sono dati nel form che potrebbero essere salvati come bozza
     const formData = form.getValues();
@@ -395,6 +449,17 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
     } else {
       // Non c'è contenuto significativo o è già stato salvato, chiudi direttamente
       closeModal();
+    }
+  };
+
+  // Nuova funzione per gestire l'onOpenChange del Dialog
+  const handleDialogOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      // Se viene richiesta l'apertura, inoltra al parent
+      onOpenChange(true);
+    } else {
+      // Se viene richiesta la chiusura, usa la logica di handleClose
+      handleClose();
     }
   };
   
@@ -428,7 +493,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between pr-8">
