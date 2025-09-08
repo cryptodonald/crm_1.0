@@ -114,9 +114,15 @@ export function ClienteColumn({ lead, onReferenceClick, onNameClick }: ClienteCo
           <Button
             variant="ghost"
             size="sm"
-            className="h-auto p-0 text-foreground hover:text-primary truncate text-sm font-medium justify-start hover:underline cursor-pointer"
-            onClick={() => onNameClick?.(lead.id)}
-            aria-label={`Vai al dettaglio di ${lead.Nome}`}
+            className="w-full justify-start"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🔍 [DEBUG] Nome cliccato:', lead.id, lead.Nome);
+              console.log('🔍 [DEBUG] onNameClick function:', onNameClick);
+              alert(`Cliccato lead: ${lead.Nome} (ID: ${lead.id})`);
+              onNameClick?.(lead.id);
+            }}
           >
             {lead.Nome}
           </Button>

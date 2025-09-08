@@ -7,7 +7,7 @@ export default function ActivitiesPage() {
     <AppLayoutCustom>
       <div className="flex-1 space-y-4 p-3 sm:space-y-6 sm:p-4 md:p-6">
         <PageBreadcrumb pageName="Attività" />
-        <LeadActivitiesList leadId="" className="" />
+        <LeadActivitiesList className="" />
       </div>
     </AppLayoutCustom>
   );

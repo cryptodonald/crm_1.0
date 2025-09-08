@@ -20,30 +20,74 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Calendar, Clock, User, Target, MoreHorizontal, Paperclip, Edit, Trash2 } from 'lucide-react';
+import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search } from 'lucide-react';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { ActivityProgress } from '@/components/ui/activity-progress';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { type UniqueIdentifier } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { DataTablePersistentFilter } from '@/components/data-table/data-table-persistent-filter';
+import type { Option } from '@/types/data-table';
 import { NewActivityModal } from '@/components/activities';
 
 import {
+  Kanban,
+  KanbanBoard,
+  KanbanColumn,
+  KanbanItem,
+  KanbanItemHandle,
+  KanbanOverlay,
+} from '@/components/features/kanban/kanban';
+import {
   ActivityData,
   ActivityStato,
+  KANBAN_COLUMNS,
   ACTIVITY_STATO_COLORS,
   ACTIVITY_TIPO_COLORS,
   ACTIVITY_TIPO_ICONS,
+  getKanbanColumnFromState,
+  KanbanColumnId,
 } from '@/types/activities';
 
+// Definizione delle colonne con icone per il componente verticale
+const KANBAN_COLUMNS_ARRAY = [
+  {
+    id: 'to-do' as KanbanColumnId,
+    title: 'Da fare',
+    icon: ClipboardList,
+    iconColor: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+  },
+  {
+    id: 'in-progress' as KanbanColumnId,
+    title: 'In corso',
+    icon: Zap,
+    iconColor: 'text-yellow-600',
+    bgColor: 'bg-yellow-50',
+    borderColor: 'border-yellow-200',
+  },
+  {
+    id: 'done' as KanbanColumnId,
+    title: 'Completate',
+    icon: CheckCircle2,
+    iconColor: 'text-green-600',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+  },
+] as const;
+
 interface LeadActivitiesListProps {
-  leadId?: string;  // Ora opzionale - se vuoto mostra tutte le attività
+  leadId?: string;
   className?: string;
 }
 
-interface ActivityListItemProps {
+// Tipo per la struttura dati del Kanban verticale
+type KanbanData = Record<KanbanColumnId, ActivityData[]>;
+
+interface ActivityCardProps {
   activity: ActivityData;
   onEdit: (activity: ActivityData) => void;
   onDelete: (activity: ActivityData) => void;
@@ -143,7 +187,88 @@ const getEsitoBadgeProps = (esito: string) => {
   return { className: 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' };
 };
 
-const ActivityListItem: React.FC<ActivityListItemProps> = ({ activity, onEdit, onDelete }) => {
+// Componente per stato vuoto delle sezioni
+interface EmptyColumnStateProps {
+  columnId: KanbanColumnId;
+  onCreateActivity: () => void;
+}
+
+const EmptyColumnState: React.FC<EmptyColumnStateProps> = ({ columnId, onCreateActivity }) => {
+  const getEmptyStateConfig = (columnId: KanbanColumnId) => {
+    switch (columnId) {
+      case 'to-do':
+        return {
+          icon: ClipboardList,
+          title: 'Niente da pianificare',
+          subtitle: 'Inizia creando una nuova attività',
+          buttonText: 'Crea attività',
+        };
+      case 'in-progress':
+        return {
+          icon: Zap,
+          title: 'Tutto tranquillo',
+          subtitle: 'Nessuna attività in corso al momento',
+          buttonText: 'Inizia subito',
+        };
+      case 'done':
+        return {
+          icon: CheckCircle2,
+          title: 'Obiettivo completato!',
+          subtitle: 'Ottimo lavoro, niente da mostrare qui',
+          buttonText: 'Nuova sfida',
+        };
+      default:
+        return {
+          icon: ClipboardList,
+          title: 'Area vuota',
+          subtitle: 'Nessun elemento presente',
+          buttonText: 'Aggiungi',
+        };
+    }
+  };
+
+  const config = getEmptyStateConfig(columnId);
+  const IconComponent = config.icon;
+
+  return (
+    <div className="p-4 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 transition-all duration-200 hover:border-solid group cursor-pointer hover:bg-gray-100/50 dark:hover:bg-gray-700/20"
+      onClick={onCreateActivity}
+    >
+      <div className="text-center space-y-2">
+        {/* Icon con background neutro */}
+        <div className="w-8 h-8 rounded-full flex items-center justify-center mx-auto transition-transform group-hover:scale-110 bg-gray-200 dark:bg-gray-600">
+          <IconComponent className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+        </div>
+        
+        {/* Title */}
+        <div>
+          <h4 className="font-medium text-xs mb-1 text-gray-600 dark:text-gray-400">
+            {config.title}
+          </h4>
+          <p className="text-[10px] text-gray-500 dark:text-gray-500 mb-2">
+            {config.subtitle}
+          </p>
+        </div>
+        
+        {/* Call to action button */}
+        <Button 
+          size="sm" 
+          variant="ghost"
+          className="h-6 text-[10px] border-dashed group-hover:border-solid transition-all text-gray-600 dark:text-gray-400"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCreateActivity();
+          }}
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          {config.buttonText}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete }) => {
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return null;
     try {
@@ -173,59 +298,50 @@ const ActivityListItem: React.FC<ActivityListItemProps> = ({ activity, onEdit, o
   const assignee = activity['Nome Assegnatario']?.[0];
 
   return (
-    <Card className="hover:shadow-md transition-all duration-200">
-      <CardContent className="p-4">
-        {/* Header: Tipo, Data e pulsante azioni */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">
-                {ACTIVITY_TIPO_ICONS[activity.Tipo] || '📋'}
-              </span>
-              <Badge variant="secondary" className="text-xs">
-                {activity.Tipo}
-              </Badge>
-            </div>
-            {activity['Nome Lead'] && activity['Nome Lead'][0] && (
-              <Badge variant="outline" className="text-xs">
-                {activity['Nome Lead'][0]}
-              </Badge>
-            )}
-            {activity.Data && (
-              <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <Calendar className="w-3 h-3" />
-                <span>{formatScheduledDate(activity.Data)}</span>
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {activity['Durata stimata'] && (
-              <span className="px-2 py-1 text-xs bg-gray-800 text-white rounded dark:bg-gray-200 dark:text-gray-800">
-                {activity['Durata stimata']}
-              </span>
-            )}
+    <KanbanItem
+      value={activity.id}
+      asHandle
+      className="group rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer dark:bg-zinc-900 dark:border-zinc-700"
+    >
+      <Card className="border-none shadow-none bg-transparent">
+        <CardContent className="p-3">
+          {/* Header compatto: Titolo e pulsante azioni */}
+          <div className="flex items-start justify-between mb-2">
+            {/* Titolo principale */}
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 flex-1 pr-2">
+              {activity.Titolo}
+            </h3>
+            
+            {/* Pulsante azioni in alto a destra */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 w-6 p-0 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
+                  className="h-5 w-5 p-0 text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuContent align="end" className="w-32">
                 <DropdownMenuItem 
-                  onClick={() => onEdit(activity)}
-                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(activity);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer text-xs"
                 >
                   <Edit className="h-3 w-3" />
                   Modifica
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  onClick={() => onDelete(activity)}
-                  className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(activity);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer text-xs text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
                 >
                   <Trash2 className="h-3 w-3" />
                   Elimina
@@ -233,138 +349,107 @@ const ActivityListItem: React.FC<ActivityListItemProps> = ({ activity, onEdit, o
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
 
-        {/* Titolo principale */}
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 line-clamp-2">
-          {activity.Titolo}
-        </h3>
-
-        {/* Descrizione/Note */}
-        {activity.Note && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
-            {activity.Note}
-          </p>
-        )}
-
-        {/* Sezione centrale: Assegnatario e Stato */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
-            <AvatarLead
-              nome={assignee || 'Non assegnata'}
-              size="sm"
-              showTooltip={false}
-              className="w-8 h-8"
-            />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
-              {assignee || 'Non assegnata'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
+          {/* Prima riga: Badge compatti */}
+          <div className="flex items-center gap-1 mb-2 flex-wrap">
+            <Badge variant="secondary" className="text-[10px] h-5">
+              {activity.Tipo}
+            </Badge>
+            {activity['Nome Lead'] && activity['Nome Lead'][0] && (
+              <Badge variant="outline" className="text-[10px] h-5">
+                {activity['Nome Lead'][0]}
+              </Badge>
+            )}
             {(() => {
               const statusProps = getStatusBadgeProps(activity.Stato);
               return (
                 <Badge 
                   variant={statusProps.variant}
-                  className={cn('text-xs', statusProps.className)}
+                  className={cn('text-[10px] h-5', statusProps.className)}
                 >
                   {activity.Stato}
                 </Badge>
               );
             })()}
-            <div className="flex items-center gap-1 px-2 py-1 border border-gray-200 rounded-md bg-gray-50 dark:border-zinc-600 dark:bg-zinc-800">
+            {activity.Data && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 ml-auto">
+                <Calendar className="w-3 h-3" />
+                {new Date(activity.Data).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+              </span>
+            )}
+          </div>
+
+          {/* Seconda riga: Assegnatario e Progress compatti */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <AvatarLead
+                nome={assignee || 'Non assegnata'}
+                size="sm"
+                showTooltip={false}
+                className="w-5 h-5"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{assignee || 'Non assegnata'}</span>
+            </div>
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded dark:bg-zinc-700">
               <ActivityProgress 
                 stato={activity.Stato}
                 size="xs"
                 showPercentage={false}
               />
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              <span className="text-[9px] font-medium text-gray-600 dark:text-gray-400">
                 {getPercentageFromState(activity.Stato)}
               </span>
             </div>
           </div>
-        </div>
 
-        {/* Footer: Priorità, Obiettivo, Esito e icone */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            {activity.Priorità && (
-              <Badge 
-                variant={getBadgeVariantForPriority(activity.Priorità)}
-                className="text-xs"
-              >
-                {activity.Priorità}
-              </Badge>
-            )}
-            {activity.Obiettivo && (
-              <Badge variant="secondary" className="text-xs">
-                {activity.Obiettivo}
-              </Badge>
-            )}
-            {activity.Esito && (
-              <Badge 
-                variant="secondary" 
-                className={cn('text-xs', getEsitoBadgeProps(activity.Esito).className)}
-              >
-                {activity.Esito}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center justify-between sm:justify-end gap-4">
-            {/* Allegati */}
-            {activity.Allegati && activity.Allegati.length > 0 ? (
-              <button 
-                className="flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors dark:bg-zinc-800 dark:hover:bg-zinc-700"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log('Apertura allegati:', activity.Allegati);
-                }}
-              >
-                <Paperclip className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                  {activity.Allegati.length}
-                </span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-1 opacity-30">
-                <Paperclip className="w-4 h-4 text-gray-300 dark:text-gray-600" />
-                <span className="text-sm text-gray-300 dark:text-gray-600">0</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Prossima Azione (solo se presente) */}
-        {(activity['Prossima azione'] || activity['Data prossima azione']) && (
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-700">
-            <div className="flex items-center gap-3 flex-wrap">
-              {activity['Prossima azione'] && (
-                <Badge variant="outline" className="text-xs">
-                  {activity['Prossima azione']}
+          {/* Footer compatto: Priorità, Esito e Allegati */}
+          <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center gap-1">
+              {activity.Priorità && (
+                <Badge 
+                  variant={getBadgeVariantForPriority(activity.Priorità)}
+                  className="text-[9px] h-4 px-1"
+                >
+                  {activity.Priorità}
                 </Badge>
               )}
-              {activity['Data prossima azione'] && (
-                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                  <Calendar className="w-3 h-3" />
-                  <span>{formatScheduledDate(activity['Data prossima azione'])}</span>
+              {activity.Esito && (
+                <Badge 
+                  variant="secondary" 
+                  className={cn('text-[9px] h-4 px-1', getEsitoBadgeProps(activity.Esito).className)}
+                >
+                  {activity.Esito}
+                </Badge>
+              )}
+              {activity['Durata stimata'] && (
+                <span className="text-gray-500 dark:text-gray-400 ml-1">
+                  {activity['Durata stimata']}
                 </span>
               )}
             </div>
+            <div className="flex items-center gap-2">
+              {activity.Allegati && activity.Allegati.length > 0 && (
+                <button 
+                  className="flex items-center gap-1 px-1 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 dark:bg-zinc-700 dark:hover:bg-zinc-600 dark:text-gray-400"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Apertura allegati:', activity.Allegati);
+                  }}
+                >
+                  <Paperclip className="w-3 h-3" />
+                  <span className="text-[9px] font-medium">{activity.Allegati.length}</span>
+                </button>
+              )}
+              {activity['Prossima azione'] && (
+                <Badge variant="outline" className="text-[9px] h-4 px-1">
+                  {activity['Prossima azione']}
+                </Badge>
+              )}
+            </div>
           </div>
-        )}
-
-        {/* Timestamp audit */}
-        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-zinc-700 text-xs text-gray-400 dark:text-gray-500 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-          <span>Creato: {formatDate(activity.createdTime)}</span>
-          {activity['Ultima modifica'] && (
-            <>
-              <span className="hidden sm:inline">•</span>
-              <span>Modificato: {formatDate(activity['Ultima modifica'])}</span>
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </KanbanItem>
   );
 };
 
@@ -376,7 +461,16 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statoFilter, setStatoFilter] = useState<ActivityStato[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showNewActivityModal, setShowNewActivityModal] = useState(false);
+  
+  // Stati per il dialog di scelta stato completate
+  const [showStateDialog, setShowStateDialog] = useState(false);
+  const [pendingStateChange, setPendingStateChange] = useState<{
+    activity: ActivityData;
+    columnId: string;
+    newKanbanData: KanbanData;
+  } | null>(null);
 
   // Stati disponibili per il filtro (tutti gli stati possibili dalle attività)
   const STATI_DISPONIBILI: ActivityStato[] = [
@@ -389,6 +483,13 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
     'Annullata',
   ];
 
+  // Stato del Kanban - inizializzato come oggetto vuoto
+  const [kanbanData, setKanbanData] = useState<KanbanData>({
+    'to-do': [],
+    'in-progress': [],
+    'done': [],
+  });
+
   // Fetch delle attività per questo lead
   useEffect(() => {
     const fetchActivities = async () => {
@@ -397,10 +498,10 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
         setError(null);
 
         // TODO: Sostituire con chiamata API reale
-        // const response = await fetch(`/api/activities?leadId=${leadId}`);
-        // if (!response.ok) throw new Error('Errore nel caricamento attività');
-        // const data = await response.json();
-        // setActivities(data.activities || []);
+        // const response = await fetch(`/api/activities?leadId=${leadId}`)
+        // if (!response.ok) throw new Error('Errore nel caricamento attività')
+        // const data = await response.json()
+        // setActivities(data.activities || [])
 
         // Mock data per ora (da rimuovere)
         const mockActivities: ActivityData[] = [
@@ -493,174 +594,311 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
           ? mockActivities.filter(activity => activity['ID Lead']?.includes(leadId))
           : mockActivities; // Altrimenti mostra tutte
 
+        await new Promise(resolve => setTimeout(resolve, 1000));
         setActivities(filteredActivities);
       } catch (err) {
-        console.error('Errore nel caricamento attività:', err);
+        console.error('Errore caricamento attività:', err);
         setError('Errore nel caricamento delle attività');
-        toast.error('Errore nel caricamento delle attività');
       } finally {
         setLoading(false);
       }
     };
 
-    // Carica sempre le attività (se leadId è vuoto mostra tutte)
     fetchActivities();
   }, [leadId]);
 
-  // Calcola conteggi dinamici per ogni stato (per il filtro)
-  const getStatoCounts = useMemo(() => {
-    return STATI_DISPONIBILI.reduce(
-      (counts, stato) => {
-        const count = activities.filter(activity => activity.Stato === stato).length;
-        counts[stato] = count;
-        return counts;
-      },
-      {} as Record<ActivityStato, number>
-    );
-  }, [activities]);
-
-  // Filtra le attività 
+  // Filtro attività per ricerca e stato
   const filteredActivities = useMemo(() => {
-    if (statoFilter.length === 0) {
-      return activities; // Nessun filtro attivo, mostra tutte
-    }
-    return activities.filter(activity => statoFilter.includes(activity.Stato));
-  }, [activities, statoFilter]);
+    let filtered = activities;
 
+    // Filtro per ricerca
+    if (searchTerm) {
+      filtered = filtered.filter(activity => 
+        activity.Titolo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.Note?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity['Nome Lead']?.[0]?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filtro per stato
+    if (statoFilter.length > 0) {
+      filtered = filtered.filter(activity => statoFilter.includes(activity.Stato));
+    }
+
+    return filtered;
+  }, [activities, searchTerm, statoFilter]);
+
+  // Aggiorna kanbanData quando cambiano le attività o i filtri
+  useEffect(() => {
+    const newKanbanData: KanbanData = {
+      'to-do': [],
+      'in-progress': [],
+      'done': [],
+    };
+
+    filteredActivities.forEach(activity => {
+      const columnId = getKanbanColumnFromState(activity.Stato);
+      newKanbanData[columnId].push(activity);
+    });
+
+    setKanbanData(newKanbanData);
+  }, [filteredActivities]);
+
+  // Gestione drag and drop
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    
+    // Se stiamo trascinando su una colonna
+    if (overId.startsWith('column-')) {
+      const columnId = overId.replace('column-', '') as KanbanColumnId;
+      const activity = activities.find(a => a.id === activeId);
+      
+      if (!activity) return;
+      
+      const currentColumnId = getKanbanColumnFromState(activity.Stato);
+      if (currentColumnId === columnId) return; // Stessa colonna
+      
+      // Prepara il nuovo stato del Kanban
+      const newKanbanData = { ...kanbanData };
+      
+      // Rimuovi dalla colonna corrente
+      newKanbanData[currentColumnId] = newKanbanData[currentColumnId].filter(a => a.id !== activeId);
+      
+      // Aggiungi alla nuova colonna
+      newKanbanData[columnId] = [...newKanbanData[columnId], activity];
+      
+      // Se stiamo trascinando verso "done", mostra dialog per scegliere lo stato specifico
+      if (columnId === 'done') {
+        setPendingStateChange({ activity, columnId, newKanbanData });
+        setShowStateDialog(true);
+        return;
+      }
+      
+      // Altrimenti aggiorna direttamente
+      const newState = getStateFromKanbanColumn(columnId);
+      updateActivityState(activity, newState, newKanbanData);
+    }
+  };
+  
+  // Funzione helper per ottenere lo stato da una colonna Kanban
+  const getStateFromKanbanColumn = (columnId: KanbanColumnId): ActivityStato => {
+    switch (columnId) {
+      case 'to-do': return 'Da Pianificare';
+      case 'in-progress': return 'In corso';
+      case 'done': return 'Completata';
+      default: return 'Da Pianificare';
+    }
+  };
+  
+  // Funzione per aggiornare lo stato dell'attività
+  const updateActivityState = (activity: ActivityData, newState: ActivityStato, newKanbanData: KanbanData) => {
+    // Aggiorna lo stato locale
+    setKanbanData(newKanbanData);
+    
+    // Aggiorna l'attività nell'array principale
+    setActivities(prev => prev.map(a => 
+      a.id === activity.id ? { ...a, Stato: newState } : a
+    ));
+    
+    // TODO: Chiamata API per aggiornare sul server
+    toast.success(`Attività spostata in: ${newState}`);
+  };
+  
+  // Gestione del dialog per stati completati
+  const handleCompleteStateSelect = (selectedState: ActivityStato) => {
+    if (!pendingStateChange) return;
+    
+    updateActivityState(pendingStateChange.activity, selectedState, pendingStateChange.newKanbanData);
+    
+    // Reset stati
+    setPendingStateChange(null);
+    setShowStateDialog(false);
+  };
+
+  // Gestione modifica attività
   const handleEditActivity = (activity: ActivityData) => {
-    // TODO: Aprire dialog di modifica
+    // TODO: Implementare modal di modifica
+    console.log('Modifica attività:', activity);
     toast.info(`Modifica attività: ${activity.Titolo}`);
   };
 
+  // Gestione eliminazione attività
   const handleDeleteActivity = (activity: ActivityData) => {
-    // TODO: Implementare eliminazione con conferma
-    if (window.confirm(`Sei sicuro di voler eliminare l'attività "${activity.Titolo}"?`)) {
-      console.log(`🗑️ Eliminazione attività: ${activity.ID}`);
-      
-      // Rimuovi l'attività dallo stato locale (temporaneo per demo)
-      setActivities(prev => prev.filter(a => a.id !== activity.id));
-      
-      toast.success(`Attività "${activity.Titolo}" eliminata`);
-    }
-  };
-
-  const handleNewActivity = () => {
-    setShowNewActivityModal(true);
-  };
-
-  const handleActivitySuccess = () => {
-    // Ricarica le attività dopo aver creato una nuova
-    toast.success('Attività creata con successo!');
-    
-    // TODO: Ricarica le attività dalla API
-    // Per ora non facciamo nulla, i dati mock verranno sostituiti con dati reali
+    // TODO: Implementare conferma ed eliminazione
+    console.log('Elimina attività:', activity);
+    toast.success(`Attività eliminata: ${activity.Titolo}`);
+    setActivities(prev => prev.filter(a => a.id !== activity.id));
   };
 
   if (loading) {
     return (
-      <div className={`p-6 ${className}`}>
-        <div className="flex items-center justify-center h-32">
-          <div className="text-center text-gray-500">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-            <p className="text-sm">Caricamento attività...</p>
-          </div>
-        </div>
+      <div className={cn('flex items-center justify-center py-8', className)}>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={`p-6 ${className}`}>
-        <div className="text-center text-red-500">
-          <p className="text-sm">{error}</p>
-        </div>
+      <div className={cn('p-6 text-center', className)}>
+        <p className="text-red-500">{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Ricarica
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className={`${className}`}>
-      {/* Toolbar stile UI kit */}
-      <div className="mb-4 flex flex-col gap-3 sm:mb-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 sm:text-xl">Attività</h2>
-          <span className="text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
-            {statoFilter.length > 0 
-              ? `${filteredActivities.length} di ${activities.length} attività` 
-              : `${activities.length} attività totali`
-            }
-          </span>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-          <Input
-            type="text"
-            placeholder="Cerca attività..."
-            className="h-8 text-sm sm:h-9 sm:w-44"
-          />
-          
-          {/* Filtro Stato */}
+    <div className={cn('space-y-6', className)}>
+      {/* Toolbar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 items-center gap-4">
+          {/* Filtro per stato */}
           <DataTablePersistentFilter
             title="Stato"
-            options={STATI_DISPONIBILI.map(stato => ({
-              label: stato,
+            options={STATI_DISPONIBILI.map(stato => ({ 
+              label: stato, 
               value: stato,
-              count: getStatoCounts[stato] || 0,
+              icon: 'circle'
             }))}
             selectedValues={statoFilter}
-            onSelectionChange={(values) => {
-              setStatoFilter(values as ActivityStato[]);
-            }}
-            onReset={() => {
-              setStatoFilter([]);
-            }}
+            onSelectionChange={(newValues) => setStatoFilter(newValues as ActivityStato[])}
+            showSearch={false}
+            maxItems={3}
           />
           
-          <Button size="sm" onClick={handleNewActivity} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            <span className="sm:hidden">Nuova</span>
-            <span className="hidden sm:inline">Nuova Attività</span>
-          </Button>
+          {/* Campo di ricerca */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Cerca attività..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
+        
+        {/* Pulsante nuova attività */}
+        <Button onClick={() => setShowNewActivityModal(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nuova attività
+        </Button>
       </div>
 
-      {/* Lista attività */}
-      {filteredActivities.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <Calendar className="w-12 h-12 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            Nessuna attività presente
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">
-            Inizia creando la prima attività per questo lead.
-          </p>
-          <Button onClick={handleNewActivity}>
-            <Plus className="mr-2 h-4 w-4" />
-            Crea prima attività
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredActivities.map((activity) => (
-            <ActivityListItem
-              key={activity.id}
-              activity={activity}
-              onEdit={handleEditActivity}
-              onDelete={handleDeleteActivity}
-            />
-          ))}
-        </div>
-      )}
+      {/* Lista delle attività con Kanban verticale */}
+      <Kanban 
+        value={kanbanData}
+        onValueChange={setKanbanData}
+        getItemValue={(activity) => activity.id}
+        onDragEnd={handleDragEnd}
+        orientation="vertical"
+      >
+        <KanbanBoard>
+          {KANBAN_COLUMNS_ARRAY.map(column => {
+            const columnActivities = kanbanData[column.id] || [];
+            
+            return (
+              // Riquadro grigio completo che ingloba header + attività
+              <div key={column.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                {/* Header della sezione */}
+                <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-600">
+                  <div className="flex items-center gap-2">
+                    <column.icon className={cn('h-4 w-4', column.iconColor)} />
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                      {column.title}
+                    </h3>
+                    <Badge variant="secondary" className="text-xs">
+                      {columnActivities.length}
+                    </Badge>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowNewActivityModal(true)}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+                
+                {/* Contenuto della sezione */}
+                <KanbanColumn value={column.id} className="min-h-[80px] border-none bg-transparent p-3">
+                  <div className="space-y-2">
+                    {columnActivities.length === 0 ? (
+                      <EmptyColumnState 
+                        columnId={column.id} 
+                        onCreateActivity={() => setShowNewActivityModal(true)} 
+                      />
+                    ) : (
+                      columnActivities.map(activity => (
+                        <ActivityCard
+                          key={activity.id}
+                          activity={activity}
+                          onEdit={handleEditActivity}
+                          onDelete={handleDeleteActivity}
+                        />
+                      ))
+                    )}
+                  </div>
+                </KanbanColumn>
+              </div>
+            );
+          })}
+        </KanbanBoard>
+        
+        <KanbanOverlay>
+          {/* Overlay per il drag */}
+        </KanbanOverlay>
+      </Kanban>
 
-      {/* Modal per creare nuova attività */}
+      {/* Modal per nuova attività */}
       <NewActivityModal
-        open={showNewActivityModal}
-        onOpenChange={setShowNewActivityModal}
-        onSuccess={handleActivitySuccess}
-        prefilledLeadId={leadId}
+        leadId={leadId}
+        isOpen={showNewActivityModal}
+        onClose={() => setShowNewActivityModal(false)}
       />
+      
+      {/* Dialog per scelta stato completato */}
+      <Dialog open={showStateDialog} onOpenChange={setShowStateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Scegli lo stato finale</DialogTitle>
+            <DialogDescription>
+              L'attività è stata spostata nella sezione "Completata". Scegli lo stato specifico:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleCompleteStateSelect('Completata')}
+              className="justify-start"
+            >
+              ✅ Completata
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleCompleteStateSelect('Annullata')}
+              className="justify-start"
+            >
+              ❌ Annullata
+            </Button>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowStateDialog(false)}>
+              Annulla
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

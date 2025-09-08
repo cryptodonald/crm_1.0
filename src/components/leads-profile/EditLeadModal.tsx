@@ -63,7 +63,10 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
 
   // Prefill con dati del lead quando si apre
   useEffect(() => {
+    console.log('🔄 [EditLeadModal] useEffect triggered - open:', open, 'lead ID:', lead?.ID || lead?.id);
+    
     if (open && lead) {
+      console.log('✅ [EditLeadModal] Modal opening, prefilling data for lead:', lead.ID || lead.id);
       const initial: LeadFormData = {
         Nome: lead.Nome || '',
         Telefono: lead.Telefono || '',
@@ -99,8 +102,16 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
 
   // Funzione di salvataggio completamente nuova seguendo la documentazione API
   const onSubmit = async (data: LeadFormData) => {
-    if (isSubmitting) return;
+    console.log('🚨🚨🚨 ONSUBMIT CHIAMATA! 🚨🚨🚨');
+    console.log('🚀 [EditLeadModal] onSubmit function called with data:', data);
+    
+    if (isSubmitting) {
+      console.log('⚠️ [EditLeadModal] Already submitting, returning');
+      return;
+    }
+    
     setIsSubmitting(true);
+    console.log('🔄 [EditLeadModal] Set isSubmitting to true');
     
     try {
       console.log('🚀 [EditLeadModal] Starting lead update with data:', data);
@@ -126,24 +137,68 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
       
       // Chiamata API PUT come documentato
       const leadId = lead.id || lead.ID;
-      const response = await fetch(`/api/leads/${leadId}`, {
+      const apiUrl = `/api/leads/${leadId}`;
+      
+      console.log('🔍 [EditLeadModal] Request details:', {
+        url: apiUrl,
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
+        leadId: leadId,
+        bodySize: JSON.stringify(updateData).length
       });
       
-      console.log('📡 [EditLeadModal] API Response status:', response.status);
+      // Crea AbortController per timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ [EditLeadModal] Fetch timeout reached, aborting request');
+        controller.abort();
+      }, 15000); // 15 secondi timeout
+      
+      try {
+        console.log('🚀 [EditLeadModal] Starting fetch request...');
+        const fetchResponse = await fetch(apiUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        console.log('✅ [EditLeadModal] Fetch request completed successfully');
+        
+        console.log('📡 [EditLeadModal] Fetch completed - Response status:', fetchResponse.status);
+        console.log('📡 [EditLeadModal] Response ok:', fetchResponse.ok);
+        console.log('📡 [EditLeadModal] Response headers:', Object.fromEntries(fetchResponse.headers.entries()));
+        
+        const response = fetchResponse;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.error('❌ [EditLeadModal] Fetch error:', fetchError);
+        throw fetchError; // Re-throw per essere gestito dal catch esterno
+      }
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.log('🔴 [EditLeadModal] Error response JSON parsed:', errorData);
+        } catch (jsonError) {
+          console.error('❌ [EditLeadModal] Failed to parse error response JSON:', jsonError);
+          errorData = { error: 'Unknown error' };
+        }
         console.error('❌ [EditLeadModal] API Error:', errorData);
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
       
-      const result = await response.json();
-      console.log('✅ [EditLeadModal] API Success:', result);
+      let result;
+      try {
+        result = await response.json();
+        console.log('✅ [EditLeadModal] Success response JSON parsed:', result);
+      } catch (jsonError) {
+        console.error('❌ [EditLeadModal] Failed to parse success response JSON:', jsonError);
+        throw new Error('Invalid JSON response from server');
+      }
       
       // Verifica che la risposta contenga success: true come documentato
       if (result.success) {
@@ -162,7 +217,24 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
       
     } catch (error) {
       console.error('❌ [EditLeadModal] Error during update:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      console.error('❌ [EditLeadModal] Error type:', typeof error);
+      console.error('❌ [EditLeadModal] Error constructor:', error?.constructor?.name);
+      console.error('❌ [EditLeadModal] Error stack:', error instanceof Error ? error.stack : 'No stack available');
+      
+      let errorMessage = 'Errore sconosciuto';
+      
+      // Gestisci diversi tipi di errore
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error('⏰ [EditLeadModal] Request aborted due to timeout');
+          errorMessage = 'Richiesta interrotta per timeout (15s). Il salvataggio potrebbe essere comunque riuscito.';
+        } else if (error.message.includes('fetch')) {
+          console.error('❌ [EditLeadModal] Network/Fetch error detected');
+          errorMessage = 'Errore di connessione. Verifica la connessione di rete.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
       
       toast.error('Errore durante l\'aggiornamento', {
         description: errorMessage,
@@ -216,10 +288,13 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
               <Button 
                 type="button" 
                 onClick={() => {
+                  console.log('🚨🚨🚨 PULSANTE SALVA CLICCATO! 🚨🚨🚨');
                   console.log('💆 [EditLeadModal] Save button clicked!');
                   console.log('📊 [EditLeadModal] Form errors:', form.formState.errors);
                   console.log('📊 [EditLeadModal] Form values:', form.getValues());
+                  console.log('🔄 [EditLeadModal] About to call form.handleSubmit(onSubmit)');
                   form.handleSubmit(onSubmit)();
+                  console.log('✅ [EditLeadModal] form.handleSubmit(onSubmit) called');
                 }} 
                 disabled={isSubmitting}
               >

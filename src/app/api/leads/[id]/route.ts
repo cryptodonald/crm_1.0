@@ -144,6 +144,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const { id } = await params;
+  const requestStart = performance.now();
+  
   try {
     const leadId = id;
     const body: Partial<LeadFormData> = await request.json();
@@ -158,11 +160,16 @@ export async function PUT(
     console.log('🔄 [UPDATE LEAD] Received data:', { leadId, body });
 
     // Get Airtable credentials
+    const credentialsStart = performance.now();
     const [apiKey, baseId, tableId] = await Promise.all([
       getAirtableKey(),
       getAirtableBaseId(),
       getAirtableLeadsTableId(),
     ]);
+    
+    const credentialsTime = performance.now() - credentialsStart;
+    console.log(`🔑 [TIMING] Credentials fetch: ${credentialsTime.toFixed(2)}ms`);
+    
     if (!apiKey || !baseId || !tableId) {
       return NextResponse.json(
         { error: 'Airtable credentials not available' },
@@ -205,9 +212,11 @@ export async function PUT(
     // Controller per timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log('⏰ [UPDATE LEAD] Airtable request timeout after 12s, aborting...');
+      console.log('⏰ [UPDATE LEAD] Airtable request timeout after 18s, aborting...');
       controller.abort();
-    }, 12000); // 12s timeout per Airtable (meno dei 15s client)
+    }, 18000); // 18s timeout per Airtable (meno dei 20s client)
+    
+    const airtableStart = performance.now();
     
     const response = await fetch(airtableUrl, {
       method: 'PATCH',
@@ -220,6 +229,9 @@ export async function PUT(
     });
     
     clearTimeout(timeoutId);
+    
+    const airtableTime = performance.now() - airtableStart;
+    console.log(`🌐 [TIMING] Airtable API call: ${airtableTime.toFixed(2)}ms`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -246,13 +258,19 @@ export async function PUT(
       );
     }
 
+    const parseStart = performance.now();
     const updatedRecord = await response.json();
+    const parseTime = performance.now() - parseStart;
+    console.log(`📝 [TIMING] JSON parsing: ${parseTime.toFixed(2)}ms`);
+    
     console.log('✅ [UPDATE LEAD] Successfully updated:', updatedRecord.id);
 
     // Invalida la cache dopo l'aggiornamento
+    const cacheStart = performance.now();
     leadsCache.clear();
     await invalidateLeadCache(leadId); // 🚀 Invalida cache KV specifica
-    console.log('🧹 Cache cleared after lead update');
+    const cacheTime = performance.now() - cacheStart;
+    console.log(`🧹 [TIMING] Cache invalidation: ${cacheTime.toFixed(2)}ms`);
 
     // Transform per risposta coerente
     const transformedRecord = {
@@ -260,26 +278,54 @@ export async function PUT(
       createdTime: updatedRecord.createdTime,
       ...updatedRecord.fields,
     };
+    
+    const totalTime = performance.now() - requestStart;
+    console.log(`✅ [UPDATE LEAD] Completed: ${leadId} in ${totalTime.toFixed(2)}ms`);
+    
+    // 📈 Record performance metrics
+    recordApiLatency('lead_update_api', totalTime, false);
 
     return NextResponse.json({
       success: true,
       lead: transformedRecord,
+      _timing: {
+        total: Math.round(totalTime),
+        airtable: Math.round(airtableTime),
+        cache: Math.round(cacheTime),
+      }
     });
 
   } catch (error: any) {
-    console.error('❌ [UPDATE LEAD] Error:', error);
+    const totalTime = performance.now() - requestStart;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // 📈 Record error metrics
+    recordError('lead_update_api', errorMessage);
+    recordApiLatency('lead_update_api', totalTime, false);
+    
+    console.error(`❌ [UPDATE LEAD] Error in ${totalTime.toFixed(2)}ms:`, error);
     
     // Gestione specifica per timeout
     if (error.name === 'AbortError') {
-      console.error('⏰ [UPDATE LEAD] Request timed out after 12s');
+      console.error('⏰ [UPDATE LEAD] Request timed out after 18s');
       return NextResponse.json(
-        { error: 'Request timeout - operation may still be in progress' },
+        { 
+          error: 'Request timeout - operation may still be in progress',
+          _timing: {
+            total: Math.round(totalTime),
+          }
+        },
         { status: 408 } // Request Timeout
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to update lead' },
+      { 
+        error: 'Failed to update lead',
+        _timing: {
+          total: Math.round(totalTime),
+        }
+      },
       { status: 500 }
     );
   }

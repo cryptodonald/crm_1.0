@@ -183,7 +183,10 @@ export function LeadProfileHeader({ lead, onRefresh }: LeadProfileHeaderProps) {
                 <Plus className="mr-2 h-4 w-4" />
                 Crea attività
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setEditOpen(true)}>
+              <DropdownMenuItem onClick={() => {
+                console.log('🚨 [LeadProfileHeader] Opening edit modal for lead:', lead.ID);
+                setEditOpen(true);
+              }}>
                 <Edit className="mr-2 h-4 w-4" />
                 Modifica
               </DropdownMenuItem>

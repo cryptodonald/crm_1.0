@@ -631,7 +631,10 @@ export function LeadsDataTable({
 
   // Azioni sui lead
   const handleViewLead = (leadId: string) => {
+    console.log('🚀 [DEBUG] handleViewLead chiamata con:', leadId);
+    console.log('🚀 [DEBUG] router:', router);
     router.push(`/leads/${leadId}`);
+    console.log('🚀 [DEBUG] router.push eseguito');
   };
 
   const handleEditLead = (leadId: string) => {
@@ -1027,7 +1030,10 @@ export function LeadsDataTable({
                           variant="ghost"
                           size="sm"
                           className="w-full justify-start"
-                          onClick={() => handleViewLead(lead.id)}
+                          onClick={() => {
+                            console.log('✅ [DEBUG] Pulsante Dettagli cliccato:', lead.id, lead.Nome);
+                            handleViewLead(lead.id);
+                          }}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Dettagli
