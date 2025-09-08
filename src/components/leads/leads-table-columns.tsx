@@ -113,6 +113,7 @@ export function ClienteColumn({ lead, onReferenceClick, onNameClick }: ClienteCo
         <div className="flex flex-col space-y-1">
           <Button
             variant="ghost"
+            size="sm"
             className="h-auto p-0 text-foreground hover:text-primary truncate text-sm font-medium justify-start hover:underline cursor-pointer"
             onClick={() => onNameClick?.(lead.id)}
             aria-label={`Vai al dettaglio di ${lead.Nome}`}
