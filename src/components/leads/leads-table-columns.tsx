@@ -44,9 +44,10 @@ import { AvatarLead } from '@/components/ui/avatar-lead';
 interface ClienteColumnProps {
   lead: LeadData;
   onReferenceClick?: (referenceId: string) => void;
+  onNameClick?: (leadId: string) => void;
 }
 
-export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
+export function ClienteColumn({ lead, onReferenceClick, onNameClick }: ClienteColumnProps) {
   // Genera colore avatar dalla provenienza
   const getAvatarColor = (provenienza: LeadProvenienza): string => {
     const colors: Record<LeadProvenienza, string> = {
@@ -110,9 +111,14 @@ export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
       <div className="min-w-0 flex-1">
         {/* Nome + Badge */}
         <div className="flex flex-col space-y-1">
-          <p className="text-foreground truncate text-sm font-medium">
+          <Button
+            variant="link"
+            className="h-auto p-0 text-foreground hover:text-primary truncate text-sm font-medium justify-start hover:underline cursor-pointer"
+            onClick={() => onNameClick?.(lead.id)}
+            aria-label={`Vai al dettaglio di ${lead.Nome}`}
+          >
             {lead.Nome}
-          </p>
+          </Button>
           <div className="flex items-center space-x-2">
             {/* Badge Stato */}
             <Badge className={cn('text-xs', getStatoBadgeColor(lead.Stato))}>
