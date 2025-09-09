@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 
 /**
  * 🚀 Hook con Retry Esponenziale per Performance UI
@@ -70,6 +70,14 @@ export function useFetchWithRetry<T>(
 ): UseFetchWithRetryResult<T> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Cleanup su unmount per prevenire memory leaks
+  React.useEffect(() => {
+    return () => {
+      cancel();
+    };
+  }, [cancel]);
   
   const [state, setState] = useState<FetchState<T>>({
     data: null,
@@ -91,6 +99,10 @@ export function useFetchWithRetry<T>(
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
+    }
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
     }
     setState(prev => ({ ...prev, loading: false }));
   }, []);
@@ -132,6 +144,8 @@ export function useFetchWithRetry<T>(
             abortControllerRef.current.abort();
           }
         }, opts.timeout);
+        
+        timeoutIdRef.current = timeoutId;
 
         console.log(`🔄 [Fetch-Retry] Attempt ${attempt + 1}/${opts.maxRetries + 1}`);
         
@@ -139,6 +153,7 @@ export function useFetchWithRetry<T>(
         const result = await fetchFn();
         
         clearTimeout(timeoutId);
+        timeoutIdRef.current = null;
         abortControllerRef.current = null;
         
         // Successo!

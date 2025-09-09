@@ -80,7 +80,7 @@ export async function PATCH(
     console.log(`✅ [Activities API] Activity updated successfully: ${result.id} in ${totalTime.toFixed(2)}ms`);
 
     // 🚀 Prepare response BEFORE cache invalidation
-    const response = NextResponse.json({
+    const apiResponse = NextResponse.json({
       success: true,
       data: result,
       message: 'Activity updated successfully',
@@ -97,7 +97,7 @@ export async function PATCH(
       console.error('⚠️ [Activities PATCH] Background cache invalidation failed:', err)
     );
     
-    return response;
+    return apiResponse;
   } catch (error) {
     const totalTime = performance.now() - requestStart;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -233,7 +233,7 @@ export async function PUT(
       console.log(`✅ [Activities API] Activity updated successfully: ${result.id} in ${totalTime.toFixed(2)}ms`);
 
       // 🚀 Prepare response BEFORE cache invalidation
-      const response = NextResponse.json({
+      const apiResponse = NextResponse.json({
         success: true,
         data: result,
         message: 'Activity updated successfully',
@@ -250,7 +250,7 @@ export async function PUT(
         console.error('⚠️ [Activities PUT] Background cache invalidation failed:', err)
       );
       
-      return response;
+      return apiResponse;
     } catch (error: any) {
       clearTimeout(timeoutId);
       
@@ -344,7 +344,7 @@ export async function DELETE(
     console.log(`✅ [Activities API] Activity deleted successfully: ${result.id} in ${totalTime.toFixed(2)}ms`);
 
     // 🚀 Prepare response BEFORE cache invalidation
-    const response = NextResponse.json({
+    const apiResponse = NextResponse.json({
       success: true,
       data: result,
       message: 'Activity deleted successfully',
@@ -360,7 +360,7 @@ export async function DELETE(
       console.error('⚠️ [Activities DELETE] Background cache invalidation failed:', err)
     );
     
-    return response;
+    return apiResponse;
   } catch (error) {
     const totalTime = performance.now() - requestStart;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -799,8 +799,12 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
   const handleActivitySuccess = async () => {
     console.log('🎉 Attività creata con successo, aggiornamento lista...');
     
-    // 🔄 Robust refresh with multiple attempts (like LeadProfileHeader)
-    await robustRefresh('NewActivityCreated');
+    // 🔄 Light refresh - let parent component handle the main refresh
+    // Reduced refresh to avoid conflicts with LeadProfileHeader refresh
+    setTimeout(() => {
+      refresh(true);
+      console.log('✅ [Kanban] Light refresh triggered (1s delay)');
+    }, 1500); // Slightly after the LeadProfileHeader refresh
     
     toast.success('Attività creata con successo!');
   };

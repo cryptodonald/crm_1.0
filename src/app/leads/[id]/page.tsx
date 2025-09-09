@@ -136,7 +136,7 @@ export default function LeadDetailPage() {
 
 
         {/* Contenuto profilo lead (Tabs) */}
-        <LeadProfileContent lead={lead} />
+        <LeadProfileContent lead={lead} refreshKey={refreshKey} />
       </div>
 
 

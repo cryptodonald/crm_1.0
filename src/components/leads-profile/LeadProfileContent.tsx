@@ -13,6 +13,7 @@ import { useState } from 'react';
 interface LeadProfileContentProps {
   lead: LeadData;
   onLeadUpdated?: () => void;
+  refreshKey?: number;
 }
 
 export function LeadProfileContent({ lead, onLeadUpdated }: LeadProfileContentProps) {
@@ -208,7 +209,10 @@ export function LeadProfileContent({ lead, onLeadUpdated }: LeadProfileContentPr
       </TabsList>
 
       <TabsContent value="activity" className="space-y-4 sm:space-y-6">
-        <LeadActivitiesKanban leadId={lead.ID} />
+        <LeadActivitiesKanban 
+          leadId={lead.ID} 
+          key={`activities-${lead.ID}-${Date.now()}`}
+        />
       </TabsContent>
 
       <TabsContent value="orders" className="space-y-4 sm:space-y-6">
