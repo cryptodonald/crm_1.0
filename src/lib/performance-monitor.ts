@@ -44,6 +44,8 @@ class PerformanceMonitor {
   private metrics: Map<string, PerformanceMetric[]> = new Map();
   private alerts: PerformanceAlert[] = [];
   private thresholds: Map<string, { warning: number; error: number; critical: number }> = new Map();
+  private cleanupInterval: NodeJS.Timeout | null = null;
+  private isDev = process.env.NODE_ENV === 'development';
   
   constructor() {
     // 🎯 Configurazione thresholds di default
@@ -71,10 +73,10 @@ class PerformanceMonitor {
       critical: 20    // 20%
     });
 
-    // Cleanup periodico (ogni 5 minuti)
-    setInterval(() => {
-      this.cleanup();
-    }, 5 * 60 * 1000);
+    // 🛡️ Avvia cleanup solo in produzione (evita interval leaks in dev)
+    if (!this.isDev) {
+      this.startCleanupInterval();
+    }
   }
 
   /**
@@ -109,10 +111,10 @@ class PerformanceMonitor {
     // Controlla soglie per alert
     this.checkThresholds(name, value);
 
-    // Log in sviluppo
-    if (process.env.NODE_ENV === 'development') {
+    // Log ridotto in sviluppo per evitare spam
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
       const formatted = this.formatMetric(metric);
-      console.log(`📊 [Perf] ${formatted}`);
+      console.debug(`📊 [Perf] ${formatted}`);
     }
   }
 
@@ -320,6 +322,35 @@ class PerformanceMonitor {
   }
 
   /**
+   * 🔧 Controllo intervalli di cleanup
+   */
+  startCleanupInterval(): void {
+    if (this.cleanupInterval) {
+      console.debug('[Perf] Cleanup interval already running');
+      return;
+    }
+
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 5 * 60 * 1000); // 5 minuti
+
+    if (this.isDev) {
+      console.log('🧹 [Perf] Cleanup interval started (dev mode)');
+    }
+  }
+
+  stopCleanupInterval(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+      
+      if (this.isDev) {
+        console.log('🛑 [Perf] Cleanup interval stopped');
+      }
+    }
+  }
+
+  /**
    * 🧹 Cleanup dati vecchi
    */
   private cleanup(): void {
@@ -335,7 +366,10 @@ class PerformanceMonitor {
     // Pulisci alert vecchi
     this.alerts = this.alerts.filter(a => a.timestamp > cutoff);
 
-    console.log(`🧹 [Perf] Cleanup completed - metrics: ${this.getMetricsCount()} alert: ${this.alerts.length}`);
+    // Log ridotto per evitare spam in development
+    if (!this.isDev) {
+      console.log(`🧹 [Perf] Cleanup completed - metrics: ${this.getMetricsCount()} alert: ${this.alerts.length}`);
+    }
   }
 
   /**
@@ -371,3 +405,24 @@ export const performanceMonitor = new PerformanceMonitor();
 export const recordApiLatency = performanceMonitor.recordApiLatency.bind(performanceMonitor);
 export const recordCacheEvent = performanceMonitor.recordCacheEvent.bind(performanceMonitor);
 export const recordError = performanceMonitor.recordError.bind(performanceMonitor);
+
+// 🔧 Export controlli per hot-reload e testing
+export const startPerformanceMonitoring = performanceMonitor.startCleanupInterval.bind(performanceMonitor);
+export const stopPerformanceMonitoring = performanceMonitor.stopCleanupInterval.bind(performanceMonitor);
+
+/**
+ * 🧼 Helper per sviluppo: riavvia monitoring se necessario
+ * Utile in development per evitare interval leaks
+ */
+export const restartPerformanceMonitoring = (): void => {
+  stopPerformanceMonitoring();
+  startPerformanceMonitoring();
+};
+
+/**
+ * 🧹 Helper per cleanup completo (test/shutdown)
+ */
+export const cleanupPerformanceIntervals = (): void => {
+  stopPerformanceMonitoring();
+  console.debug('[Perf] All intervals cleaned up');
+};

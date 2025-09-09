@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,13 +15,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search, Play, Pause, RotateCcw, XCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { ActivityProgress } from '@/components/ui/activity-progress';
 import { formatDistanceToNow } from 'date-fns';
@@ -31,6 +42,15 @@ import { cn } from '@/lib/utils';
 import { DataTablePersistentFilter } from '@/components/data-table/data-table-persistent-filter';
 import type { Option } from '@/types/data-table';
 import { NewActivityModal } from '@/components/activities';
+import { useActivitiesData } from '@/hooks/use-activities-data';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 import {
   Kanban,
@@ -57,9 +77,9 @@ const KANBAN_COLUMNS_ARRAY = [
     id: 'to-do' as KanbanColumnId,
     title: 'Da fare',
     icon: ClipboardList,
-    iconColor: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
+    iconColor: 'text-gray-600',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-200',
   },
   {
     id: 'in-progress' as KanbanColumnId,
@@ -91,6 +111,7 @@ interface ActivityCardProps {
   activity: ActivityData;
   onEdit: (activity: ActivityData) => void;
   onDelete: (activity: ActivityData) => void;
+  onStateChange: (activity: ActivityData, newState: ActivityStato) => void;
 }
 
 // Funzioni per i badge (dalla pagina demo-badges)
@@ -136,6 +157,28 @@ const getPercentageFromState = (stato: ActivityStato): string => {
     case 'Completata': return '100%';
     case 'Annullata': return '0%';
     default: return '0%';
+  }
+};
+
+// Helper per ottenere icona per ogni stato (colori più minimali)
+const getStateIconAndColor = (stato: ActivityStato) => {
+  switch (stato) {
+    case 'Da Pianificare':
+      return { icon: ClipboardList, color: 'text-muted-foreground' };
+    case 'Pianificata':
+      return { icon: Calendar, color: 'text-muted-foreground' };
+    case 'In corso':
+      return { icon: Play, color: 'text-muted-foreground' };
+    case 'In attesa':
+      return { icon: Pause, color: 'text-muted-foreground' };
+    case 'Rimandata':
+      return { icon: RotateCcw, color: 'text-muted-foreground' };
+    case 'Completata':
+      return { icon: CheckCircle2, color: 'text-muted-foreground' };
+    case 'Annullata':
+      return { icon: XCircle, color: 'text-muted-foreground' };
+    default:
+      return { icon: AlertCircle, color: 'text-muted-foreground' };
   }
 };
 
@@ -268,7 +311,9 @@ const EmptyColumnState: React.FC<EmptyColumnStateProps> = ({ columnId, onCreateA
   );
 };
 
-const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete }) => {
+const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete, onStateChange }) => {
+  const router = useRouter();
+  
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return null;
     try {
@@ -298,207 +343,332 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
   const assignee = activity['Nome Assegnatario']?.[0];
 
   return (
-    <KanbanItem
-      value={activity.id}
-      asHandle
-      className="group rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer dark:bg-zinc-900 dark:border-zinc-700"
-    >
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <KanbanItem
+          value={activity.id}
+          asHandle
+          className="group rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer dark:bg-zinc-900 dark:border-zinc-700"
+        >
       <Card className="border-none shadow-none bg-transparent">
-        <CardContent className="p-3">
-          {/* Layout orizzontale principale */}
-          <div className="grid grid-cols-12 gap-3 items-center">
-            {/* Cliente + Avatar (3 colonne) */}
-            <div className="col-span-3 flex items-center gap-2">
-              <AvatarLead
-                nome={assignee || activity['Nome Lead']?.[0] || 'Non assegnata'}
-                size="sm"
-                showTooltip={false}
-                className="w-8 h-8 flex-shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                  {activity.Titolo}
+        <CardContent className="p-3 sm:p-4">
+          {/* Layout a 6 colonne principale */}
+          <div className="grid grid-cols-12 gap-3 items-start">
+            
+            {/* COLONNA 1: Avatar, Titolo, Tipo, Nome Cliente, Priorità (3/12 colonne) */}
+            <div className="col-span-3">
+              {/* Avatar centrato con titolo e badges */}
+              <div className="flex items-center gap-2">
+                {/* Avatar centrato verticalmente */}
+                <div className="flex items-center justify-center">
+                  <AvatarLead
+                    nome={assignee || activity['Nome Lead']?.[0] || 'Non assegnata'}
+                    size="sm"
+                    showTooltip={false}
+                    className="w-8 h-8 flex-shrink-0"
+                  />
                 </div>
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-[9px] h-4 px-1">
-                    {activity.Tipo}
-                  </Badge>
-                  {(() => {
-                    const statusProps = getStatusBadgeProps(activity.Stato);
-                    return (
-                      <Badge 
-                        variant={statusProps.variant}
-                        className={cn('text-[9px] h-4 px-1', statusProps.className)}
-                      >
-                        {activity.Stato}
-                      </Badge>
-                    );
-                  })()}
-                </div>
-                {activity['Nome Lead'] && activity['Nome Lead'][0] && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {activity['Nome Lead'][0]}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Data (2 colonne) */}
-            <div className="col-span-2 text-center">
-              {activity.Data ? (
-                <div className="flex flex-col items-center">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {new Date(activity.Data).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(activity.Data).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              ) : (
-                <span className="text-xs text-gray-400">Nessuna data</span>
-              )}
-            </div>
-
-            {/* Obiettivo (2 colonne) */}
-            <div className="col-span-2">
-              {activity.Obiettivo ? (
-                <Badge variant="outline" className="text-xs">
-                  {activity.Obiettivo}
-                </Badge>
-              ) : (
-                <span className="text-xs text-gray-400">Nessun obiettivo</span>
-              )}
-            </div>
-
-            {/* Assegnatario (2 colonne) */}
-            <div className="col-span-2">
-              <div className="flex items-center gap-1">
-                <AvatarLead
-                  nome={assignee || 'Non assegnata'}
-                  size="sm"
-                  showTooltip={false}
-                  className="w-5 h-5"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-                    {assignee || 'Non assegnata'}
-                  </div>
-                  {activity.Priorità && (
-                    <Badge 
-                      variant={getBadgeVariantForPriority(activity.Priorità)}
-                      className="text-[9px] h-4 px-1 mt-0.5"
-                    >
-                      {activity.Priorità}
+                
+                {/* Contenitore titolo e badges */}
+                <div className="flex-1 min-w-0">
+                  {/* Titolo */}
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-1">
+                    {activity.Titolo}
+                  </h3>
+                  
+                  {/* Badges: Tipo, Nome Cliente, Priorità */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Badge variant="secondary" className="text-[10px] w-fit">
+                      {activity.Tipo}
                     </Badge>
-                  )}
+                    {activity['Nome Lead'] && activity['Nome Lead'][0] && (
+                      <Badge 
+                        variant="outline" 
+                        className="text-[10px] cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors w-fit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const leadId = activity['ID Lead']?.[0];
+                      if (leadId) {
+                        router.push(`/leads/${leadId}`);
+                      }
+                    }}
+                      >
+                        {activity['Nome Lead'][0]}
+                      </Badge>
+                    )}
+                    {activity.Priorità && (
+                      <Badge 
+                        variant={getBadgeVariantForPriority(activity.Priorità)}
+                        className="text-[10px] w-fit"
+                      >
+                        {activity.Priorità}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Follow-up + Progress (2 colonne) */}
+            {/* COLONNA 2: Stato e Progress Indicator (2/12 colonne) */}
             <div className="col-span-2">
-              <div className="flex flex-col gap-1">
-                {activity['Prossima azione'] ? (
-                  <Badge variant="outline" className="text-[9px] h-4 px-1 w-fit">
-                    {activity['Prossima azione']}
-                  </Badge>
-                ) : (
-                  <span className="text-xs text-gray-400">Nessun follow-up</span>
-                )}
-                <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const statusProps = getStatusBadgeProps(activity.Stato);
+                  return (
+                    <Badge 
+                      variant={statusProps.variant}
+                      className={cn('text-[10px] w-fit', statusProps.className)}
+                    >
+                      {activity.Stato}
+                    </Badge>
+                  );
+                })()}
+                <div className="flex items-center gap-1 px-1.5 py-0.5 border border-gray-200 rounded-md bg-gray-50 dark:border-zinc-600 dark:bg-zinc-800 w-fit">
                   <ActivityProgress 
                     stato={activity.Stato}
                     size="xs"
                     showPercentage={false}
                   />
-                  <span className="text-[9px] font-medium text-gray-600 dark:text-gray-400">
+                  <span className="text-[9px] font-medium text-gray-700 dark:text-gray-300">
                     {getPercentageFromState(activity.Stato)}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Documenti + Azioni (1 colonna) */}
-            <div className="col-span-1 flex items-center justify-end gap-1">
-              {/* Allegati */}
-              {activity.Allegati && activity.Allegati.length > 0 ? (
-                <button 
-                  className="flex items-center gap-1 px-1.5 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 dark:bg-zinc-700 dark:hover:bg-zinc-600 dark:text-gray-400 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('Apertura allegati:', activity.Allegati);
-                  }}
-                  title={`${activity.Allegati.length} allegati`}
-                >
-                  <Paperclip className="w-3 h-3" />
-                  <span className="text-xs font-medium">{activity.Allegati.length}</span>
-                </button>
-              ) : (
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+            {/* COLONNA 3: Data e Durata Stimata (2/12 colonne) */}
+            <div className="col-span-2">
+              <div className="flex items-center gap-2">
+                {activity.Data && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-400">
+                    <Calendar className="w-3 h-3" />
+                    <span className="hidden sm:inline">{formatScheduledDate(activity.Data)}</span>
+                    <span className="sm:hidden">{new Date(activity.Data).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</span>
+                  </span>
+                )}
+                {activity['Durata stimata'] && (
+                  <Badge variant="outline" className="text-[10px] bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-300 w-fit">
+                    <Clock className="w-3 h-3 mr-1" />
+                    {activity['Durata stimata']}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* COLONNA 4: Obiettivo e Esito (2/12 colonne) */}
+            <div className="col-span-2">
+              <div className="flex flex-col gap-1">
+                {activity.Obiettivo && (
+                  <Badge variant="secondary" className="text-[10px] w-fit">
+                    {activity.Obiettivo}
+                  </Badge>
+                )}
+                {activity.Esito && (
+                  <Badge 
+                    variant="secondary" 
+                    className={cn('text-[10px] w-fit', getEsitoBadgeProps(activity.Esito).className)}
+                  >
+                    {activity.Esito}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* COLONNA 5: Assegnatario con Avatar e Ruolo (2/12 colonne) */}
+            <div className="col-span-2">
+              <div className="flex items-center gap-2">
+                <AvatarLead
+                  nome={assignee || 'Non assegnata'}
+                  size="sm"
+                  showTooltip={false}
+                  className="w-6 h-6 flex-shrink-0"
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                    {assignee || 'Non assegnata'}
+                  </span>
+                  <span className="text-[9px] text-gray-500 dark:text-gray-400">
+                    Admin {/* TODO: Aggiungere ruolo reale quando disponibile */}
+                  </span>
                 </div>
-              )}
-              
-              {/* Menu azioni */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0 text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-32">
-                  <DropdownMenuItem 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(activity);
-                    }}
-                    className="flex items-center gap-2 cursor-pointer text-xs"
-                  >
-                    <Edit className="h-3 w-3" />
-                    Modifica
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(activity);
-                    }}
-                    className="flex items-center gap-2 cursor-pointer text-xs text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Elimina
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              </div>
+            </div>
+
+            {/* COLONNA 6: Prossima Azione e Data (1/12 colonne) */}
+            <div className="col-span-1 flex items-center justify-end">
+              <div className="flex items-center gap-1">
+                {(activity['Prossima azione'] || activity['Data prossima azione']) ? (
+                  <div className="flex flex-col gap-1 text-right">
+                    {activity['Prossima azione'] && (
+                      <Badge variant="outline" className="text-[9px] w-fit">
+                        {activity['Prossima azione']}
+                      </Badge>
+                    )}
+                    {activity['Data prossima azione'] && (
+                      <span className="inline-flex items-center gap-1 text-[9px] text-gray-500 dark:text-gray-400">
+                        <Calendar className="w-2.5 h-2.5" />
+                        <span className="hidden sm:inline">{formatScheduledDate(activity['Data prossima azione'])}</span>
+                        <span className="sm:hidden">{new Date(activity['Data prossima azione']).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</span>
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-right">
+                    <span className="text-[9px] text-gray-300 dark:text-gray-600 italic">
+                      Nessun follow-up
+                    </span>
+                  </div>
+                )}
+                
+                {/* Menu azioni sempre visibile */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-32">
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(activity);
+                      }}
+                      className="flex items-center gap-2 cursor-pointer text-xs"
+                    >
+                      <Edit className="h-3 w-3" />
+                      Modifica
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(activity);
+                      }}
+                      className="flex items-center gap-2 cursor-pointer text-xs text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Elimina
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
 
-          {/* Riga aggiuntiva per Note/Esito (se presenti) */}
-          {(activity.Note || activity.Esito) && (
-            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-zinc-700 flex items-center justify-between">
-              {activity.Note && (
-                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 flex-1">
-                  {activity.Note}
-                </p>
-              )}
-              {activity.Esito && (
-                <Badge 
-                  variant="secondary" 
-                  className={cn('text-[9px] h-4 px-1 ml-2', getEsitoBadgeProps(activity.Esito).className)}
-                >
-                  {activity.Esito}
-                </Badge>
-              )}
+          {/* Linea di separazione e sezione inferiore */}
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-700">
+            <div className="flex justify-between items-center">
+              {/* Sinistra: Note e Allegati */}
+              <div className="flex items-center gap-3 flex-1">
+                {/* Note */}
+                {activity.Note ? (
+                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 flex-1 max-w-md">
+                    {activity.Note}
+                  </p>
+                ) : (
+                  <span className="text-xs text-gray-300 dark:text-gray-600 italic flex-1">
+                    Nessuna nota
+                  </span>
+                )}
+                
+                {/* Allegati */}
+                <div className="flex items-center gap-2">
+                  {activity.Allegati && activity.Allegati.length > 0 ? (
+                    <button 
+                      className="flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Apertura allegati:', activity.Allegati);
+                      }}
+                    >
+                      <Paperclip className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                        {activity.Allegati.length}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <Paperclip className="w-3 h-3 text-gray-300 dark:text-gray-600" />
+                      <span className="text-xs text-gray-300 dark:text-gray-600 italic">Nessun allegato</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Destra: Date creazione e ultimo aggiornamento */}
+              <div className="flex items-center gap-3 text-right">
+                <div className="text-[9px] text-gray-400 dark:text-gray-500">
+                  <span>Creato: {formatDate(activity.createdTime)}</span>
+                </div>
+                {activity['Ultima modifica'] && (
+                  <div className="text-[9px] text-gray-400 dark:text-gray-500">
+                    <span>Modificato: {formatDate(activity['Ultima modifica'])}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
-    </KanbanItem>
+        </KanbanItem>
+      </ContextMenuTrigger>
+      
+      {/* Context Menu con stati colorati e icone */}
+      <ContextMenuContent className="w-56">
+        <ContextMenuLabel className="text-xs font-medium text-muted-foreground">
+          Cambia stato attività
+        </ContextMenuLabel>
+        <ContextMenuSeparator />
+        
+        {/* Stati disponibili */}
+        {(['Da Pianificare', 'Pianificata', 'In corso', 'In attesa', 'Rimandata', 'Completata', 'Annullata'] as ActivityStato[]).map((stato) => {
+          const { icon: StateIcon, color } = getStateIconAndColor(stato);
+          const isCurrentState = activity.Stato === stato;
+          
+          return (
+            <ContextMenuItem
+              key={stato}
+              onClick={() => onStateChange(activity, stato)}
+              disabled={isCurrentState}
+              className={cn(
+                'flex items-center gap-3',
+                isCurrentState && 'bg-muted cursor-not-allowed opacity-75'
+              )}
+            >
+              <StateIcon className={cn('h-4 w-4', color)} />
+              <span className="flex-1">{stato}</span>
+              {isCurrentState && (
+                <div className="w-2 h-2 rounded-full bg-primary" />
+              )}
+            </ContextMenuItem>
+          );
+        })}
+        
+        <ContextMenuSeparator />
+        
+        {/* Azioni aggiuntive */}
+        <ContextMenuItem
+          onClick={() => onEdit(activity)}
+          className="flex items-center gap-3"
+        >
+          <Edit className="h-4 w-4 text-muted-foreground" />
+          <span>Modifica attività</span>
+        </ContextMenuItem>
+        
+        <ContextMenuItem
+          onClick={() => onDelete(activity)}
+          className="flex items-center gap-3 text-destructive focus:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+          <span>Elimina attività</span>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
 
@@ -506,12 +676,78 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
   leadId,
   className = '',
 }) => {
-  const [activities, setActivities] = useState<ActivityData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [statoFilter, setStatoFilter] = useState<ActivityStato[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showNewActivityModal, setShowNewActivityModal] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<ActivityData | null>(null);
+  
+  // 🚀 FORCE RE-RENDER - Chiave per forzare aggiornamento UI
+  const [forceUpdateKey, setForceUpdateKey] = useState(0);
+  const forceUpdate = () => {
+    console.log('🚀 [FORCE UPDATE] Triggering forced re-render in LeadActivitiesList');
+    setForceUpdateKey(prev => prev + 1);
+  };
+  
+  // 🚀 Use real data from API
+  const {
+    activities,
+    allActivities,
+    loading,
+    error,
+    refresh,
+    filterActivities,
+    retry,
+  } = useActivitiesData({
+    leadId, // Filter activities for specific lead if provided
+    filters: {
+      search: searchTerm,
+      stato: statoFilter,
+    },
+    loadAll: true,
+  });
+  
+  // 🔄 Multiple refresh strategy come LeadProfileHeader
+  const multipleRefresh = async (context: string) => {
+    console.log(`🔄 [${context}] Starting multiple refresh strategy...`);
+    console.log(`🔄 [${context}] Current activities count:`, activities.length);
+    console.log(`🔄 [${context}] Current allActivities count:`, allActivities.length);
+    
+    try {
+      // Tentativo 1: Refresh immediato
+      console.log(`🔄 [${context}] Immediate refresh...`);
+      const refreshResult1 = await refresh(true); // Force refresh bypassing cache
+      console.log(`✅ [${context}] Immediate refresh completed, result:`, refreshResult1);
+      
+      // Tentativo 2: Refresh con delay 300ms
+      setTimeout(async () => {
+        try {
+          console.log(`🔄 [${context}] Second refresh (300ms delay)...`);
+          const refreshResult2 = await refresh(true);
+          console.log(`✅ [${context}] Second refresh (300ms delay) completed, result:`, refreshResult2);
+          console.log(`🔄 [${context}] After 300ms refresh - activities:`, activities.length);
+        } catch (error) {
+          console.warn(`⚠️ [${context}] Second refresh attempt failed:`, error);
+        }
+      }, 300);
+      
+      // Tentativo 3: Refresh finale con delay 800ms
+      setTimeout(async () => {
+        try {
+          console.log(`🔄 [${context}] Final refresh (800ms delay)...`);
+          const refreshResult3 = await refresh(true);
+          console.log(`✅ [${context}] Final refresh (800ms delay) completed, result:`, refreshResult3);
+          console.log(`🔄 [${context}] After 800ms refresh - activities:`, activities.length);
+        } catch (error) {
+          console.warn(`⚠️ [${context}] Final refresh attempt failed:`, error);
+        }
+      }, 800);
+      
+    } catch (error) {
+      console.error(`❌ [${context}] Error during multiple refresh:`, error);
+      toast.error('Errore nel ricaricamento dati');
+    }
+  };
   
   // Stati per il dialog di scelta stato completate
   const [showStateDialog, setShowStateDialog] = useState(false);
@@ -539,157 +775,48 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
     'done': [],
   });
 
-  // Fetch delle attività per questo lead
-  useEffect(() => {
-    const fetchActivities = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // TODO: Sostituire con chiamata API reale
-        // const response = await fetch(`/api/activities?leadId=${leadId}`)
-        // if (!response.ok) throw new Error('Errore nel caricamento attività')
-        // const data = await response.json()
-        // setActivities(data.activities || [])
-
-        // Mock data per ora (da rimuovere)
-        const mockActivities: ActivityData[] = [
-          {
-            id: 'act1',
-            ID: 'ACT001',
-            createdTime: new Date().toISOString(),
-            Titolo: 'Chiamata - Mario Rossi',
-            Tipo: 'Chiamata',
-            Stato: 'Da Pianificare',
-            Obiettivo: 'Primo contatto',
-            Priorità: 'Alta',
-            Data: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-            'Durata stimata': '0:30',
-            'ID Lead': [leadId || 'rec123'],
-            'Nome Lead': ['Mario Rossi'],
-            Assegnatario: ['user1'],
-            'Nome Assegnatario': ['Giuseppe Verdi'],
-            Note: 'Prima chiamata per presentare i nostri servizi e valutare interesse.',
-            Esito: 'Nessuna risposta',
-            'Ultima modifica': new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: 'act2', 
-            ID: 'ACT002',
-            createdTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-            Titolo: 'WhatsApp - Giulia Bianchi',
-            Tipo: 'WhatsApp',
-            Stato: 'In corso',
-            Obiettivo: 'Follow-up preventivo',
-            Priorità: 'Media',
-            Data: new Date().toISOString(),
-            'Durata stimata': '0:15',
-            'ID Lead': ['rec456'],
-            'Nome Lead': ['Giulia Bianchi'],
-            Note: 'Invio preventivo via WhatsApp e attesa conferma.',
-            Esito: 'Molto interessato',
-            'Prossima azione': 'Chiamata',
-            'Data prossima azione': new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-            Allegati: [
-              { id: '1', filename: 'preventivo.pdf', size: 204800, type: 'application/pdf', url: '#' },
-              { id: '2', filename: 'catalogo.jpg', size: 102400, type: 'image/jpeg', url: '#' },
-            ],
-            'Ultima modifica': new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          },
-          {
-            id: 'act3',
-            ID: 'ACT003',
-            createdTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            Titolo: 'Email - Luca Verdi',
-            Tipo: 'Email',
-            Stato: 'Completata',
-            Obiettivo: 'Invio preventivo',
-            Priorità: 'Bassa',
-            Data: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            'Durata stimata': '0:10',
-            'ID Lead': ['rec789'],
-            'Nome Lead': ['Luca Verdi'],
-            Note: 'Email di benvenuto inviata con catalogo prodotti.',
-            Esito: 'Preventivo inviato',
-            'Prossima azione': 'Follow-up',
-            'Data prossima azione': new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-            Allegati: [
-              { id: '3', filename: 'benvenuto.pdf', size: 153600, type: 'application/pdf', url: '#' },
-            ],
-            'Ultima modifica': new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: 'act4',
-            ID: 'ACT004',
-            createdTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            Titolo: 'Consulenza - Anna Neri',
-            Tipo: 'Consulenza',
-            Stato: 'Pianificata',
-            Obiettivo: 'Presentazione prodotto',
-            Priorità: 'Urgente',
-            Data: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-            'Durata stimata': '1:00',
-            'ID Lead': ['rec999'],
-            'Nome Lead': ['Anna Neri'],
-            Assegnatario: ['user2'],
-            'Nome Assegnatario': ['Marco Gialli'],
-            Note: 'Presentazione demo prodotto personalizzata.',
-            'Ultima modifica': new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          },
-        ];
-        
-        // Se abbiamo un leadId specifico, filtra solo per quel lead
-        const filteredActivities = leadId 
-          ? mockActivities.filter(activity => activity['ID Lead']?.includes(leadId))
-          : mockActivities; // Altrimenti mostra tutte
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setActivities(filteredActivities);
-      } catch (err) {
-        console.error('Errore caricamento attività:', err);
-        setError('Errore nel caricamento delle attività');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchActivities();
-  }, [leadId]);
-
-  // Filtro attività per ricerca e stato
+  // 🚀 Activities are already filtered by the hook, but we can apply additional client-side filtering
   const filteredActivities = useMemo(() => {
-    let filtered = activities;
-
-    // Filtro per ricerca
-    if (searchTerm) {
-      filtered = filtered.filter(activity => 
-        activity.Titolo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.Note?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity['Nome Lead']?.[0]?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filtro per stato
-    if (statoFilter.length > 0) {
-      filtered = filtered.filter(activity => statoFilter.includes(activity.Stato));
-    }
-
-    return filtered;
-  }, [activities, searchTerm, statoFilter]);
+    console.log('🔍 [Activities Debug] Raw activities from hook:', activities.length);
+    console.log('🔍 [Activities Debug] Sample activity:', activities[0]);
+    // Additional client-side filtering can be added here if needed
+    // The hook already handles search and state filtering
+    return activities;
+  }, [activities]);
 
   // Aggiorna kanbanData quando cambiano le attività o i filtri (usa la stessa logica del Kanban originale)
   useEffect(() => {
+    console.log('🔍 [Kanban Debug] Filtering activities:', filteredActivities.length);
+    console.log('🔍 [Kanban Debug] KANBAN_COLUMNS config:', KANBAN_COLUMNS);
+    
+    // Log degli stati unici presenti nei dati
+    const uniqueStates = [...new Set(filteredActivities.map(a => a.Stato))];
+    console.log('🔍 [Kanban Debug] Unique states in data:', uniqueStates);
+    
     const groupedActivities: KanbanData = {
-      'to-do': filteredActivities.filter(activity =>
-        KANBAN_COLUMNS['to-do'].states.includes(activity.Stato)
-      ),
-      'in-progress': filteredActivities.filter(activity =>
-        KANBAN_COLUMNS['in-progress'].states.includes(activity.Stato)
-      ),
-      'done': filteredActivities.filter(activity =>
-        KANBAN_COLUMNS.done.states.includes(activity.Stato)
-      ),
+      'to-do': filteredActivities.filter(activity => {
+        const matches = KANBAN_COLUMNS['to-do'].states.includes(activity.Stato);
+        if (matches) console.log('🟦 [to-do] Activity:', activity.Titolo, 'State:', activity.Stato);
+        return matches;
+      }),
+      'in-progress': filteredActivities.filter(activity => {
+        const matches = KANBAN_COLUMNS['in-progress'].states.includes(activity.Stato);
+        if (matches) console.log('🟨 [in-progress] Activity:', activity.Titolo, 'State:', activity.Stato);
+        return matches;
+      }),
+      'done': filteredActivities.filter(activity => {
+        const matches = KANBAN_COLUMNS.done.states.includes(activity.Stato);
+        if (matches) console.log('🟩 [done] Activity:', activity.Titolo, 'State:', activity.Stato);
+        return matches;
+      }),
     };
+    
+    console.log('🔍 [Kanban Debug] Grouped results:', {
+      'to-do': groupedActivities['to-do'].length,
+      'in-progress': groupedActivities['in-progress'].length, 
+      'done': groupedActivities.done.length
+    });
+    
     setKanbanData(groupedActivities);
   }, [filteredActivities]);
 
@@ -742,6 +869,31 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
         
         // Per tutti gli altri casi (da fare → in corso, ecc.), applica il defaultState
         console.log(`✅ Cambio automatico: "${movedActivity.Stato}" → "${defaultState}"`);
+        
+        // 🚀 OPTIMISTIC UPDATE per drag & drop: aggiorna attività E posizione UI immediatamente
+        const optimisticActivity = { ...movedActivity, Stato: defaultState };
+        
+        // Aggiorna l'array delle attività filtrate con il nuovo stato (per badge)
+        const updatedActivities = filteredActivities.map(act => 
+          act.id === movedActivity.id ? optimisticActivity : act
+        );
+        
+        // Aggiorna il kanbanData con le attività aggiornate (per posizione)
+        const updatedKanbanData: KanbanData = {
+          'to-do': updatedActivities.filter(act =>
+            KANBAN_COLUMNS['to-do'].states.includes(act.Stato)
+          ),
+          'in-progress': updatedActivities.filter(act =>
+            KANBAN_COLUMNS['in-progress'].states.includes(act.Stato)
+          ),
+          'done': updatedActivities.filter(act =>
+            KANBAN_COLUMNS.done.states.includes(act.Stato)
+          ),
+        };
+        
+        setKanbanData(updatedKanbanData);
+        console.log(`🚀 [DragDrop] Full optimistic update: ${movedActivity.Titolo} moved to ${defaultState} with badge update`);
+        
         await applyStateChange(movedActivity, defaultState, newKanbanData);
         return;
       }
@@ -773,27 +925,45 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
   // Funzione per applicare il cambio stato dopo la scelta nel dialog
   const applyStateChange = async (activity: ActivityData, finalState: ActivityStato, kanbanData: KanbanData) => {
     try {
-      // TODO: Chiamata API per aggiornare stato
-      // await fetch(`/api/activities/${activity.id}`, {
-      //   method: 'PATCH', 
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ Stato: finalState }),
-      // });
+      // 🚀 Call real API to update activity state
+      const response = await fetch(`/api/activities/${activity.id}`, {
+        method: 'PATCH', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Stato: finalState }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update activity');
+      }
       
       console.log(`🎯 Attività ${activity.ID} aggiornata a "${finalState}"`);
       
-      // Aggiorna le attività con il nuovo stato
-      const updatedActivities = activities.map(a => 
-        a.id === activity.id ? { ...a, Stato: finalState } : a
-      );
+      // 🚀 FORCE UPDATE per assicurare aggiornamento UI
+      console.log(`🚀 [ApplyStateChange] Forcing UI update...`);
+      forceUpdate(); // Forza re-render
       
-      setActivities(updatedActivities);
-      setKanbanData(kanbanData);
+      // 🔄 Multiple refresh strategy (like LeadProfileHeader)
+      multipleRefresh('ApplyStateChange'); // Non-blocking background sync
       
       toast.success(`Attività marcata come "${finalState}"`);
     } catch (err) {
       console.error('Errore nell\'aggiornamento stato:', err);
       toast.error('Errore nell\'aggiornamento dello stato');
+      
+      // Rollback UI state
+      const groupedActivities: KanbanData = {
+        'to-do': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS['to-do'].states.includes(activity.Stato)
+        ),
+        'in-progress': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS['in-progress'].states.includes(activity.Stato)
+        ),
+        'done': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS.done.states.includes(activity.Stato)
+        ),
+      };
+      setKanbanData(groupedActivities);
     }
   };
   
@@ -806,6 +976,30 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
     // Chiudi dialog
     setShowStateDialog(false);
     setPendingStateChange(null);
+    
+    // 🚀 OPTIMISTIC UPDATE per dialog completato: aggiorna attività E posizione UI immediatamente
+    const optimisticActivity = { ...activity, Stato: chosenState };
+    
+    // Aggiorna l'array delle attività filtrate con il nuovo stato (per badge)
+    const updatedActivities = filteredActivities.map(act => 
+      act.id === activity.id ? optimisticActivity : act
+    );
+    
+    // Aggiorna il kanbanData con le attività aggiornate (per posizione)
+    const updatedKanbanData: KanbanData = {
+      'to-do': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['to-do'].states.includes(act.Stato)
+      ),
+      'in-progress': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['in-progress'].states.includes(act.Stato)
+      ),
+      'done': updatedActivities.filter(act =>
+        KANBAN_COLUMNS.done.states.includes(act.Stato)
+      ),
+    };
+    
+    setKanbanData(updatedKanbanData);
+    console.log(`🚀 [DialogChoice] Full optimistic update: ${activity.Titolo} moved to ${chosenState} with badge update`);
     
     // Applica il cambio stato scelto
     await applyStateChange(activity, chosenState, newKanbanData);
@@ -840,12 +1034,170 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
     toast.info(`Modifica attività: ${activity.Titolo}`);
   };
 
-  // Gestione eliminazione attività
+  // Gestione eliminazione attività (apre dialog di conferma)
   const handleDeleteActivity = (activity: ActivityData) => {
-    // TODO: Implementare conferma ed eliminazione
-    console.log('Elimina attività:', activity);
-    toast.success(`Attività eliminata: ${activity.Titolo}`);
-    setActivities(prev => prev.filter(a => a.id !== activity.id));
+    setActivityToDelete(activity);
+    setDeleteDialogOpen(true);
+  };
+  
+  // Funzione per eliminare realmente l'attività
+  const confirmDeleteActivity = async () => {
+    if (!activityToDelete) return;
+    
+    try {
+      console.log('Elimina attività:', activityToDelete);
+      
+      // 🚀 Call real API to delete activity
+      const response = await fetch(`/api/activities/${activityToDelete.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete activity');
+      }
+      
+      // Chiudi dialog e reset stato
+      setDeleteDialogOpen(false);
+      setActivityToDelete(null);
+      
+      // 🔄 Multiple refresh strategy (like LeadProfileHeader)
+      await multipleRefresh('DeleteActivity');
+      
+      toast.success(`Attività eliminata: ${activityToDelete.Titolo}`);
+    } catch (err) {
+      console.error('Errore nell\'eliminazione attività:', err);
+      toast.error('Errore nell\'eliminazione dell\'attività');
+      
+      // In caso di errore, chiudi comunque il dialog
+      setDeleteDialogOpen(false);
+      setActivityToDelete(null);
+    }
+  };
+  
+  // Annulla eliminazione
+  const cancelDeleteActivity = () => {
+    setDeleteDialogOpen(false);
+    setActivityToDelete(null);
+  };
+  
+  // 🎯 Gestione cambio stato tramite context menu
+  const handleStateChange = async (activity: ActivityData, newState: ActivityStato) => {
+    if (activity.Stato === newState) return; // Nessun cambio necessario
+    
+    const originalState = activity.Stato;
+    console.log(`🔄 Context Menu: Cambio stato ${activity.Titolo}: ${originalState} → ${newState}`);
+    
+    // 🚀 OPTIMISTIC UI UPDATE: Aggiorna immediatamente l'interfaccia
+    console.log(`🚀 [StateChange] Applying optimistic UI update...`);
+    
+    // Aggiorna l'attività con il nuovo stato (per badge)
+    const optimisticActivity = { ...activity, Stato: newState };
+    
+    // Aggiorna l'array delle attività filtrate con il nuovo stato
+    const updatedActivities = filteredActivities.map(act => 
+      act.id === activity.id ? optimisticActivity : act
+    );
+    
+    // Aggiorna il kanbanData con le attività aggiornate (per posizione)
+    const updatedKanbanData: KanbanData = {
+      'to-do': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['to-do'].states.includes(act.Stato)
+      ),
+      'in-progress': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['in-progress'].states.includes(act.Stato)
+      ),
+      'done': updatedActivities.filter(act =>
+        KANBAN_COLUMNS.done.states.includes(act.Stato)
+      ),
+    };
+    
+    // Aggiorna immediatamente la UI
+    setKanbanData(updatedKanbanData);
+    console.log(`🚀 [ContextMenu] Full optimistic update: ${activity.Titolo} moved to ${newState} with badge update`);
+    
+    try {
+      
+      // 🚀 Call real API to update activity state
+      console.log(`📤 [StateChange] Sending PATCH request to: /api/activities/${activity.id}`);
+      console.log(`📤 [StateChange] Request body:`, { Stato: newState });
+      
+      const response = await fetch(`/api/activities/${activity.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Stato: newState }),
+      });
+      console.log(`📡 [StateChange] Response status:`, response.status);
+      console.log(`📡 [StateChange] Response ok:`, response.ok);
+      console.log(`📡 [StateChange] Response headers:`, Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Parse error' }));
+        console.error(`❌ [StateChange] API Error:`, errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const responseData = await response.json();
+      console.log(`✅ [StateChange] API Success:`, responseData);
+      
+      // Verifica che la risposta contenga success: true
+      if (!responseData.success) {
+        console.error(`❌ [StateChange] API returned success: false:`, responseData);
+        throw new Error('API response missing success field');
+      }
+      
+      // 🚀 FORCE UPDATE per assicurare aggiornamento UI
+      console.log(`🚀 [StateChange] Forcing UI update...`);
+      forceUpdate(); // Forza re-render
+      
+      // 🔄 Multiple refresh strategy (like LeadProfileHeader)
+      console.log(`🔄 [StateChange] Starting multipleRefresh...`);
+      multipleRefresh('StateChangeContextMenu'); // Non-blocking background sync
+      console.log(`✅ [StateChange] multipleRefresh triggered for background sync`);
+      
+      // 🚪 Fallback: Se dopo 2 secondi i dati non sono aggiornati, forza reload
+      setTimeout(() => {
+        // Controlla se lo stato è stato aggiornato
+        const updatedActivity = activities.find(a => a.id === activity.id);
+        if (updatedActivity && updatedActivity.Stato !== newState) {
+          console.log(`⚠️ [StateChange] Fallback: State not updated after 2s, forcing page reload`);
+          console.log(`⚠️ [StateChange] Expected: ${newState}, Current: ${updatedActivity.Stato}`);
+          toast.loading('Aggiornamento in corso...', { id: 'force-reload' });
+          setTimeout(() => {
+            toast.dismiss('force-reload');
+            window.location.reload();
+          }, 1000);
+        } else {
+          console.log(`✅ [StateChange] State updated successfully via refresh`);
+        }
+      }, 2000);
+      
+      const { icon: StateIcon } = getStateIconAndColor(newState);
+      toast.success(
+        <div className="flex items-center gap-2">
+          <StateIcon className="h-4 w-4" />
+          <span>Stato aggiornato a "{newState}"</span>
+        </div>
+      );
+    } catch (err) {
+      console.error('❌ [StateChange] Errore nel cambio stato:', err);
+      console.error('❌ [StateChange] Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      
+      let errorMessage = 'Errore nel cambio stato dell\'attività';
+      if (err instanceof Error) {
+        if (err.message.includes('Failed to fetch')) {
+          errorMessage = 'Errore di connessione. Verifica la rete.';
+        } else if (err.message.includes('timeout')) {
+          errorMessage = 'Richiesta troppo lenta. Riprova.';
+        }
+      }
+      
+      toast.error(errorMessage);
+    }
   };
 
   if (loading) {
@@ -869,44 +1221,64 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
 
   return (
     <div className={cn('space-y-6', className)}>
+      {/* Header con conteggio attività */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Attività
+          </h2>
+          <Badge 
+            variant="secondary" 
+            className="text-sm px-2 py-1"
+          >
+            {allActivities.length}
+          </Badge>
+        </div>
+        {/* Aggiungiamo eventuali azioni aggiuntive qui in futuro */}
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 items-center gap-4">
-          {/* Filtro per stato */}
+        {/* Campo di ricerca */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Cerca attività..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        
+        {/* Filtro stato e pulsante nuova attività */}
+        <div className="flex items-center gap-3">
           <DataTablePersistentFilter
             title="Stato"
-            options={STATI_DISPONIBILI.map(stato => ({ 
-              label: stato, 
-              value: stato,
-              icon: 'circle'
-            }))}
+            options={STATI_DISPONIBILI.map(stato => {
+              // Use allActivities to get counts for all data, not just filtered
+              const count = allActivities.filter(activity => activity.Stato === stato).length;
+              return {
+                label: stato,
+                value: stato,
+                count: count
+              };
+            })}
             selectedValues={statoFilter}
             onSelectionChange={(newValues) => setStatoFilter(newValues as ActivityStato[])}
             showSearch={false}
             maxItems={3}
           />
           
-          {/* Campo di ricerca */}
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Cerca attività..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <Button onClick={() => setShowNewActivityModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuova attività
+          </Button>
         </div>
-        
-        {/* Pulsante nuova attività */}
-        <Button onClick={() => setShowNewActivityModal(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuova attività
-        </Button>
       </div>
 
       {/* Lista delle attività con Kanban verticale */}
       <Kanban 
+        key={forceUpdateKey} // 🚀 Forza re-render quando cambia
         value={kanbanData}
         onValueChange={handleKanbanChange}
         getItemValue={(activity: ActivityData) => activity.id as UniqueIdentifier}
@@ -926,7 +1298,10 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
                     <h3 className="font-medium text-gray-900 dark:text-gray-100">
                       {column.title}
                     </h3>
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs h-5 px-2 text-muted-foreground border-border hover:bg-muted"
+                    >
                       {columnActivities.length}
                     </Badge>
                   </div>
@@ -939,30 +1314,6 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
                     <Plus className="h-3 w-3" />
                   </Button>
                 </div>
-                
-                {/* Intestazioni colonne (solo se ci sono attività) */}
-                {columnActivities.length > 0 && (
-                  <div className="grid grid-cols-12 gap-3 px-3 py-2 bg-gray-100 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
-                    <div className="col-span-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                      Cliente
-                    </div>
-                    <div className="col-span-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide text-center">
-                      Data
-                    </div>
-                    <div className="col-span-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                      Obiettivi
-                    </div>
-                    <div className="col-span-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                      Assegnatario
-                    </div>
-                    <div className="col-span-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                      Follow-up
-                    </div>
-                    <div className="col-span-1 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide text-center">
-                      Documenti
-                    </div>
-                  </div>
-                )}
                 
                 {/* Contenuto della sezione */}
                 <KanbanColumn value={column.id} className="min-h-[80px] border-none bg-transparent p-3">
@@ -979,6 +1330,7 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
                           activity={activity}
                           onEdit={handleEditActivity}
                           onDelete={handleDeleteActivity}
+                          onStateChange={handleStateChange}
                         />
                       ))
                     )}
@@ -996,9 +1348,15 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
 
       {/* Modal per nuova attività */}
       <NewActivityModal
-        leadId={leadId}
-        isOpen={showNewActivityModal}
-        onClose={() => setShowNewActivityModal(false)}
+        open={showNewActivityModal}
+        onOpenChange={setShowNewActivityModal}
+        onSuccess={async () => {
+          console.log('🎉 Attività creata con successo, aggiornamento lista...');
+          
+          // 🔄 Multiple refresh strategy (like LeadProfileHeader)
+          await multipleRefresh('NewActivityCreated');
+        }}
+        prefilledLeadId={leadId}
       />
       
       {/* Dialog per scegliere stato completate (stessa UI del Kanban originale) */}
@@ -1055,6 +1413,40 @@ export const LeadActivitiesList: React.FC<LeadActivitiesListProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Dialog di conferma eliminazione */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Conferma eliminazione
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {activityToDelete && (
+                <>
+                  Sei sicuro di voler eliminare l'attività <strong>"{activityToDelete.Titolo}"</strong>?
+                  <br />
+                  <span className="font-medium mt-1 block">
+                    Questa azione non può essere annullata.
+                  </span>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeleteActivity}>
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteActivity}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Elimina attività
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

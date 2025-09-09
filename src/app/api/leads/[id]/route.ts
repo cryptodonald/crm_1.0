@@ -19,6 +19,11 @@ export async function GET(
   try {
     const leadId = id;
     
+    // Check for skipCache query parameter
+    const { searchParams } = new URL(request.url);
+    const skipCache = searchParams.get('skipCache') === 'true';
+    
+    
     if (!leadId) {
       return NextResponse.json(
         { error: 'Lead ID is required' },
@@ -29,7 +34,7 @@ export async function GET(
     console.log(`🔍 [GET LEAD] Starting fetch for: ${leadId}`);
 
     // 🚀 Usa batch processing ottimizzato con caching
-    const result = await getCachedLead(leadId, async () => {
+    const fetchFn = async () => {
       const credentialsStart = performance.now();
       
       // Get Airtable credentials
@@ -94,8 +99,13 @@ export async function GET(
       console.log(`📝 [TIMING] JSON parsing: ${parseTime.toFixed(2)}ms`);
 
       return transformedLead;
-    });
-
+    };
+    
+    // Esegui con o senza cache in base al parametro
+    const result = skipCache 
+      ? await fetchFn()
+      : await getCachedLead(leadId, fetchFn);
+    
     const totalTime = performance.now() - requestStart;
     const wasCached = totalTime < 100; // Assume cached if under 100ms
     
@@ -267,14 +277,11 @@ export async function PUT(
 
     // Invalida la cache in background (non-blocking)
     const cacheStart = performance.now();
+    
     leadsCache.clear(); // Cache in-memory, veloce
     
     // Cache KV invalidation in background
     invalidateLeadCache(leadId)
-      .then(() => {
-        const cacheTime = performance.now() - cacheStart;
-        console.log(`🧹 [TIMING] Cache invalidation completed: ${cacheTime.toFixed(2)}ms`);
-      })
       .catch(err => {
         console.warn('⚠️ [UPDATE LEAD] Cache invalidation failed (non-critical):', err.message);
       });

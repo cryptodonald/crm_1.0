@@ -16,13 +16,33 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const limit = searchParams.get('limit') || '100';
+    const limit = searchParams.get('maxRecords') || searchParams.get('limit') || '100';
     const offset = searchParams.get('offset') || '';
-    const sort = searchParams.get('sort') || 'Data';
-    const direction = searchParams.get('direction') || 'desc';
+    const sortField = searchParams.get('sortField') || searchParams.get('sort') || 'Data';
+    const sortDirection = searchParams.get('sortDirection') || searchParams.get('direction') || 'desc';
+    const loadAll = searchParams.get('loadAll') === 'true';
     
-    // Create cache key based on query parameters
-    const cacheKey = `activities:${limit}:${offset}:${sort}:${direction}`;
+    // Advanced filters
+    const leadId = searchParams.get('leadId');
+    const stati = searchParams.getAll('stato');
+    const tipi = searchParams.getAll('tipo');
+    const search = searchParams.get('search');
+    const dataInizio = searchParams.get('dataInizio');
+    const dataFine = searchParams.get('dataFine');
+    const assegnatario = searchParams.get('assegnatario');
+    
+    // Create comprehensive cache key
+    const filterKeys = [
+      leadId && `lead:${leadId}`,
+      stati.length > 0 && `stati:${stati.join(',')}`,
+      tipi.length > 0 && `tipi:${tipi.join(',')}`,
+      search && `search:${search}`,
+      dataInizio && `from:${dataInizio}`,
+      dataFine && `to:${dataFine}`,
+      assegnatario && `assign:${assegnatario}`,
+    ].filter(Boolean).join('|');
+    
+    const cacheKey = `activities:${limit}:${offset}:${sortField}:${sortDirection}:${filterKeys}`;
 
     // 🚀 Use caching system for performance optimization
     const result = await getCachedActivities(cacheKey, async () => {
@@ -45,12 +65,71 @@ export async function GET(request: NextRequest) {
 
       // Build Airtable API URL
       const url = new URL(`https://api.airtable.com/v0/${baseId}/${tableId}`);
-      url.searchParams.set('maxRecords', limit);
-      if (offset) url.searchParams.set('offset', offset);
+      
+      // Set pagination parameters
+      if (loadAll) {
+        // Load all records (up to Airtable's limit)
+        url.searchParams.set('maxRecords', '1000');
+      } else {
+        url.searchParams.set('maxRecords', limit);
+        if (offset) url.searchParams.set('offset', offset);
+      }
       
       // Add sorting
-      url.searchParams.set('sort[0][field]', sort);
-      url.searchParams.set('sort[0][direction]', direction);
+      url.searchParams.set('sort[0][field]', sortField);
+      url.searchParams.set('sort[0][direction]', sortDirection);
+      
+      // Build filter formula for Airtable
+      const filterConditions = [];
+      
+      // Filter by lead ID if specified
+      if (leadId) {
+        filterConditions.push(`FIND('${leadId}', ARRAYJOIN({ID Lead}, ',')) > 0`);
+      }
+      
+      // Filter by stati if specified
+      if (stati.length > 0) {
+        const statiCondition = stati.map(stato => `{Stato} = '${stato}'`).join(', ');
+        filterConditions.push(`OR(${statiCondition})`);
+      }
+      
+      // Filter by tipi if specified
+      if (tipi.length > 0) {
+        const tipiCondition = tipi.map(tipo => `{Tipo} = '${tipo}'`).join(', ');
+        filterConditions.push(`OR(${tipiCondition})`);
+      }
+      
+      // Search in multiple fields
+      if (search) {
+        const searchCondition = [
+          `FIND(LOWER('${search}'), LOWER({Titolo})) > 0`,
+          `FIND(LOWER('${search}'), LOWER({Note})) > 0`,
+          `FIND(LOWER('${search}'), LOWER(ARRAYJOIN({Nome Lead}, ','))) > 0`,
+        ].join(', ');
+        filterConditions.push(`OR(${searchCondition})`);
+      }
+      
+      // Date range filters
+      if (dataInizio) {
+        filterConditions.push(`IS_AFTER({Data}, '${dataInizio}')`);
+      }
+      
+      if (dataFine) {
+        filterConditions.push(`IS_BEFORE({Data}, '${dataFine}')`);
+      }
+      
+      // Filter by assignee
+      if (assegnatario) {
+        filterConditions.push(`FIND('${assegnatario}', ARRAYJOIN({Assegnatario}, ',')) > 0`);
+      }
+      
+      // Combine all filter conditions
+      if (filterConditions.length > 0) {
+        const filterFormula = filterConditions.length === 1 
+          ? filterConditions[0]
+          : `AND(${filterConditions.join(', ')})`;
+        url.searchParams.set('filterByFormula', filterFormula);
+      }
 
       console.log('📡 [Activities API] Fetching from Airtable:', url.toString());
       
@@ -77,11 +156,23 @@ export async function GET(request: NextRequest) {
       const fetchTime = performance.now() - fetchStart;
       console.log(`🚀 [TIMING] Activities fetch: ${fetchTime.toFixed(2)}ms`);
 
+      // 🔄 Transform Airtable records to ActivityData format
+      const transformedRecords = (data.records || []).map((record: any) => ({
+        // Airtable metadata
+        id: record.id,
+        createdTime: record.createdTime,
+        
+        // Flatten fields to top level
+        ...record.fields,
+      }));
+      
+      console.log('🔄 [Activities API] Transformed records:', transformedRecords.length);
+      
       return {
         success: true,
-        data: data.records || [],
+        data: transformedRecords,
         offset: data.offset,
-        count: data.records?.length || 0,
+        count: transformedRecords.length,
       };
     });
     
@@ -168,21 +259,55 @@ export async function POST(request: NextRequest) {
     console.log(`📝 [Activities API] Parsing request: ${parseTime.toFixed(2)}ms`);
     console.log('📝 [Activities API] Creating activity:', activityData);
 
+    // Helper function to convert duration string to minutes
+    const parseDurationToMinutes = (duration: string): number | undefined => {
+      if (!duration) return undefined;
+      
+      // Handle formats like "00:15", "1:30", "15" (minutes)
+      if (duration.includes(':')) {
+        const [hours, minutes] = duration.split(':').map(Number);
+        return (hours * 60) + minutes;
+      }
+      
+      // If it's already a number string, use it as minutes
+      const num = parseInt(duration, 10);
+      return isNaN(num) ? undefined : num;
+    };
+
     // Transform data for Airtable
     const airtableData = {
       fields: {
         // Required fields
         Tipo: activityData.Tipo,
-        Stato: 'Da Pianificare', // Default state for new activities
+        Stato: activityData.Stato || 'Da Pianificare', // Use provided state or default
         
-        // Optional fields
+        // Optional base fields
         ...(activityData.Obiettivo && { Obiettivo: activityData.Obiettivo }),
-        ...(activityData.Data && { Data: activityData.Data }),
-        ...(activityData['Durata stimata'] && { 'Durata stimata': activityData['Durata stimata'] }),
         ...(activityData.Priorità && { Priorità: activityData.Priorità }),
-        ...(activityData.Note && { Note: activityData.Note }),
+        
+        // Programming fields
+        ...(activityData.Data && { Data: activityData.Data }),
+        ...(activityData['Durata stimata'] && { 
+          'Durata stimata': parseDurationToMinutes(activityData['Durata stimata']) 
+        }),
+        
+        // Assignment fields
         ...(activityData['ID Lead'] && { 'ID Lead': activityData['ID Lead'] }),
         ...(activityData.Assegnatario && { Assegnatario: activityData.Assegnatario }),
+        
+        // Results fields
+        ...(activityData.Note && { Note: activityData.Note }),
+        ...(activityData.Esito && { Esito: activityData.Esito }),
+        ...(activityData['Prossima azione'] && { 'Prossima azione': activityData['Prossima azione'] }),
+        ...(activityData['Data prossima azione'] && { 'Data prossima azione': activityData['Data prossima azione'] }),
+        
+        // Attachments - convert to Airtable format
+        ...(activityData.allegati && activityData.allegati.length > 0 && {
+          Allegati: activityData.allegati.map(allegato => ({
+            url: allegato.url,
+            filename: allegato.filename
+          }))
+        }),
       },
     };
 
@@ -212,8 +337,10 @@ export async function POST(request: NextRequest) {
       throw new Error(result.error?.message || `Airtable API error: ${response.status}`);
     }
 
-    // 🚀 Invalidate cache after successful creation
-    await invalidateActivitiesCache();
+    // 🚀 Invalidate cache after successful creation (async, non-blocking)
+    invalidateActivitiesCache().catch(error => {
+      console.warn('⚠️ [Activities API] Cache invalidation failed (non-critical):', error);
+    });
     
     const totalTime = performance.now() - requestStart;
     

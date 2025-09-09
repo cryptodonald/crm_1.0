@@ -29,13 +29,19 @@ export function useLeadDetail({ leadId, refreshKey }: UseLeadDetailProps): UseLe
     async () => {
       console.log(`🔍 [useLeadDetail] Fetching lead: ${leadId}`);
 
-      // Force cache busting per fresh data
+      // Force cache busting per fresh data + bypass server cache
       const cacheBuster = Date.now();
-      const response = await fetch(`/api/leads/${leadId}?_t=${cacheBuster}`, {
+      const fetchUrl = `/api/leads/${leadId}?_t=${cacheBuster}&skipCache=true`;
+      
+      const response = await fetch(fetchUrl, {
+        method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-        }
+          'Expires': '0',
+          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+        },
+        cache: 'no-store'
       });
 
       if (!response.ok) {
@@ -155,18 +161,14 @@ export function useLeadDetail({ leadId, refreshKey }: UseLeadDetailProps): UseLe
   // Auto-fetch quando cambia leadId o refreshKey
   useEffect(() => {
     if (leadId) {
-      console.log(`🔄 [useLeadDetail] Auto-fetching for leadId: ${leadId}, refreshKey: ${refreshKey}`);
       fetchLeadWithRetry.execute();
     }
   }, [leadId, refreshKey]); // Include refreshKey per force refresh
 
   // Funzioni wrapper
   const refresh = useCallback(async () => {
-    console.log('🔄 [useLeadDetail] Manual refresh triggered');
-    const result = await fetchLeadWithRetry.retry();
-    if (result) {
-      toast.success('Lead aggiornato con successo');
-    }
+    await fetchLeadWithRetry.retry();
+    // Toast rimosso: gestito dal componente EditLeadModal
   }, [fetchLeadWithRetry]);
 
   return {

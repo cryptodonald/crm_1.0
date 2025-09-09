@@ -20,7 +20,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2 } from 'lucide-react';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search, Play, Pause, RotateCcw, XCircle, AlertCircle } from 'lucide-react';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { ActivityProgress } from '@/components/ui/activity-progress';
 import { formatDistanceToNow } from 'date-fns';
@@ -31,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { DataTablePersistentFilter } from '@/components/data-table/data-table-persistent-filter';
 import type { Option } from '@/types/data-table';
 import { NewActivityModal } from '@/components/activities';
+import { useActivitiesData } from '@/hooks/use-activities-data';
 
 import {
   Kanban,
@@ -63,6 +72,7 @@ interface ActivityCardProps {
   activity: ActivityData;
   onEdit: (activity: ActivityData) => void;
   onDelete: (activity: ActivityData) => void;
+  onStateChange: (activity: ActivityData, newState: ActivityStato) => void;
 }
 
 // Funzioni per i badge (dalla pagina demo-badges)
@@ -108,6 +118,28 @@ const getPercentageFromState = (stato: ActivityStato): string => {
     case 'Completata': return '100%';
     case 'Annullata': return '0%';
     default: return '0%';
+  }
+};
+
+// Helper per ottenere icona per ogni stato (colori più minimali)
+const getStateIconAndColor = (stato: ActivityStato) => {
+  switch (stato) {
+    case 'Da Pianificare':
+      return { icon: ClipboardList, color: 'text-muted-foreground' };
+    case 'Pianificata':
+      return { icon: Calendar, color: 'text-muted-foreground' };
+    case 'In corso':
+      return { icon: Play, color: 'text-muted-foreground' };
+    case 'In attesa':
+      return { icon: Pause, color: 'text-muted-foreground' };
+    case 'Rimandata':
+      return { icon: RotateCcw, color: 'text-muted-foreground' };
+    case 'Completata':
+      return { icon: CheckCircle2, color: 'text-muted-foreground' };
+    case 'Annullata':
+      return { icon: XCircle, color: 'text-muted-foreground' };
+    default:
+      return { icon: AlertCircle, color: 'text-muted-foreground' };
   }
 };
 
@@ -240,7 +272,18 @@ const EmptyColumnState: React.FC<EmptyColumnStateProps> = ({ columnId, onCreateA
   );
 };
 
-const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete }) => {
+const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete, onStateChange }) => {
+  // Stati disponibili per il menu contestuale
+  const STATI_DISPONIBILI: ActivityStato[] = [
+    'Da Pianificare',
+    'Pianificata', 
+    'In corso',
+    'In attesa',
+    'Rimandata',
+    'Completata',
+    'Annullata',
+  ];
+  
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return null;
     try {
@@ -287,12 +330,14 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
   const assignee = activity['Nome Assegnatario']?.[0];
 
   return (
-    <KanbanItem
-      value={activity.id}
-      asHandle
-      className="group rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer dark:bg-zinc-900 dark:border-zinc-700"
-    >
-      <Card className="border-none shadow-none bg-transparent">
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <KanbanItem
+          value={activity.id}
+          asHandle
+          className="group rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer dark:bg-zinc-900 dark:border-zinc-700"
+        >
+          <Card className="border-none shadow-none bg-transparent">
         <CardContent className="p-3 sm:p-4">
           {/* Header: Data, Durata e pulsante azioni */}
           <div className="flex items-start justify-between mb-2 sm:mb-3">
@@ -485,22 +530,157 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete 
         </CardContent>
       </Card>
     </KanbanItem>
+    </ContextMenuTrigger>
+    
+    {/* Menu contestuale per cambio stato rapido */}
+    <ContextMenuContent className="w-48">
+      <ContextMenuLabel className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+        Cambia stato
+      </ContextMenuLabel>
+      <ContextMenuSeparator />
+      
+      {/* Opzioni di stato disponibili */}
+      {STATI_DISPONIBILI.filter(stato => stato !== activity.Stato).map((stato) => {
+        const { icon: StateIcon, color } = getStateIconAndColor(stato);
+        return (
+          <ContextMenuItem
+            key={stato}
+            onClick={(e) => {
+              e.stopPropagation();
+              onStateChange(activity, stato);
+            }}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <StateIcon className={cn('h-3 w-3', color)} />
+            <span className="text-sm">{stato}</span>
+          </ContextMenuItem>
+        );
+      })}
+      
+      <ContextMenuSeparator />
+      
+      {/* Azioni generali */}
+      <ContextMenuItem
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit(activity);
+        }}
+        className="flex items-center gap-2 cursor-pointer"
+      >
+        <Edit className="h-3 w-3 text-muted-foreground" />
+        <span className="text-sm">Modifica</span>
+      </ContextMenuItem>
+      
+      <ContextMenuItem
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(activity);
+        }}
+        className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
+      >
+        <Trash2 className="h-3 w-3" />
+        <span className="text-sm">Elimina</span>
+      </ContextMenuItem>
+    </ContextMenuContent>
+    </ContextMenu>
   );
 };
 
-
-
-
+// Definizione delle colonne con icone per il componente Kanban
+const KANBAN_COLUMNS_ARRAY = [
+  {
+    id: 'to-do' as KanbanColumnId,
+    title: 'Da fare',
+    icon: ClipboardList,
+    iconColor: 'text-gray-600',
+  },
+  {
+    id: 'in-progress' as KanbanColumnId,
+    title: 'In corso',
+    icon: Zap,
+    iconColor: 'text-yellow-600',
+  },
+  {
+    id: 'done' as KanbanColumnId,
+    title: 'Completate',
+    icon: CheckCircle2,
+    iconColor: 'text-green-600',
+  },
+] as const;
 
 export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
   leadId,
   className = '',
 }) => {
-  const [activities, setActivities] = useState<ActivityData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [statoFilter, setStatoFilter] = useState<ActivityStato[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [showNewActivityModal, setShowNewActivityModal] = useState(false);
+  
+  // 🚀 FORCE RE-RENDER - Chiave per forzare aggiornamento UI
+  const [forceUpdateKey, setForceUpdateKey] = useState(0);
+  const forceUpdate = () => {
+    console.log('🚀 [FORCE UPDATE] Triggering forced re-render');
+    setForceUpdateKey(prev => prev + 1);
+  };
+  
+  // 🚀 Use real data from API with useActivitiesData hook
+  const {
+    activities,
+    allActivities,
+    loading,
+    error,
+    refresh,
+    retry,
+  } = useActivitiesData({
+    leadId, // Filter activities for this specific lead
+    filters: {
+      search: searchTerm,
+      stato: statoFilter,
+    },
+    loadAll: true,
+  });
+  
+  // 🔄 Robust refresh function using hook's refresh method (like in EditLeadModal)
+  const robustRefresh = async (context: string) => {
+    console.log(`🔄 [${context}] Starting robust refresh with multiple attempts...`);
+    
+    try {
+      // 🚀 Triple refresh strategy: Immediate + 300ms + 800ms delays
+      // This matches the pattern used in EditLeadModal onUpdated callback
+      
+      // Tentativo 1: Refresh immediato con cache busting
+      console.log(`🔄 [${context}] Immediate refresh attempt...`);
+      refresh(true); // Force refresh bypassing cache (non-blocking)
+      console.log(`✅ [${context}] Immediate refresh triggered`);
+      
+      // Tentativo 2: Refresh con delay breve per assicurare sincronizzazione
+      setTimeout(() => {
+        console.log(`🔄 [${context}] Second refresh attempt (300ms delay)...`);
+        refresh(true); // Force refresh again
+        console.log(`✅ [${context}] Second refresh (300ms delay) triggered`);
+      }, 300);
+      
+      // Tentativo 3: Refresh finale con delay maggiore per assicurare UI sync
+      setTimeout(() => {
+        console.log(`🔄 [${context}] Final refresh attempt (800ms delay)...`);
+        refresh(true); // Final force refresh
+        console.log(`✅ [${context}] Final refresh (800ms delay) triggered`);
+      }, 800);
+      
+    } catch (error) {
+      console.error(`❌ [${context}] Error during robust refresh:`, error);
+      
+      // 🚀 Fallback: If refresh fails, try direct retry
+      console.log(`🔄 [${context}] Fallback: Using hook retry method...`);
+      try {
+        // Use the hook's retry method as fallback
+        retry();
+        console.log(`✅ [${context}] Fallback retry triggered`);
+      } catch (fallbackError) {
+        console.error(`❌ [${context}] Fallback retry also failed:`, fallbackError);
+      }
+    }
+  };
   
   // Stati per il dialog di scelta stato completate
   const [showStateDialog, setShowStateDialog] = useState(false);
@@ -528,124 +708,24 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
     'done': [],
   });
 
-  // Fetch delle attività per questo lead
-  useEffect(() => {
-    const fetchActivities = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // TODO: Sostituire con chiamata API reale
-        // const response = await fetch(`/api/activities?leadId=${leadId}`);
-        // if (!response.ok) throw new Error('Errore nel caricamento attività');
-        // const data = await response.json();
-        // setActivities(data.activities || []);
-
-        // Mock data per ora (da rimuovere)
-        const mockActivities: ActivityData[] = [
-          {
-            id: 'act1',
-            ID: 'ACT001',
-            createdTime: new Date().toISOString(),
-            Titolo: 'Chiamata - Mario Rossi',
-            Tipo: 'Chiamata',
-            Stato: 'Da Pianificare',
-            Obiettivo: 'Primo contatto',
-            Priorità: 'Alta',
-            Data: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-            'Durata stimata': '0:30',
-            'ID Lead': [leadId],
-            'Nome Lead': ['Mario Rossi'],
-            Assegnatario: ['user1'],
-            'Nome Assegnatario': ['Giuseppe Verdi'],
-            Note: 'Prima chiamata per presentare i nostri servizi e valutare interesse.',
-            Esito: 'Nessuna risposta',
-            // Questa card NON ha prossima azione per test
-            'Ultima modifica': new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: 'act2', 
-            ID: 'ACT002',
-            createdTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-            Titolo: 'WhatsApp - Mario Rossi',
-            Tipo: 'WhatsApp',
-            Stato: 'In corso',
-            Obiettivo: 'Follow-up preventivo',
-            Priorità: 'Media',
-            Data: new Date().toISOString(),
-            'Durata stimata': '0:15',
-            'ID Lead': [leadId],
-            'Nome Lead': ['Mario Rossi'],
-            Note: 'Invio preventivo via WhatsApp e attesa conferma.',
-            Esito: 'Molto interessato',
-            // Questa card HA sia prossima azione che data per test completo
-            'Prossima azione': 'Chiamata',
-            'Data prossima azione': new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-            Allegati: [
-              { id: '1', filename: 'preventivo.pdf', size: 204800, type: 'application/pdf', url: '#' },
-              { id: '2', filename: 'catalogo.jpg', size: 102400, type: 'image/jpeg', url: '#' },
-            ],
-            'Ultima modifica': new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          },
-          {
-            id: 'act3',
-            ID: 'ACT003',
-            createdTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            Titolo: 'Email - Mario Rossi',
-            Tipo: 'Email',
-            Stato: 'Completata',
-            Obiettivo: 'Invio preventivo',
-            Priorità: 'Bassa',
-            Data: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            'Durata stimata': '0:10',
-            'ID Lead': [leadId],
-            'Nome Lead': ['Mario Rossi'],
-            Note: 'Email di benvenuto inviata con catalogo prodotti.',
-            Esito: 'Preventivo inviato',
-            // Questa card HA prossima azione per test
-            'Prossima azione': 'Follow-up',
-            'Data prossima azione': new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-            Allegati: [
-              { id: '3', filename: 'benvenuto.pdf', size: 153600, type: 'application/pdf', url: '#' },
-            ],
-            'Ultima modifica': new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          },
-        ];
-
-        setActivities(mockActivities);
-      } catch (err) {
-        console.error('Errore nel caricamento attività:', err);
-        setError('Errore nel caricamento delle attività');
-        toast.error('Errore nel caricamento delle attività');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (leadId) {
-      fetchActivities();
-    }
-  }, [leadId]);
-
-  // Calcola conteggi dinamici per ogni stato (per il filtro)
+  // Calcola conteggi dinamici per ogni stato (per il filtro) - usa allActivities per i conteggi totali
   const getStatoCounts = useMemo(() => {
     return STATI_DISPONIBILI.reduce(
       (counts, stato) => {
-        const count = activities.filter(activity => activity.Stato === stato).length;
+        const count = allActivities.filter(activity => activity.Stato === stato).length;
         counts[stato] = count;
         return counts;
       },
       {} as Record<ActivityStato, number>
     );
-  }, [activities]);
+  }, [allActivities]);
 
-  // Filtra le attività prima di raggrupparle nel Kanban
+  // 🚀 Activities are already filtered by the hook, but we can apply additional client-side filtering if needed
   const filteredActivities = useMemo(() => {
-    if (statoFilter.length === 0) {
-      return activities; // Nessun filtro attivo, mostra tutte
-    }
-    return activities.filter(activity => statoFilter.includes(activity.Stato));
-  }, [activities, statoFilter]);
+    // The hook already handles search and state filtering, so we just use the filtered activities
+    // Additional client-side filtering can be added here if needed
+    return activities;
+  }, [activities]);
 
   // Aggiorna il kanban quando cambiano le attività filtrate
   useEffect(() => {
@@ -668,18 +748,47 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
     toast.info(`Modifica attività: ${activity.Titolo}`);
   };
 
-  const handleDeleteActivity = (activity: ActivityData) => {
-    // TODO: Implementare eliminazione con conferma
-    if (window.confirm(`Sei sicuro di voler eliminare l'attività "${activity.Titolo}"?`)) {
-      // TODO: Chiamata API per eliminare
-      // await fetch(`/api/activities/${activity.id}`, { method: 'DELETE' });
-      
+  const handleDeleteActivity = async (activity: ActivityData) => {
+    // Conferma eliminazione
+    if (!window.confirm(`Sei sicuro di voler eliminare l'attività "${activity.Titolo}"?`)) {
+      return;
+    }
+    
+    try {
       console.log(`🗑️ Eliminazione attività: ${activity.ID}`);
+      console.log(`📤 [Delete] Sending DELETE request to: /api/activities/${activity.id}`);
       
-      // Rimuovi l'attività dallo stato locale (temporaneo per demo)
-      setActivities(prev => prev.filter(a => a.id !== activity.id));
+      // 🚀 Call real API to delete activity
+      const response = await fetch(`/api/activities/${activity.id}`, {
+        method: 'DELETE',
+      });
+      
+      console.log(`📡 [Delete] Response status:`, response.status);
+      console.log(`📡 [Delete] Response ok:`, response.ok);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`❌ [Delete] API Error:`, errorData);
+        throw new Error(errorData.error || 'Failed to delete activity');
+      }
+      
+      const responseData = await response.json();
+      console.log(`✅ [Delete] API Success:`, responseData);
+      
+      // 🔄 Robust refresh with multiple attempts
+      console.log(`🔄 [Delete] Starting robustRefresh...`);
+      await robustRefresh('DeleteActivity');
+      console.log(`✅ [Delete] robustRefresh completed`);
       
       toast.success(`Attività "${activity.Titolo}" eliminata`);
+    } catch (err) {
+      console.error('❌ [Delete] Errore nell\'eliminazione attività:', err);
+      console.error('❌ [Delete] Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      toast.error('Errore nell\'eliminazione dell\'attività');
     }
   };
 
@@ -687,38 +796,73 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
     setShowNewActivityModal(true);
   };
 
-  const handleActivitySuccess = () => {
-    // Ricarica le attività dopo aver creato una nuova
-    toast.success('Attività creata con successo!');
+  const handleActivitySuccess = async () => {
+    console.log('🎉 Attività creata con successo, aggiornamento lista...');
     
-    // TODO: Ricarica le attività dalla API
-    // Per ora non facciamo nulla, i dati mock verranno sostituiti con dati reali
+    // 🔄 Robust refresh with multiple attempts (like LeadProfileHeader)
+    await robustRefresh('NewActivityCreated');
+    
+    toast.success('Attività creata con successo!');
   };
 
   // Funzione per applicare il cambio stato dopo la scelta nel dialog
   const applyStateChange = async (activity: ActivityData, finalState: ActivityStato, kanbanData: KanbanData) => {
     try {
-      // TODO: Chiamata API per aggiornare stato
-      // await fetch(`/api/activities/${activity.id}`, {
-      //   method: 'PATCH', 
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ Stato: finalState }),
-      // });
-      
       console.log(`🎯 Attività ${activity.ID} aggiornata a "${finalState}"`);
+      console.log(`📤 [StateChange] Sending PATCH request to: /api/activities/${activity.id}`);
+      console.log(`📤 [StateChange] Request body:`, { Stato: finalState });
       
-      // Aggiorna le attività con il nuovo stato
-      const updatedActivities = activities.map(a => 
-        a.id === activity.id ? { ...a, Stato: finalState } : a
-      );
+      // 🚀 Call real API to update activity state
+      const response = await fetch(`/api/activities/${activity.id}`, {
+        method: 'PATCH', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Stato: finalState }),
+      });
       
-      setActivities(updatedActivities);
-      setKanbanData(kanbanData);
+      console.log(`📡 [StateChange] Response status:`, response.status);
+      console.log(`📡 [StateChange] Response ok:`, response.ok);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`❌ [StateChange] API Error:`, errorData);
+        throw new Error(errorData.error || 'Failed to update activity state');
+      }
+      
+      const responseData = await response.json();
+      console.log(`✅ [StateChange] API Success:`, responseData);
+      
+      // 🚀 FORCE UPDATE per assicurare aggiornamento UI nel drag & drop
+      console.log(`🚀 [StateChange] Forcing UI update for drag & drop...`);
+      forceUpdate(); // Forza re-render
+      
+      // 🔄 Robust refresh with multiple attempts (like LeadProfileHeader)
+      console.log(`🔄 [StateChange] Starting robustRefresh...`);
+      robustRefresh('ApplyStateChange'); // Non-blocking background sync
+      console.log(`✅ [StateChange] robustRefresh triggered for background sync`);
       
       toast.success(`Attività marcata come "${finalState}"`);
     } catch (err) {
-      console.error('Errore nell\'aggiornamento stato:', err);
+      console.error('❌ [StateChange] Errore nell\'aggiornamento stato:', err);
+      console.error('❌ [StateChange] Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      });
       toast.error('Errore nell\'aggiornamento dello stato');
+      
+      // Rollback UI state
+      const groupedActivities: KanbanData = {
+        'to-do': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS['to-do'].states.includes(activity.Stato)
+        ),
+        'in-progress': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS['in-progress'].states.includes(activity.Stato)
+        ),
+        'done': filteredActivities.filter(activity =>
+          KANBAN_COLUMNS.done.states.includes(activity.Stato)
+        ),
+      };
+      setKanbanData(groupedActivities);
     }
   };
 
@@ -771,6 +915,31 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
         
         // Per tutti gli altri casi (da fare → in corso, ecc.), applica il defaultState
         console.log(`✅ Cambio automatico: "${movedActivity.Stato}" → "${defaultState}"`);
+        
+        // 🚀 OPTIMISTIC UPDATE per drag & drop: aggiorna attività E posizione UI immediatamente
+        const optimisticActivity = { ...movedActivity, Stato: defaultState };
+        
+        // Aggiorna l'array delle attività filtrate con il nuovo stato (per badge)
+        const updatedActivities = filteredActivities.map(act => 
+          act.id === movedActivity.id ? optimisticActivity : act
+        );
+        
+        // Aggiorna il kanbanData con le attività aggiornate (per posizione)
+        const updatedKanbanData: KanbanData = {
+          'to-do': updatedActivities.filter(act =>
+            KANBAN_COLUMNS['to-do'].states.includes(act.Stato)
+          ),
+          'in-progress': updatedActivities.filter(act =>
+            KANBAN_COLUMNS['in-progress'].states.includes(act.Stato)
+          ),
+          'done': updatedActivities.filter(act =>
+            KANBAN_COLUMNS.done.states.includes(act.Stato)
+          ),
+        };
+        
+        setKanbanData(updatedKanbanData);
+        console.log(`🚀 [DragDrop] Full optimistic update: ${movedActivity.Titolo} moved to ${defaultState} with badge update`);
+        
         await applyStateChange(movedActivity, defaultState, newKanbanData);
         return;
       }
@@ -809,6 +978,30 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
     setShowStateDialog(false);
     setPendingStateChange(null);
     
+    // 🚀 OPTIMISTIC UPDATE per dialog completato: aggiorna attività E posizione UI immediatamente
+    const optimisticActivity = { ...activity, Stato: chosenState };
+    
+    // Aggiorna l'array delle attività filtrate con il nuovo stato (per badge)
+    const updatedActivities = filteredActivities.map(act => 
+      act.id === activity.id ? optimisticActivity : act
+    );
+    
+    // Aggiorna il kanbanData con le attività aggiornate (per posizione)
+    const updatedKanbanData: KanbanData = {
+      'to-do': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['to-do'].states.includes(act.Stato)
+      ),
+      'in-progress': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['in-progress'].states.includes(act.Stato)
+      ),
+      'done': updatedActivities.filter(act =>
+        KANBAN_COLUMNS.done.states.includes(act.Stato)
+      ),
+    };
+    
+    setKanbanData(updatedKanbanData);
+    console.log(`🚀 [DialogChoice] Full optimistic update: ${activity.Titolo} moved to ${chosenState} with badge update`);
+    
     // Applica il cambio stato scelto
     await applyStateChange(activity, chosenState, newKanbanData);
   };
@@ -833,6 +1026,102 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
     setShowStateDialog(false);
     setPendingStateChange(null);
     toast.info('Spostamento annullato');
+  };
+  
+  // 🎯 Gestione cambio stato tramite context menu
+  const handleStateChange = async (activity: ActivityData, newState: ActivityStato) => {
+    if (activity.Stato === newState) return; // Nessun cambio necessario
+    
+    // 🚀 OPTIMISTIC UPDATE: Aggiorna immediatamente la UI 
+    const optimisticActivity = { ...activity, Stato: newState };
+    
+    // Aggiorna immediatamente filteredActivities con il nuovo stato
+    const updatedActivities = filteredActivities.map(act => 
+      act.id === activity.id ? optimisticActivity : act
+    );
+    
+    // Riorganizza immediatamente le colonne del Kanban
+    const updatedKanbanData: KanbanData = {
+      'to-do': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['to-do'].states.includes(act.Stato)
+      ),
+      'in-progress': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['in-progress'].states.includes(act.Stato)
+      ),
+      'done': updatedActivities.filter(act =>
+        KANBAN_COLUMNS.done.states.includes(act.Stato)
+      ),
+    };
+    
+    // 🚀 Aggiorna immediatamente la UI (OPTIMISTIC)
+    setKanbanData(updatedKanbanData);
+    console.log(`🚀 [StateChange] Optimistic UI update: ${activity.Titolo} moved to ${newState}`);
+    
+    try {
+      console.log(`🔄 Context Menu: Cambio stato ${activity.Titolo}: ${activity.Stato} → ${newState}`);
+      console.log(`📤 [StateChange] Sending PATCH request to: /api/activities/${activity.id}`);
+      console.log(`📤 [StateChange] Request body:`, { Stato: newState });
+      
+      // 🚀 Call real API to update activity state
+      const response = await fetch(`/api/activities/${activity.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Stato: newState }),
+      });
+      
+      console.log(`📡 [StateChange] Response status:`, response.status);
+      console.log(`📡 [StateChange] Response ok:`, response.ok);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`❌ [StateChange] API Error:`, errorData);
+        
+        // 🔄 ROLLBACK: Ripristina lo stato precedente se l'API fallisce
+        const rollbackKanbanData: KanbanData = {
+          'to-do': filteredActivities.filter(act =>
+            KANBAN_COLUMNS['to-do'].states.includes(act.Stato)
+          ),
+          'in-progress': filteredActivities.filter(act =>
+            KANBAN_COLUMNS['in-progress'].states.includes(act.Stato)
+          ),
+          'done': filteredActivities.filter(act =>
+            KANBAN_COLUMNS.done.states.includes(act.Stato)
+          ),
+        };
+        setKanbanData(rollbackKanbanData);
+        console.log(`🔄 [StateChange] Rolled back optimistic update due to API error`);
+        
+        throw new Error(errorData.error || 'Failed to update activity state');
+      }
+      
+      const responseData = await response.json();
+      console.log(`✅ [StateChange] API Success:`, responseData);
+      
+      // 🔄 FORCE UPDATE per assicurare aggiornamento UI
+      console.log(`🚀 [StateChange] Forcing UI update...`);
+      forceUpdate(); // Forza re-render
+      
+      // 🔄 Robust refresh with multiple attempts per sincronizzare con il backend  
+      console.log(`🔄 [StateChange] Starting robustRefresh for backend sync...`);
+      robustRefresh('StateChangeContextMenu'); // Non-blocking, per sincronizzare nel background
+      console.log(`✅ [StateChange] robustRefresh triggered for background sync`);
+      
+      const { icon: StateIcon } = getStateIconAndColor(newState);
+      toast.success(
+        <div className="flex items-center gap-2">
+          <StateIcon className="h-4 w-4" />
+          <span>Stato aggiornato a "{newState}"</span>
+        </div>
+      );
+    } catch (err) {
+      console.error('❌ [StateChange] Errore nel cambio stato:', err);
+      console.error('❌ [StateChange] Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      toast.error('Errore nel cambio stato dell\'attività');
+    }
   };
 
   if (loading) {
@@ -860,25 +1149,34 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
 
   return (
     <div className={`${className}`}>
-      {/* Toolbar stile UI kit */}
-      <div className="mb-4 flex flex-col gap-3 sm:mb-6 md:flex-row md:items-center md:justify-between">
+      {/* Header con titolo e contatore */}
+      <div className="mb-3">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 sm:text-xl">Attività</h2>
           <span className="text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
-            {statoFilter.length > 0 
+            {(statoFilter.length > 0 || searchTerm.trim()) 
               ? `${filteredActivities.length} di ${activities.length} attività` 
               : `${activities.length} attività totali`
             }
           </span>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+      </div>
+      
+      {/* Toolbar con search bar a sinistra e filtri a destra */}
+      <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+        {/* Campo di ricerca completamente a sinistra */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            type="text"
             placeholder="Cerca attività..."
-            className="h-8 text-sm sm:h-9 sm:w-44"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-8 text-sm sm:h-9"
           />
-          
-          {/* Filtro Stato */}
+        </div>
+        
+        {/* Filtro Stato e pulsante nuova attività a destra */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <DataTablePersistentFilter
             title="Stato"
             options={STATI_DISPONIBILI.map(stato => ({
@@ -905,50 +1203,61 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
 
       {/* Kanban Board con Drag & Drop */}
       <Kanban
+        key={forceUpdateKey} // 🚀 Forza re-render quando cambia
         value={kanbanData}
         onValueChange={handleKanbanChange}
         getItemValue={(activity: ActivityData) => activity.id as UniqueIdentifier}
         className="h-full"
       >
         <KanbanBoard className="gap-2 sm:gap-4">
-          {Object.entries(KANBAN_COLUMNS).map(([columnId, column]) => (
+          {KANBAN_COLUMNS_ARRAY.map(column => (
             <KanbanColumn 
-              key={columnId} 
-              value={columnId}
-              className="min-w-72 bg-gray-50 dark:bg-zinc-800 rounded-xl border sm:min-w-80"
+              key={column.id} 
+              value={column.id}
+              className="min-w-72 bg-gray-50 dark:bg-zinc-800 rounded-xl border sm:min-w-80 p-0 pt-0 pb-0"
             >
-              {/* Header colonna in stile UI kit */}
-              <div className="flex items-center justify-between px-2 py-2 sm:px-3">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 sm:text-sm">{column.title}</h3>
-                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md sm:px-2 sm:py-1 sm:text-xs">
-                    {kanbanData[columnId as KanbanColumnId]?.length || 0}
-                  </span>
+              {/* Header colonna senza padding orizzontale per la linea */}
+              <div className="px-3 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <column.icon className={cn('h-3 w-3 sm:h-4 sm:w-4', column.iconColor)} />
+                    <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 sm:text-sm">{column.title}</h3>
+                    <Badge 
+                      variant="secondary" 
+                      className="text-[10px] h-4 px-1.5 bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 sm:text-xs sm:h-5 sm:px-2"
+                    >
+                      {kanbanData[column.id]?.length || 0}
+                    </Badge>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 w-5 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 sm:h-6 sm:w-6"
+                    onClick={() => handleNewActivity()}
+                  >
+                    <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-5 w-5 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 sm:h-6 sm:w-6"
-                  onClick={() => handleNewActivity()}
-                >
-                  <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                </Button>
               </div>
               
+              {/* Linea di separazione che arriva ai bordi esterni */}
+              <div className="border-b border-gray-200 dark:border-gray-600"></div>
+              
               {/* Lista delle attività */}
-              <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-80 sm:p-3 sm:space-y-3 sm:min-h-96">
-                {kanbanData[columnId as KanbanColumnId]?.length === 0 ? (
+              <div className="flex-1 px-3 pb-3 pt-2 space-y-2 overflow-y-auto min-h-64 sm:px-4 sm:pb-4 sm:pt-3 sm:space-y-3 sm:min-h-80">
+                {kanbanData[column.id]?.length === 0 ? (
                   <EmptyColumnState 
-                    columnId={columnId as KanbanColumnId}
+                    columnId={column.id}
                     onCreateActivity={() => handleNewActivity()}
                   />
                 ) : (
-                  kanbanData[columnId as KanbanColumnId]?.map((activity) => (
+                  kanbanData[column.id]?.map((activity) => (
                     <ActivityCard
                       key={activity.id}
                       activity={activity}
                       onEdit={handleEditActivity}
                       onDelete={handleDeleteActivity}
+                      onStateChange={handleStateChange}
                     />
                   ))
                 )}
@@ -968,6 +1277,7 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
                 activity={activity} 
                 onEdit={handleEditActivity}
                 onDelete={handleDeleteActivity}
+                onStateChange={handleStateChange}
               />
             );
           }}

@@ -262,6 +262,15 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
     }
   }, [watch, open]);
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      form.reset(DEFAULT_LEAD_DATA);
+      setCurrentStep(1);
+      formChangedRef.current = false;
+    }
+  }, [open, form]);
+
   const loadDraft = () => {
     const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
     if (savedDraft) {
@@ -385,12 +394,14 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       
       // Clear draft after successful submission
       clearDraft();
-
-      // Chiama callback di successo per ricaricare la lista
-      onSuccess?.();
       
-      // Chiudi il modal direttamente usando closeModal (bypassa la logica di bozza)
-      closeModal();
+      // Close modal first (like EditLeadModal)
+      onOpenChange(false);
+      
+      // Then call success callback to update parent page
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       console.error('❌ [NewLeadModal] Error creating lead:', error);
       
@@ -493,7 +504,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => !isSubmitting && onOpenChange(o)}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between pr-8">

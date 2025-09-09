@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useCallback } from 'react';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
-import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
+import { DynamicBreadcrumb } from '@/components/layout/dynamic-breadcrumb';
 import { useLeadDetail } from '@/hooks/use-lead-detail';
 import { useUsers } from '@/hooks/use-users';
 import { LeadProfileHeader } from '@/components/leads-profile/LeadProfileHeader';
@@ -121,13 +121,13 @@ export default function LeadDetailPage() {
   return (
     <AppLayoutCustom>
       <div className="flex-1 space-y-4 p-3 sm:space-y-6 sm:p-4 md:p-6">
-        <PageBreadcrumb pageName={`${lead.Nome || lead.ID}`} />
+        <DynamicBreadcrumb leadName={lead.Nome || lead.ID} />
 
 
         {/* Header profilo lead */}
         <LeadProfileHeader 
-          key={`${lead.ID}-${lead.Stato}-${lead.Nome}-${lead.Data}-${refreshKey}`} 
-          lead={lead} 
+          key={`${lead.ID}-${lead.Stato}-${lead.Nome}-${lead.Email}-${lead.Telefono}-${lead.Esigenza}-${refreshKey}`} 
+          lead={lead}
           onRefresh={async () => {
             await refresh();
             forceRefresh();

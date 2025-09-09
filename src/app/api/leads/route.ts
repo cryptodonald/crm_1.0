@@ -539,13 +539,16 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ [CREATE LEAD] Successfully created:', createdRecord.id);
 
-    // 🚀 Invalida entrambe le cache (legacy + KV)
+    // 🚀 Invalida entrambe le cache (legacy + KV) - async, non-blocking
     leadsCache.clear();
-    await Promise.all([
+    Promise.all([
       invalidateLeadCache(), // Invalida tutta la cache lead KV
       invalidateUsersCache(), // Gli users potrebbero avere conteggi aggiornati
-    ]);
-    console.log('🧹 All caches cleared after lead creation');
+    ]).then(() => {
+      console.log('🧽 All caches cleared after lead creation');
+    }).catch(error => {
+      console.warn('⚠️ [CREATE LEAD] Cache invalidation failed (non-critical):', error);
+    });
 
     // Transform per risposta coerente
     const transformedRecord = {

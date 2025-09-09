@@ -106,9 +106,21 @@ export function LeadProfileHeader({ lead, onRefresh }: LeadProfileHeaderProps) {
     }
   };
 
-  const handleActivitySuccess = () => {
-    // Attività creata con successo - potremmo aggiornare i dati del lead se necessario
+  const handleActivitySuccess = async () => {
+    // Attività creata con successo - aggiorna i dati della pagina
     console.log(`✅ Nuova attività creata per il lead ${lead.Nome || lead.ID}`);
+    if (onRefresh) {
+      try {
+        // Wait a bit for cache invalidation to complete
+        console.log('🔄 [LeadProfileHeader] Waiting for cache invalidation...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        console.log('🔄 [LeadProfileHeader] Calling onRefresh...');
+        await onRefresh();
+      } catch (error) {
+        console.error('❌ Error refreshing after activity creation:', error);
+      }
+    }
   };
 
   const { users } = useUsers();
@@ -309,36 +321,25 @@ export function LeadProfileHeader({ lead, onRefresh }: LeadProfileHeaderProps) {
         onOpenChange={setEditOpen} 
         lead={lead} 
         onUpdated={async () => {
-          console.log('🔄 [LeadProfileHeader] onUpdated called, current lead stato:', lead.Stato);
-          
           if (onRefresh) {
             try {
-              console.log('⏳ [LeadProfileHeader] Starting aggressive refresh sequence...');
-              
               // Tentativo 1: Refresh immediato
               await onRefresh();
               
               // Tentativo 2: Refresh con delay
-              console.log('⏳ [LeadProfileHeader] Second refresh in 300ms...');
               setTimeout(async () => {
                 await onRefresh();
-                console.log('✅ [LeadProfileHeader] Double refresh completed');
               }, 300);
               
               // Tentativo 3: Refresh finale con delay maggiore
               setTimeout(async () => {
                 await onRefresh();
-                console.log('✅ [LeadProfileHeader] Final refresh completed');
               }, 800);
               
-              toast.success('Lead aggiornato', { duration: 2000 });
-              
             } catch (error) {
-              console.error('❌ [LeadProfileHeader] Error refreshing lead data:', error);
+              console.error('❌ Error refreshing lead data:', error);
               toast.error('Errore nel ricaricamento dati');
             }
-          } else {
-            console.warn('⚠️ [LeadProfileHeader] onRefresh function not available');
           }
         }}
       />

@@ -5,8 +5,11 @@ import { UseFormReturn } from 'react-hook-form';
 import { 
   ActivityFormData,
   ActivityTipo,
+  ActivityStato,
   ActivityObiettivo,
   ActivityPriorita,
+  ActivityEsito,
+  ActivityProssimaAzione,
   ACTIVITY_TIPO_ICONS,
 } from '@/types/activities';
 import {
@@ -44,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { format, addHours } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { ActivityAttachments } from './activity-attachments';
 
 interface ActivityStepProps {
   form: UseFormReturn<ActivityFormData>;
@@ -101,12 +105,60 @@ const ACTIVITY_PRIORITIES: ActivityPriorita[] = [
   'Urgente',
 ];
 
+// Stati disponibili
+const ACTIVITY_STATES: ActivityStato[] = [
+  'Da Pianificare',
+  'Pianificata',
+  'In corso',
+  'In attesa',
+  'Completata',
+  'Annullata',
+  'Rimandata',
+];
+
+// Esiti disponibili
+const ACTIVITY_RESULTS: ActivityEsito[] = [
+  'Contatto riuscito',
+  'Nessuna risposta',
+  'Numero errato',
+  'Non disponibile',
+  'Non presentato',
+  'Molto interessato',
+  'Interessato',
+  'Poco interessato',
+  'Non interessato',
+  'Informazioni raccolte',
+  'Preventivo richiesto',
+  'Preventivo inviato',
+  'Appuntamento fissato',
+  'Ordine confermato',
+  'Opportunità persa',
+  'Servizio completato',
+  'Problema risolto',
+  'Cliente soddisfatto',
+  'Recensione ottenuta',
+];
+
+// Prossime azioni disponibili
+const NEXT_ACTIONS: ActivityProssimaAzione[] = [
+  'Chiamata',
+  'WhatsApp',
+  'Email',
+  'SMS',
+  'Consulenza',
+  'Follow-up',
+  'Nessuna',
+];
+
 export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
   const [leadsPopoverOpen, setLeadsPopoverOpen] = useState(false);
   const [usersPopoverOpen, setUsersPopoverOpen] = useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const [nextDatePopoverOpen, setNextDatePopoverOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState('');
+  const [selectedNextDate, setSelectedNextDate] = useState<Date>();
+  const [selectedNextTime, setSelectedNextTime] = useState('');
 
   const { control, setValue, watch } = form;
 
@@ -117,6 +169,16 @@ export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
       const date = new Date(dataValue);
       setSelectedDate(date);
       setSelectedTime(format(date, 'HH:mm'));
+    }
+  }, [watch]);
+  
+  // Initialize next date and time when 'Data prossima azione' field changes
+  useEffect(() => {
+    const nextDataValue = watch('Data prossima azione');
+    if (nextDataValue) {
+      const date = new Date(nextDataValue);
+      setSelectedNextDate(date);
+      setSelectedNextTime(format(date, 'HH:mm'));
     }
   }, [watch]);
 
@@ -136,6 +198,23 @@ export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
       setValue('Data', undefined);
     }
   };
+  
+  const handleNextDateTimeChange = (date: Date | undefined, time?: string) => {
+    if (date) {
+      const timeToUse = time || selectedNextTime || '09:00';
+      const [hours, minutes] = timeToUse.split(':').map(Number);
+      const dateTime = new Date(date);
+      dateTime.setHours(hours, minutes);
+      
+      setSelectedNextDate(date);
+      setSelectedNextTime(timeToUse);
+      setValue('Data prossima azione', dateTime.toISOString());
+    } else {
+      setSelectedNextDate(undefined);
+      setSelectedNextTime('');
+      setValue('Data prossima azione', undefined);
+    }
+  };
 
   const getSelectedLeadName = (leadId: string) => {
     return MOCK_LEADS.find(lead => lead.id === leadId)?.name || leadId;
@@ -147,8 +226,8 @@ export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
 
   return (
     <div className="space-y-6">
-      {/* Riga 1: Tipo e Obiettivo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Riga 1: Tipo, Stato e Obiettivo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Tipo Attività */}
         <FormField
           control={control}
@@ -168,6 +247,46 @@ export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
                       <div className="flex items-center gap-2">
                         <span>{ACTIVITY_TIPO_ICONS[tipo]}</span>
                         <span>{tipo}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        {/* Stato */}
+        <FormField
+          control={control}
+          name="Stato"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Stato</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona stato" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {ACTIVITY_STATES.map((stato) => (
+                    <SelectItem key={stato} value={stato}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={cn(
+                            'h-2 w-2 rounded-full',
+                            stato === 'Da Pianificare' && 'bg-gray-400',
+                            stato === 'Pianificata' && 'bg-blue-500',
+                            stato === 'In corso' && 'bg-yellow-500',
+                            stato === 'In attesa' && 'bg-orange-500',
+                            stato === 'Completata' && 'bg-green-500',
+                            stato === 'Annullata' && 'bg-red-500',
+                            stato === 'Rimandata' && 'bg-purple-500'
+                          )}
+                        />
+                        {stato}
                       </div>
                     </SelectItem>
                   ))}
@@ -445,8 +564,123 @@ export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
           )}
         />
       </div>
+      
+      {/* Riga 5: Esito e Prossima Azione */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Esito */}
+        <FormField
+          control={control}
+          name="Esito"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Esito Attività</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona esito" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="max-h-[200px]">
+                  {ACTIVITY_RESULTS.map((esito) => (
+                    <SelectItem key={esito} value={esito}>
+                      {esito}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        {/* Prossima Azione */}
+        <FormField
+          control={control}
+          name="Prossima azione"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Prossima Azione</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona prossima azione" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {NEXT_ACTIONS.map((azione) => (
+                    <SelectItem key={azione} value={azione}>
+                      <div className="flex items-center gap-2">
+                        <span>{ACTIVITY_TIPO_ICONS[azione as ActivityTipo] || '📝'}</span>
+                        <span>{azione}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      
+      {/* Riga 6: Data Prossima Azione */}
+      <div className="grid grid-cols-1">
+        <FormField
+          control={control}
+          name="Data prossima azione"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Data Prossima Azione</FormLabel>
+              <Popover open={nextDatePopoverOpen} onOpenChange={setNextDatePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full pl-3 text-left font-normal',
+                        !field.value && 'text-muted-foreground'
+                      )}
+                    >
+                      {field.value ? (
+                        format(new Date(field.value), 'dd/MM/yyyy HH:mm', { locale: it })
+                      ) : (
+                        <span>Seleziona data e ora prossima azione</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="border-b p-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <Input
+                        type="time"
+                        value={selectedNextTime}
+                        onChange={(e) => handleNextDateTimeChange(selectedNextDate, e.target.value)}
+                        className="w-auto"
+                      />
+                    </div>
+                  </div>
+                  <Calendar
+                    mode="single"
+                    selected={selectedNextDate}
+                    onSelect={(date) => handleNextDateTimeChange(date, selectedNextTime)}
+                    disabled={(date) =>
+                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                    }
+                    initialFocus
+                    locale={it}
+                  />
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
-      {/* Riga 5: Note */}
+      {/* Riga 7: Note */}
       <div className="grid grid-cols-1">
         <FormField
           control={control}
@@ -471,6 +705,11 @@ export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
             </FormItem>
           )}
         />
+      </div>
+      
+      {/* Riga 8: Allegati */}
+      <div className="border-t pt-6">
+        <ActivityAttachments form={form} />
       </div>
     </div>
   );
