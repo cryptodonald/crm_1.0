@@ -5,6 +5,7 @@ import {
   ActivityTipo,
 } from '@/types/activities';
 import { useFetchWithRetry } from './use-fetch-with-retry';
+import { usePeriodicSync } from '@/lib/periodic-sync';
 
 // Helper function per costruire i parametri di query per l'API
 function buildQueryParams(
@@ -310,6 +311,20 @@ export function useActivitiesData({
     sortDirection,
     forceRefresh, // 🚀 Re-trigger fetch when force refresh is requested
   ]); // Trigger fetch when these dependencies change
+
+  // 🎆 Enterprise Periodic Sync Registration
+  const syncId = `activities-${leadId || 'all'}-${JSON.stringify(filters)}`;
+  const syncName = leadId ? `Activities (Lead ${leadId})` : 'All Activities';
+  
+  usePeriodicSync(
+    syncId,
+    syncName,
+    refresh,
+    {
+      interval: 30000, // 30 seconds
+      enabled: true,
+    }
+  );
 
   return {
     activities: filteredActivities,

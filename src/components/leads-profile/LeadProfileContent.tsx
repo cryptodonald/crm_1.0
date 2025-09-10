@@ -16,7 +16,7 @@ interface LeadProfileContentProps {
   refreshKey?: number;
 }
 
-export function LeadProfileContent({ lead, onLeadUpdated }: LeadProfileContentProps) {
+export function LeadProfileContent({ lead, onLeadUpdated, refreshKey }: LeadProfileContentProps) {
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Funzione di aggiornamento lead identica al dialog EditLeadModal
@@ -211,7 +211,7 @@ export function LeadProfileContent({ lead, onLeadUpdated }: LeadProfileContentPr
       <TabsContent value="activity" className="space-y-4 sm:space-y-6">
         <LeadActivitiesKanban 
           leadId={lead.ID} 
-          key={`activities-${lead.ID}-${Date.now()}`}
+          key={`activities-${lead.ID}-${refreshKey || 0}`}
         />
       </TabsContent>
 

@@ -10,12 +10,13 @@ import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const requestStart = performance.now();
   
   try {
-    console.log('🔧 [Activities API] Starting PATCH request for ID:', params.id);
+    const resolvedParams = await params;
+    console.log('🔧 [Activities API] Starting PATCH request for ID:', resolvedParams.id);
 
     const credentialsStart = performance.now();
     
@@ -39,7 +40,7 @@ export async function PATCH(
     const updateData = await request.json();
     const parseTime = performance.now() - parseStart;
     console.log(`📝 [Activities API] Parsing PATCH request: ${parseTime.toFixed(2)}ms`);
-    console.log('📝 [Activities API] Updating activity:', { id: params.id, data: updateData });
+    console.log('📝 [Activities API] Updating activity:', { id: resolvedParams.id, data: updateData });
 
     // Transform data for Airtable
     const airtableData = {
@@ -50,7 +51,7 @@ export async function PATCH(
     
     const fetchStart = performance.now();
 
-    const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}/${params.id}`, {
+    const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}/${resolvedParams.id}`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -124,12 +125,13 @@ export async function PATCH(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const requestStart = performance.now();
   
   try {
-    console.log('🔧 [Activities API] Starting PUT request for ID:', params.id);
+    const resolvedParams = await params;
+    console.log('🔧 [Activities API] Starting PUT request for ID:', resolvedParams.id);
 
     const credentialsStart = performance.now();
     
@@ -153,7 +155,7 @@ export async function PUT(
     const activityData: ActivityFormData = await request.json();
     const parseTime = performance.now() - parseStart;
     console.log(`📝 [Activities API] Parsing PUT request: ${parseTime.toFixed(2)}ms`);
-    console.log('📝 [Activities API] Updating activity:', { id: params.id, data: activityData });
+    console.log('📝 [Activities API] Updating activity:', { id: resolvedParams.id, data: activityData });
 
     // Transform data for Airtable - same logic as POST route
     const airtableData = {
@@ -199,7 +201,7 @@ export async function PUT(
     const timeoutId = setTimeout(() => controller.abort(), 18000); // 18 second timeout
 
     try {
-      const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}/${params.id}`, {
+      const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}/${resolvedParams.id}`, {
         method: 'PATCH', // Use PATCH for partial updates in Airtable
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -286,12 +288,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const requestStart = performance.now();
   
   try {
-    console.log('🔧 [Activities API] Starting DELETE request for ID:', params.id);
+    const resolvedParams = await params;
+    console.log('🔧 [Activities API] Starting DELETE request for ID:', resolvedParams.id);
 
     const credentialsStart = performance.now();
     
@@ -310,11 +313,11 @@ export async function DELETE(
       throw new Error('Missing Airtable credentials for activities');
     }
 
-    console.log('🗑️ [Activities API] Deleting activity from Airtable:', params.id);
+    console.log('🗑️ [Activities API] Deleting activity from Airtable:', resolvedParams.id);
     
     const fetchStart = performance.now();
 
-    const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}/${params.id}`, {
+    const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}/${resolvedParams.id}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${apiKey}`,

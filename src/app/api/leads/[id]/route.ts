@@ -419,16 +419,21 @@ export async function DELETE(
     const deletedRecord = await response.json();
     console.log('✅ [DELETE LEAD] Successfully deleted:', deletedRecord.id);
 
-    // Invalida la cache dopo l'eliminazione
-    leadsCache.clear();
-    await invalidateLeadCache(leadId); // 🚀 Invalida cache KV specifica
-    console.log('🧹 Cache cleared after lead deletion');
-
-    return NextResponse.json({
+    // 🚀 Prepare response BEFORE cache invalidation  
+    const apiResponse = NextResponse.json({
       success: true,
       deleted: true,
       id: deletedRecord.id,
     });
+    
+    // 🚀 NON-BLOCKING cache invalidation in background
+    leadsCache.clear(); // In-memory cache, fast
+    invalidateLeadCache(leadId).catch(err => 
+      console.error('⚠️ [Leads DELETE] Background cache invalidation failed:', err)
+    );
+    console.log('🧹 Cache cleared after lead deletion');
+
+    return apiResponse;
 
   } catch (error) {
     console.error('❌ [DELETE LEAD] Error:', error);

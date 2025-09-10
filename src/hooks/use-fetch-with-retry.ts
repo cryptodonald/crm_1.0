@@ -72,13 +72,6 @@ export function useFetchWithRetry<T>(
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Cleanup su unmount per prevenire memory leaks
-  React.useEffect(() => {
-    return () => {
-      cancel();
-    };
-  }, [cancel]);
-  
   const [state, setState] = useState<FetchState<T>>({
     data: null,
     loading: false,
@@ -106,6 +99,13 @@ export function useFetchWithRetry<T>(
     }
     setState(prev => ({ ...prev, loading: false }));
   }, []);
+  
+  // Cleanup su unmount per prevenire memory leaks
+  React.useEffect(() => {
+    return () => {
+      cancel();
+    };
+  }, [cancel]);
 
   // Reset stato
   const reset = useCallback(() => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
-import { LeadActivitiesList } from '@/components/features/activities/LeadActivitiesList';
+import { LeadActivitiesKanban } from '@/components/features/activities/LeadActivitiesKanban';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { ActivitiesStats } from '@/components/activities/activities-stats';
 import { useActivitiesData } from '@/hooks/use-activities-data';
@@ -28,7 +28,7 @@ export default function ActivitiesPage() {
           error={error} 
         />
         
-        <LeadActivitiesList className="" />
+        <LeadActivitiesKanban className="" />
       </div>
     </AppLayoutCustom>
   );

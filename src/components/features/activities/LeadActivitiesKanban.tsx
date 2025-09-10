@@ -14,6 +14,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -28,7 +38,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search, Play, Pause, RotateCcw, XCircle, AlertCircle } from 'lucide-react';
+import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search, Play, Pause, RotateCcw, XCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { ActivityProgress } from '@/components/ui/activity-progress';
 import { formatDistanceToNow } from 'date-fns';
@@ -61,7 +71,7 @@ import {
 } from '@/types/activities';
 
 interface LeadActivitiesKanbanProps {
-  leadId: string;
+  leadId?: string;
   className?: string;
 }
 
@@ -331,12 +341,12 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete,
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <KanbanItem
-          value={activity.id}
-          asHandle
-          className="group rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer dark:bg-zinc-900 dark:border-zinc-700"
-        >
+        <ContextMenuTrigger asChild>
+          <KanbanItem
+            value={activity.id}
+            asHandle={true}
+            className="group rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-move dark:bg-zinc-900 dark:border-zinc-700"
+          >
           <Card className="border-none shadow-none bg-transparent">
         <CardContent className="p-3 sm:p-4">
           {/* Header: Data, Durata e pulsante azioni */}
@@ -358,20 +368,38 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete,
               )}            </div>
             
             {/* Pulsante azioni in alto a destra */}
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={(open) => console.log('📝 [DROPDOWN] State changed:', open, 'for activity:', activity.Titolo)}>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-6 w-6 p-0 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    console.log('🔲 [TRIGGER CLICK] Dropdown trigger clicked for activity:', activity.Titolo);
+                    e.stopPropagation();
+                  }}
+                  data-menu-trigger="true"
                 >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuContent 
+                align="end" 
+                className="w-36 z-50"
+                sideOffset={5}
+                onCloseAutoFocus={(e) => {
+                  console.log('🔒 [DROPDOWN] onCloseAutoFocus called');
+                  e.preventDefault();
+                }}
+              >
                 <DropdownMenuItem 
+                  onSelect={(e) => {
+                    console.log('⚙️ [MENU SELECT] Edit selected for activity:', activity.Titolo);
+                    e.preventDefault();
+                    onEdit(activity);
+                  }}
                   onClick={(e) => {
+                    console.log('⚙️ [MENU CLICK] Edit clicked for activity:', activity.Titolo);
                     e.stopPropagation();
                     onEdit(activity);
                   }}
@@ -382,7 +410,13 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete,
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
+                  onSelect={(e) => {
+                    console.log('🗚️ [MENU SELECT] Delete selected for activity:', activity.Titolo);
+                    e.preventDefault();
+                    onDelete(activity);
+                  }}
                   onClick={(e) => {
+                    console.log('🗚️ [MENU CLICK] Delete clicked for activity:', activity.Titolo);
                     e.stopPropagation();
                     onDelete(activity);
                   }}
@@ -615,6 +649,10 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
   const [statoFilter, setStatoFilter] = useState<ActivityStato[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showNewActivityModal, setShowNewActivityModal] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [activityToEdit, setActivityToEdit] = useState<ActivityData | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<ActivityData | null>(null);
   
   // 🚀 FORCE RE-RENDER - Chiave per forzare aggiornamento UI
   const [forceUpdateKey, setForceUpdateKey] = useState(0);
@@ -744,22 +782,59 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
   }, [filteredActivities]);
 
   const handleEditActivity = (activity: ActivityData) => {
-    // TODO: Aprire dialog di modifica
-    toast.info(`Modifica attività: ${activity.Titolo}`);
+    console.log('🔧 [EDIT CLICK] Opening edit modal for activity:', activity.Titolo);
+    console.log('🔧 [EDIT CLICK] Activity ID:', activity.id);
+    setActivityToEdit(activity);
+    setEditDialogOpen(true);
+    console.log('🔧 [EDIT CLICK] Edit dialog should be open now');
   };
 
-  const handleDeleteActivity = async (activity: ActivityData) => {
-    // Conferma eliminazione
-    if (!window.confirm(`Sei sicuro di voler eliminare l'attività "${activity.Titolo}"?`)) {
-      return;
-    }
+  const handleDeleteActivity = (activity: ActivityData) => {
+    console.log('🗑️ [DELETE CLICK] Opening delete dialog for activity:', activity.Titolo);
+    console.log('🗑️ [DELETE CLICK] Activity ID:', activity.id);
+    setActivityToDelete(activity);
+    setDeleteDialogOpen(true);
+    console.log('🗑️ [DELETE CLICK] Delete dialog should be open now');
+  };
+  
+  const confirmDeleteActivity = async () => {
+    if (!activityToDelete) return;
+    
+    // 🚀 OPTIMISTIC UPDATE: Rimuovi attività dall'UI IMMEDIATAMENTE
+    console.log(`⚡ [Delete] OPTIMISTIC UPDATE: removing ${activityToDelete.Titolo} from UI`);
+    
+    // Salva stato precedente per rollback in caso di errore
+    const previousKanbanData = { ...kanbanData };
+    const previousFilteredActivities = [...filteredActivities];
+    
+    // Aggiorna UI ottimisticamente
+    const updatedActivities = filteredActivities.filter(act => act.id !== activityToDelete.id);
+    const updatedKanbanData: KanbanData = {
+      'to-do': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['to-do'].states.includes(act.Stato)
+      ),
+      'in-progress': updatedActivities.filter(act =>
+        KANBAN_COLUMNS['in-progress'].states.includes(act.Stato)
+      ),
+      'done': updatedActivities.filter(act =>
+        KANBAN_COLUMNS.done.states.includes(act.Stato)
+      ),
+    };
+    setKanbanData(updatedKanbanData);
+    
+    // Chiudi dialog e reset stato
+    setDeleteDialogOpen(false);
+    setActivityToDelete(null);
+    
+    // Mostra toast ottimistico
+    toast.success(`Attività "${activityToDelete.Titolo}" eliminata`);
     
     try {
-      console.log(`🗑️ Eliminazione attività: ${activity.ID}`);
-      console.log(`📤 [Delete] Sending DELETE request to: /api/activities/${activity.id}`);
+      console.log(`🗑️ Eliminazione attività: ${activityToDelete.ID}`);
+      console.log(`📤 [Delete] Sending DELETE request to: /api/activities/${activityToDelete.id}`);
       
       // 🚀 Call real API to delete activity
-      const response = await fetch(`/api/activities/${activity.id}`, {
+      const response = await fetch(`/api/activities/${activityToDelete.id}`, {
         method: 'DELETE',
       });
       
@@ -775,12 +850,14 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
       const responseData = await response.json();
       console.log(`✅ [Delete] API Success:`, responseData);
       
-      // 🔄 Robust refresh with multiple attempts
-      console.log(`🔄 [Delete] Starting robustRefresh...`);
-      await robustRefresh('DeleteActivity');
-      console.log(`✅ [Delete] robustRefresh completed`);
+      // ✅ SUCCESS: L'ottimistic update era corretto, non serve fare altro
+      console.log(`✅ [Delete] Optimistic update confirmed by server`);
       
-      toast.success(`Attività "${activity.Titolo}" eliminata`);
+      // 🔄 Background refresh per sincronizzazione finale (non bloccante)
+      robustRefresh('Delete Activity').catch(err => 
+        console.warn('Background refresh failed:', err)
+      );
+      
     } catch (err) {
       console.error('❌ [Delete] Errore nell\'eliminazione attività:', err);
       console.error('❌ [Delete] Error details:', {
@@ -788,8 +865,39 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
         message: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined
       });
-      toast.error('Errore nell\'eliminazione dell\'attività');
+      
+      // 🔄 ROLLBACK: Ripristina stato precedente
+      console.log(`🔄 [Delete] ROLLBACK: restoring previous UI state`);
+      setKanbanData(previousKanbanData);
+      
+      toast.error(
+        `Errore nell'eliminazione dell'attività "${activityToDelete.Titolo}". Operazione annullata.`,
+        { duration: 5000 }
+      );
+      
+      // Trigger refresh per assicurare sincronizzazione
+      robustRefresh('Delete Activity Error').catch(refreshErr => 
+        console.warn('Error refresh failed:', refreshErr)
+      );
     }
+  };
+  
+  // Annulla eliminazione
+  const cancelDeleteActivity = () => {
+    setDeleteDialogOpen(false);
+    setActivityToDelete(null);
+  };
+  
+  // Gestione successo modifica attività
+  const handleEditSuccess = async () => {
+    console.log('✅ Activity edited successfully');
+    setEditDialogOpen(false);
+    setActivityToEdit(null);
+    
+    // 🔄 Trigger robust refresh to sync with server
+    await robustRefresh('Edit Activity');
+    
+    toast.success('Attività modificata con successo');
   };
 
   const handleNewActivity = () => {
@@ -798,13 +906,10 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
 
   const handleActivitySuccess = async () => {
     console.log('🎉 Attività creata con successo, aggiornamento lista...');
+    setShowNewActivityModal(false);
     
-    // 🔄 Light refresh - let parent component handle the main refresh
-    // Reduced refresh to avoid conflicts with LeadProfileHeader refresh
-    setTimeout(() => {
-      refresh(true);
-      console.log('✅ [Kanban] Light refresh triggered (1s delay)');
-    }, 1500); // Slightly after the LeadProfileHeader refresh
+    // 🔄 Trigger robust refresh to sync with server
+    await robustRefresh('Create Activity');
     
     toast.success('Attività creata con successo!');
   };
@@ -835,14 +940,11 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
       const responseData = await response.json();
       console.log(`✅ [StateChange] API Success:`, responseData);
       
-      // 🚀 FORCE UPDATE per assicurare aggiornamento UI nel drag & drop
-      console.log(`🚀 [StateChange] Forcing UI update for drag & drop...`);
-      forceUpdate(); // Forza re-render
+      // ✅ SUCCESS: Mantieni aggiornamento ottimistico - nessun refresh immediato
+      console.log(`✅ [ApplyStateChange] Optimistic update confirmed by server - no refresh needed`);
       
-      // 🔄 Robust refresh with multiple attempts (like LeadProfileHeader)
-      console.log(`🔄 [StateChange] Starting robustRefresh...`);
-      robustRefresh('ApplyStateChange'); // Non-blocking background sync
-      console.log(`✅ [StateChange] robustRefresh triggered for background sync`);
+      // 🔄 Background sync già gestito dal periodic sync (ogni 30s)
+      // Nessun refresh immediato per evitare conflitti UI
       
       toast.success(`Attività marcata come "${finalState}"`);
     } catch (err) {
@@ -1101,14 +1203,11 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
       const responseData = await response.json();
       console.log(`✅ [StateChange] API Success:`, responseData);
       
-      // 🔄 FORCE UPDATE per assicurare aggiornamento UI
-      console.log(`🚀 [StateChange] Forcing UI update...`);
-      forceUpdate(); // Forza re-render
+      // ✅ SUCCESS: Mantieni aggiornamento ottimistico - nessun refresh immediato
+      console.log(`✅ [StateChange] Optimistic update confirmed by server - no refresh needed`);
       
-      // 🔄 Robust refresh with multiple attempts per sincronizzare con il backend  
-      console.log(`🔄 [StateChange] Starting robustRefresh for backend sync...`);
-      robustRefresh('StateChangeContextMenu'); // Non-blocking, per sincronizzare nel background
-      console.log(`✅ [StateChange] robustRefresh triggered for background sync`);
+      // 🔄 Background sync già gestito dal periodic sync (ogni 30s)
+      // Nessun refresh immediato per evitare conflitti UI
       
       const { icon: StateIcon } = getStateIconAndColor(newState);
       toast.success(
@@ -1350,6 +1449,48 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
         onSuccess={handleActivitySuccess}
         prefilledLeadId={leadId}
       />
+      
+      {/* Modal per modifica attività */}
+      <NewActivityModal
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={handleEditSuccess}
+        activity={activityToEdit}
+      />
+      
+      {/* Dialog di conferma eliminazione */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Conferma eliminazione
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {activityToDelete && (
+                <>
+                  Sei sicuro di voler eliminare l'attività <strong>"{activityToDelete.Titolo}"</strong>?
+                  <br />
+                  <span className="font-medium mt-1 block">
+                    Questa azione non può essere annullata.
+                  </span>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeleteActivity}>
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteActivity}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Elimina attività
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

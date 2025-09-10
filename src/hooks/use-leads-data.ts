@@ -7,6 +7,7 @@ import {
   LeadStato,
   LeadProvenienza,
 } from '@/types/leads';
+import { usePeriodicSync } from '@/lib/periodic-sync';
 // Rimosso import diretto di getAirtableKey per evitare problemi client-side
 
 // Helper function per costruire i parametri di query per l'API
@@ -245,6 +246,20 @@ export function useLeadsData({
       fetchLeads(true);
     }
   };
+
+  // 🎆 Enterprise Periodic Sync Registration
+  const syncId = `leads-${JSON.stringify(filters)}`;
+  const syncName = 'Leads Data';
+  
+  usePeriodicSync(
+    syncId,
+    syncName,
+    refresh,
+    {
+      interval: 45000, // 45 seconds (slightly longer than activities)
+      enabled: true,
+    }
+  );
 
   return {
     leads,

@@ -76,7 +76,7 @@ export function NewActivityModal({
     mode: 'onChange',
   });
 
-  const { handleSubmit, formState: { isValid }, trigger, watch } = form;
+  const { handleSubmit, formState: { isValid, errors }, trigger, watch } = form;
 
   // Hook per ottenere i dati dei lead
   const { leads } = useLeadsData({ loadAll: true });
@@ -133,9 +133,9 @@ export function NewActivityModal({
     }
   }, [open, prefilledLeadId, activity, isEditMode, form]);
 
-  // Auto-save draft when form data changes
+  // Auto-save draft when form data changes (SOLO in modalità creazione)
   useEffect(() => {
-    if (open) {
+    if (open && !isEditMode) { // Solo in creation mode, non in edit mode
       const subscription = watch((formData) => {
         const currentDataString = JSON.stringify(formData);
         
@@ -168,7 +168,7 @@ export function NewActivityModal({
       
       return () => subscription.unsubscribe();
     }
-  }, [watch, open]);
+  }, [watch, open, isEditMode]); // Aggiungi isEditMode alle dipendenze
 
   // Reset form when modal closes (except in edit mode)
   useEffect(() => {
@@ -375,7 +375,7 @@ export function NewActivityModal({
       // There's content and it's not saved as draft yet (only for creation mode)
       setShowExitDialog(true);
     } else {
-      // No significant content or already saved, close directly
+      // No significant content or already saved, or in edit mode, close directly
       closeModal();
     }
   };
@@ -498,15 +498,20 @@ export function NewActivityModal({
               </span>
             </div>
             <div className="flex items-center space-x-2 text-xs text-muted-foreground mt-1">
-              {draftSaved && (
+              {draftSaved && !isEditMode && (
                 <span className="text-green-600 font-medium">
                   ✓ Bozza salvata
+                </span>
+              )}
+              {isEditMode && (
+                <span className="text-blue-600 font-medium">
+                  ✏️ Modalità modifica
                 </span>
               )}
             </div>
           </DialogTitle>
           <DialogDescription>
-            {isEditMode ? 'Modifica i dati dell\'attività esistente.' : ''}
+            {isEditMode ? 'Modifica i dati dell\'attività esistente.' : 'Compila i campi per creare una nuova attività.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -526,61 +531,72 @@ export function NewActivityModal({
         {/* Activity Form Content */}
         <div className="flex-1 overflow-y-auto px-1">
           <Form {...form}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={(e) => {
+              e.preventDefault(); // Previeni sempre il submit automatico
+              // Il submit avviene solo tramite il pulsante esplicito
+            }} className="space-y-6 h-full flex flex-col">
               <CurrentStepComponent form={form} prefilledLeadId={prefilledLeadId} />
+              
+              {/* Action Buttons - INSIDE FORM */}
+              <div className="flex justify-between border-t pt-4 mt-auto">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleClose}
+                    disabled={isSubmitting}
+                  >
+                    Annulla
+                  </Button>
+                  
+                  {currentStep > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={previousStep}
+                      disabled={isSubmitting}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Indietro
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  {currentStep < STEPS.length ? (
+                    <Button
+                      type="button"
+                      onClick={nextStep}
+                      disabled={isSubmitting}
+                    >
+                      Avanti
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        // Submit esplicito solo quando l'utente clicca il pulsante
+                        handleSubmit(onSubmit)();
+                      }}
+                      disabled={isSubmitting || (() => {
+                        // Solo i campi essenziali devono essere validi per abilitare il submit
+                        const tipo = form.watch('Tipo');
+                        const idLead = form.watch('ID Lead');
+                        return !tipo || !idLead || idLead.length === 0;
+                      })()}
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      {isSubmitting 
+                        ? (isEditMode ? 'Aggiornamento...' : 'Creazione...') 
+                        : (isEditMode ? 'Aggiorna Attività' : 'Crea Attività')
+                      }
+                    </Button>
+                  )}
+                </div>
+              </div>
             </form>
           </Form>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-between border-t pt-4">
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Annulla
-            </Button>
-            
-            {currentStep > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={previousStep}
-                disabled={isSubmitting}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Indietro
-              </Button>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            {currentStep < STEPS.length ? (
-              <Button
-                type="button"
-                onClick={nextStep}
-                disabled={isSubmitting}
-              >
-                Avanti
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={handleSubmit(onSubmit)}
-                disabled={isSubmitting || !isValid}
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {isSubmitting 
-                  ? (isEditMode ? 'Aggiornamento...' : 'Creazione...') 
-                  : (isEditMode ? 'Aggiorna Attività' : 'Crea Attività')
-                }
-              </Button>
-            )}
-          </div>
         </div>
       </DialogContent>
       
