@@ -34,7 +34,7 @@ import { AllegatiStep } from './new-activity-steps/allegati-step';
 interface NewActivityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: (updatedActivity?: ActivityData) => void; // Passa i dati aggiornati
   prefilledLeadId?: string; // ID del lead preselezionato
   activity?: ActivityData | null; // Attività da modificare (null = creazione)
 }
@@ -292,7 +292,12 @@ export function NewActivityModal({
         // Then call success callback to update parent page
         if (onSuccess) {
           console.log(`🔄 [Activity Modal] Calling onSuccess callback`);
-          onSuccess();
+          // Passa i dati aggiornati se è edit mode
+          if (isEditMode && result.data) {
+            onSuccess(result.data);
+          } else {
+            onSuccess();
+          }
         } else {
           console.log(`⚠️ [Activity Modal] No onSuccess callback provided`);
         }

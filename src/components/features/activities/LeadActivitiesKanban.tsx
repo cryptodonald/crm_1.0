@@ -395,12 +395,6 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete,
                 <DropdownMenuItem 
                   onSelect={(e) => {
                     console.log('⚙️ [MENU SELECT] Edit selected for activity:', activity.Titolo);
-                    e.preventDefault();
-                    onEdit(activity);
-                  }}
-                  onClick={(e) => {
-                    console.log('⚙️ [MENU CLICK] Edit clicked for activity:', activity.Titolo);
-                    e.stopPropagation();
                     onEdit(activity);
                   }}
                   className="flex items-center gap-2 cursor-pointer"
@@ -412,12 +406,6 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete,
                 <DropdownMenuItem 
                   onSelect={(e) => {
                     console.log('🗚️ [MENU SELECT] Delete selected for activity:', activity.Titolo);
-                    e.preventDefault();
-                    onDelete(activity);
-                  }}
-                  onClick={(e) => {
-                    console.log('🗚️ [MENU CLICK] Delete clicked for activity:', activity.Titolo);
-                    e.stopPropagation();
                     onDelete(activity);
                   }}
                   className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
@@ -888,14 +876,47 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
     setActivityToDelete(null);
   };
   
-  // Gestione successo modifica attività
-  const handleEditSuccess = async () => {
+  // Gestione successo modifica attività con Optimistic Update
+  const handleEditSuccess = async (updatedActivity?: ActivityData) => {
     console.log('✅ Activity edited successfully');
+    
+    if (updatedActivity) {
+      // 🚀 OPTIMISTIC UPDATE: Aggiorna l'attività nell'UI IMMEDIATAMENTE
+      console.log(`⚡ [Edit] OPTIMISTIC UPDATE: updating ${updatedActivity.Titolo} in UI`);
+      
+      // Trova e aggiorna l'attività nell'elenco filtrato
+      const updatedFilteredActivities = filteredActivities.map(act => 
+        act.id === updatedActivity.id ? updatedActivity : act
+      );
+      
+      // Riorganizza il kanban con i dati aggiornati
+      const updatedKanbanData: KanbanData = {
+        'to-do': updatedFilteredActivities.filter(activity =>
+          KANBAN_COLUMNS['to-do'].states.includes(activity.Stato)
+        ),
+        'in-progress': updatedFilteredActivities.filter(activity =>
+          KANBAN_COLUMNS['in-progress'].states.includes(activity.Stato)
+        ),
+        'done': updatedFilteredActivities.filter(activity =>
+          KANBAN_COLUMNS.done.states.includes(activity.Stato)
+        ),
+      };
+      
+      setKanbanData(updatedKanbanData);
+      console.log(`✅ [Edit] Optimistic UI update completed for ${updatedActivity.Titolo}`);
+      
+      // Background refresh per sincronizzazione finale (non bloccante)
+      robustRefresh('Edit Activity').catch(err => 
+        console.warn('Background refresh after edit failed:', err)
+      );
+    } else {
+      // Fallback se non abbiamo i dati aggiornati
+      console.log('⚠️ [Edit] No updated data received, falling back to refresh');
+      await robustRefresh('Edit Activity');
+    }
+    
     setEditDialogOpen(false);
     setActivityToEdit(null);
-    
-    // 🔄 Trigger robust refresh to sync with server
-    await robustRefresh('Edit Activity');
     
     toast.success('Attività modificata con successo');
   };
