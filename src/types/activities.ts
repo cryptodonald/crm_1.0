@@ -422,4 +422,4 @@ export const ActivityFormSchema = z.object({
     .max(MAX_FILES, `Massimo ${MAX_FILES} allegati consentiti`)
     .optional()
     .default([]),
-}).strict();
+}); // Rimosso .strict() temporaneamente per debug

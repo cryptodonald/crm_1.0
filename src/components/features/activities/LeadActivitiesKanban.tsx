@@ -368,16 +368,13 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete,
               )}            </div>
             
             {/* Pulsante azioni in alto a destra */}
-            <DropdownMenu onOpenChange={(open) => console.log('📝 [DROPDOWN] State changed:', open, 'for activity:', activity.Titolo)}>
+            <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-6 w-6 p-0 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
-                  onClick={(e) => {
-                    console.log('🔲 [TRIGGER CLICK] Dropdown trigger clicked for activity:', activity.Titolo);
-                    e.stopPropagation();
-                  }}
+                  onClick={(e) => e.stopPropagation()}
                   data-menu-trigger="true"
                 >
                   <MoreHorizontal className="h-3 w-3" />
@@ -387,32 +384,38 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onEdit, onDelete,
                 align="end" 
                 className="w-36 z-50"
                 sideOffset={5}
-                onCloseAutoFocus={(e) => {
-                  console.log('🔒 [DROPDOWN] onCloseAutoFocus called');
-                  e.preventDefault();
-                }}
               >
-                <DropdownMenuItem 
-                  onSelect={(e) => {
-                    console.log('⚙️ [MENU SELECT] Edit selected for activity:', activity.Titolo);
+                <div 
+                  className="flex items-center gap-2 cursor-pointer px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     onEdit(activity);
                   }}
-                  className="flex items-center gap-2 cursor-pointer"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                 >
                   <Edit className="h-3 w-3" />
                   Modifica
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onSelect={(e) => {
-                    console.log('🗚️ [MENU SELECT] Delete selected for activity:', activity.Titolo);
+                </div>
+                <div className="h-px bg-border my-1" />
+                <div 
+                  className="flex items-center gap-2 cursor-pointer px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground text-red-600 hover:text-red-700"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     onDelete(activity);
                   }}
-                  className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                 >
                   <Trash2 className="h-3 w-3" />
                   Elimina
-                </DropdownMenuItem>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -925,8 +928,11 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
     setShowNewActivityModal(true);
   };
 
-  const handleActivitySuccess = async () => {
+  const handleActivitySuccess = async (updatedActivity?: ActivityData) => {
     console.log('🎉 Attività creata con successo, aggiornamento lista...');
+    if (updatedActivity) {
+      console.log('🎉 [Create] New activity data:', updatedActivity);
+    }
     setShowNewActivityModal(false);
     
     // 🔄 Trigger robust refresh to sync with server

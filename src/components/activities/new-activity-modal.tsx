@@ -225,6 +225,11 @@ export function NewActivityModal({
   };
 
   const onSubmit = async (data: ActivityFormData) => {
+    console.log('🔵 [ONSUBMIT START] onSubmit function called');
+    console.log('🔵 [ONSUBMIT START] isEditMode:', isEditMode);
+    console.log('🔵 [ONSUBMIT START] activity:', activity);
+    console.log('🔵 [ONSUBMIT START] data:', data);
+    
     setIsSubmitting(true);
     try {
       console.log('🚀 [Activity Modal] Submitting activity data:', data);
@@ -509,8 +514,8 @@ export function NewActivityModal({
                 </span>
               )}
               {isEditMode && (
-                <span className="text-blue-600 font-medium">
-                  ✏️ Modalità modifica
+                <span className="text-muted-foreground font-medium">
+                  Modalità modifica
                 </span>
               )}
             </div>
@@ -581,8 +586,44 @@ export function NewActivityModal({
                     <Button
                       type="button"
                       onClick={() => {
-                        // Submit esplicito solo quando l'utente clicca il pulsante
-                        handleSubmit(onSubmit)();
+                        console.log('🔴 [BUTTON CLICK] Aggiorna/Crea Attività clicked');
+                        console.log('🔴 [BUTTON CLICK] isEditMode:', isEditMode);
+                        console.log('🔴 [BUTTON CLICK] isSubmitting:', isSubmitting);
+                        console.log('🔴 [BUTTON CLICK] activity:', activity);
+                        console.log('🔴 [BUTTON CLICK] onSuccess callback:', onSuccess);
+                        console.log('🔴 [BUTTON CLICK] Form errors:', errors);
+                        console.log('🔴 [BUTTON CLICK] Form isValid:', isValid);
+                        
+                        try {
+                          console.log('🔴 [BUTTON CLICK] About to call handleSubmit...');
+                          const formValues = form.getValues();
+                          console.log('🔴 [BUTTON CLICK] Current form values:', formValues);
+                          console.log('🔴 [BUTTON CLICK] Form errors before submit:', form.formState.errors);
+                          
+                          // 🔴 BYPASS TEMPORANEO: Chiamiamo onSubmit direttamente senza validazione
+                          console.log('🟡 [BYPASS] Calling onSubmit directly without validation for debug');
+                          onSubmit(formValues as any);
+                          
+                          // Codice originale commentato per debug
+                          // const submitResult = handleSubmit(
+                          //   (data) => {
+                          //     console.log('🔴 [HANDLESUBMIT SUCCESS] Form is valid, calling onSubmit with data:', data);
+                          //     onSubmit(data);
+                          //   },
+                          //   (errors) => {
+                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form validation failed:', errors);
+                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form state errors:', form.formState.errors);
+                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form values at error:', form.getValues());
+                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form isValid:', form.formState.isValid);
+                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form isDirty:', form.formState.isDirty);
+                          //   }
+                          // );
+                          // console.log('🔴 [BUTTON CLICK] handleSubmit returned:', submitResult);
+                          // submitResult();
+                          // console.log('🔴 [BUTTON CLICK] Submit function called successfully');
+                        } catch (error) {
+                          console.error('🔴 [BUTTON CLICK] ERROR in handleSubmit:', error);
+                        }
                       }}
                       disabled={isSubmitting || (() => {
                         // Solo i campi essenziali devono essere validi per abilitare il submit
