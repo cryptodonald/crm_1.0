@@ -31,6 +31,12 @@ export async function GET(request: NextRequest) {
     const dataFine = searchParams.get('dataFine');
     const assegnatario = searchParams.get('assegnatario');
     
+    // 🚀 Cache busting parameters
+    const skipCache = searchParams.get('skipCache') === 'true';
+    const forceRefresh = skipCache || searchParams.has('_t');
+    
+    console.log('🚀 [Activities API] Cache options:', { skipCache, forceRefresh, hasTimestamp: searchParams.has('_t') });
+    
     // Create comprehensive cache key
     const filterKeys = [
       leadId && `lead:${leadId}`,
@@ -44,8 +50,19 @@ export async function GET(request: NextRequest) {
     
     const cacheKey = `activities:${limit}:${offset}:${sortField}:${sortDirection}:${filterKeys}`;
 
-    // 🚀 Use caching system for performance optimization
-    const result = await getCachedActivities(cacheKey, async () => {
+    // 🚀 Use caching system for performance optimization (skip cache if force refresh)
+    let result;
+    if (forceRefresh) {
+      console.log('🚀 [Activities API] Force refresh - bypassing cache entirely');
+      // Skip cache entirely and fetch fresh data
+      result = await fetchActivitiesFromAirtable();
+    } else {
+      console.log('💾 [Activities API] Using cached data when available');
+      result = await getCachedActivities(cacheKey, fetchActivitiesFromAirtable);
+    }
+    
+    // Inline function to fetch from Airtable
+    async function fetchActivitiesFromAirtable() {
       const credentialsStart = performance.now();
       
       // Get credentials from API Key Service
@@ -174,7 +191,7 @@ export async function GET(request: NextRequest) {
         offset: data.offset,
         count: transformedRecords.length,
       };
-    });
+    }
     
     const totalTime = performance.now() - requestStart;
     const wasCached = totalTime < 100; // Assume cached if under 100ms

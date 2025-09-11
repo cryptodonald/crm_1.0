@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
-import { useLeadsData } from '@/hooks/use-leads-data';
+import { useLeadsClean } from '@/hooks/use-leads-clean'; // Usa il nuovo hook ottimizzato
 import { LeadsStats } from '@/components/leads/leads-stats';
 import { LeadsDataTable } from '@/components/leads-modified/leads-data-table-improved';
 import { NewLeadModal } from '@/components/leads/new-lead-modal';
@@ -24,10 +24,16 @@ export default function LeadsPage() {
     hasMore,
     loadMore,
     refresh: refreshLeads,
-  } = useLeadsData({ 
+    createLead, // 🚀 Per creare nuovi leads
+    addLead, // 🚀 Per aggiungere lead già creati esternamente
+    updateLead, // 🚀 Per aggiornamento ottimistico
+    deleteLead, // 🚀 Per eliminazione ottimistica singola
+    deleteMultipleLeads, // 🚀 Per eliminazione ottimistica multipla
+  } = useLeadsClean({
     // NON passiamo più i filtri qui! I filtri saranno applicati lato client nella tabella
     loadAll: true, // Carica tutto il database SENZA FILTRI
-    pageSize: 100 // Mantiene comunque pageSize per eventuali usi futuri
+    pageSize: 100, // Mantiene comunque pageSize per eventuali usi futuri
+    enableOptimistic: true // Abilita aggiornamenti ottimistici
   });
 
   // Calcola statistiche lato client dai leads caricati
@@ -88,8 +94,47 @@ export default function LeadsPage() {
   };
 
   // Handle successful lead creation
-  const handleLeadCreated = () => {
-    refreshLeads();
+  const handleLeadCreated = (newLead) => {
+    if (newLead) {
+      // Se abbiamo i dati del nuovo lead, usare addLead per aggiungerlo alla lista
+      console.log('➕ [LeadsPage] Adding newly created lead:', newLead.Nome || newLead.id);
+      addLead(newLead);
+    } else {
+      console.log('❗ [LeadsPage] No lead data received, forcing refresh');
+      refreshLeads();
+    }
+  };
+
+  // Handle lead deletion with optimistic update
+  const handleDeleteLead = async (leadId: string): Promise<boolean> => {
+    console.log('🗑️ [LeadsPage] Deleting lead:', leadId);
+    const success = await deleteLead(leadId);
+    if (success) {
+      console.log('✅ [LeadsPage] Lead deleted successfully:', leadId);
+    } else {
+      console.log('❌ [LeadsPage] Failed to delete lead:', leadId);
+    }
+    return success;
+  };
+
+  // Handle multiple leads deletion with optimistic update
+  const handleDeleteMultipleLeads = async (leadIds: string[]): Promise<number> => {
+    console.log('🗑️ [LeadsPage] Deleting multiple leads:', leadIds.length);
+    const successCount = await deleteMultipleLeads(leadIds);
+    console.log(`✅ [LeadsPage] Deleted ${successCount}/${leadIds.length} leads`);
+    return successCount;
+  };
+
+  // Handle lead update with optimistic update
+  const handleUpdateLead = async (leadId: string, updates: Partial<any>): Promise<boolean> => {
+    console.log('✏️ [LeadsPage] Updating lead:', leadId, updates);
+    const success = await updateLead(leadId, updates);
+    if (success) {
+      console.log('✅ [LeadsPage] Lead updated successfully:', leadId);
+    } else {
+      console.log('❌ [LeadsPage] Failed to update lead:', leadId);
+    }
+    return success;
   };
 
   const clearError = () => {
@@ -161,6 +206,9 @@ export default function LeadsPage() {
               totalCount={totalCount}
               hasMore={hasMore}
               onLoadMore={loadMore}
+              onDeleteLead={handleDeleteLead}
+              onDeleteMultipleLeads={handleDeleteMultipleLeads}
+              onUpdateLead={handleUpdateLead}
             />
           </div>
         </div>

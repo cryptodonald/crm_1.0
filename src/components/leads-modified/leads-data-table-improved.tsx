@@ -56,7 +56,6 @@ import {
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
-  CheckCircle,
 } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '@/components/ui/date-picker';
@@ -66,6 +65,7 @@ import {
   LeadStato,
   LeadProvenienza,
 } from '@/types/leads';
+import { EditLeadModal } from '@/components/leads-profile/EditLeadModal';
 import {
   ClienteColumn,
   ContattiColumn,
@@ -89,6 +89,9 @@ interface LeadsDataTableProps {
   totalCount: number;
   hasMore?: boolean; // Keep for backward compatibility but not used
   onLoadMore?: () => void; // Keep for backward compatibility but not used
+  onDeleteLead?: (leadId: string) => Promise<boolean>; // 🚀 Optimistic delete single lead
+  onDeleteMultipleLeads?: (leadIds: string[]) => Promise<number>; // 🚀 Optimistic delete multiple leads
+  onUpdateLead?: (leadId: string, updates: Partial<LeadData>) => Promise<boolean>; // 🚀 Optimistic update lead
   className?: string;
 }
 
@@ -110,6 +113,9 @@ export function LeadsDataTable({
   totalCount,
   hasMore, // Not used since we load all data
   onLoadMore, // Not used since we load all data
+  onDeleteLead, // 🚀 Optimistic delete single lead
+  onDeleteMultipleLeads, // 🚀 Optimistic delete multiple leads
+  onUpdateLead, // 🚀 Optimistic update lead
   className,
 }: LeadsDataTableProps) {
   const router = useRouter();
@@ -137,11 +143,9 @@ export function LeadsDataTable({
   const [sortField, setSortField] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
-  // Stati per dialog di eliminazione e risultato
+  // Stati per dialog di eliminazione
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showResultDialog, setShowResultDialog] = useState(false);
-  const [resultMessage, setResultMessage] = useState({ type: '', title: '', message: '' });
   const [showExportErrorDialog, setShowExportErrorDialog] = useState(false);
 
   // Stati disponibili da Airtable
@@ -524,66 +528,42 @@ export function LeadsDataTable({
     setShowDeleteDialog(true);
   };
 
-  // Funzione per confermare eliminazione con API reale
+  // Funzione per confermare eliminazione con ottimistic updates
   const handleConfirmDelete = async () => {
     setIsDeleting(true);
     
     try {
-      const response = await fetch('/api/leads', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ leadIds: selectedLeads }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Errore ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log('🗑️ Risultato eliminazione:', result);
-
-      if (result.success) {
-        // Successo
-        const deletedCount = result.deleted;
-        const errorCount = result.requested - result.deleted;
+      if (onDeleteMultipleLeads && selectedLeads.length > 1) {
+        // 🚀 Use optimistic multiple delete
+        console.log('🚀 [Table] Using optimistic delete for', selectedLeads.length, 'leads');
+        const deletedCount = await onDeleteMultipleLeads(selectedLeads);
+        const errorCount = selectedLeads.length - deletedCount;
         
-        if (errorCount > 0) {
-          setResultMessage({
-            type: 'warning',
-            title: 'Eliminazione parziale',
-            message: `${deletedCount} leads eliminati, ${errorCount} errori`
-          });
+        // Feedback minimale con console; si possono aggiungere toasts qui
+        console.log(`✅ Eliminati ${deletedCount} lead, ${errorCount} errori`);
+        setShowDeleteDialog(false);
+        
+      } else if (onDeleteLead && selectedLeads.length === 1) {
+        // 🚀 Use optimistic single delete
+        console.log('🚀 [Table] Using optimistic delete for single lead:', selectedLeads[0]);
+        const success = await onDeleteLead(selectedLeads[0]);
+        
+        if (success) {
+          console.log('✅ Lead eliminato con successo');
         } else {
-          setResultMessage({
-            type: 'success',
-            title: 'Eliminazione completata',
-            message: `${deletedCount} lead${deletedCount > 1 ? 's' : ''} eliminat${deletedCount > 1 ? 'i' : 'o'} con successo`
-          });
+          console.log('❌ Errore durante eliminazione lead');
         }
         
-        // Chiudi dialog di conferma e mostra risultato
         setShowDeleteDialog(false);
-        setShowResultDialog(true);
-        
-        // Refresh della pagina per aggiornare i dati dopo un delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
         
       } else {
-        throw new Error('Eliminazione fallita');
+        // 🚫 No delete functions provided, should not happen
+        throw new Error('Nessuna funzione di eliminazione disponibile');
       }
     } catch (error) {
       console.error('❌ Errore durante eliminazione:', error);
-      setResultMessage({
-        type: 'error',
-        title: 'Errore eliminazione',
-        message: `Errore durante l'eliminazione: ${error}`
-      });
       setShowDeleteDialog(false);
-      setShowResultDialog(true);
+      // L'errore sarà gestito dall'hook ottimistico con rollback automatico
     } finally {
       setIsDeleting(false);
       setSelectedLeads([]);
@@ -600,15 +580,40 @@ export function LeadsDataTable({
     router.push(`/leads/${leadId}`);
   };
 
+  // Stati per edit modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [leadToEdit, setLeadToEdit] = useState<LeadData | null>(null);
+
   const handleEditLead = (leadId: string) => {
-    console.log('Edit lead:', leadId);
-    // TODO: Implementare modifica inline o navigazione a form di edit
+    console.log('✏️ Edit lead:', leadId);
+    const leadData = leads.find(lead => lead.id === leadId || lead.ID === leadId);
+    if (leadData) {
+      setLeadToEdit(leadData);
+      setEditModalOpen(true);
+    }
   };
 
   const handleDeleteLead = (leadId: string) => {
-    // Implementa eliminazione singola se necessario
-    setSelectedLeads([leadId]);
-    setShowDeleteDialog(true);
+    if (onDeleteLead) {
+      // 🚀 Use optimistic delete if available
+      setSelectedLeads([leadId]);
+      setShowDeleteDialog(true);
+    } else {
+      // Fallback to old behavior
+      setSelectedLeads([leadId]);
+      setShowDeleteDialog(true);
+    }
+  };
+
+  // Handle lead update with optimistic update
+  const handleLeadUpdated = async () => {
+    if (onUpdateLead && leadToEdit) {
+      console.log('✅ [Table] Lead updated via modal, refreshing data');
+      // Il modal ha già gestito l'update ottimistico
+      // Qui potremmo fare ulteriori azioni se necessario
+    }
+    setEditModalOpen(false);
+    setLeadToEdit(null);
   };
 
   // Recupera dati utenti dall'API
@@ -1096,35 +1101,16 @@ export function LeadsDataTable({
         </DialogContent>
       </Dialog>
 
-      {/* Dialog di risultato (successo/errore/warning) */}
-      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {resultMessage.type === 'success' && <CheckCircle className="h-5 w-5 text-green-600" />}
-              {resultMessage.type === 'error' && <AlertTriangle className="h-5 w-5 text-destructive" />}
-              {resultMessage.type === 'warning' && <AlertTriangle className="h-5 w-5 text-amber-500" />}
-              {resultMessage.title}
-            </DialogTitle>
-            <DialogDescription className={`${
-              resultMessage.type === 'success' ? 'text-green-700' :
-              resultMessage.type === 'error' ? 'text-red-700' :
-              resultMessage.type === 'warning' ? 'text-amber-700' :
-              'text-muted-foreground'
-            }`}>
-              {resultMessage.message}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              onClick={() => setShowResultDialog(false)}
-              variant={resultMessage.type === 'success' ? 'default' : 'outline'}
-            >
-              OK
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Lead Modal */}
+      {leadToEdit && (
+        <EditLeadModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          lead={leadToEdit}
+          onUpdated={handleLeadUpdated}
+          onUpdateLead={onUpdateLead}
+        />
+      )}
     </div>
   );
 }

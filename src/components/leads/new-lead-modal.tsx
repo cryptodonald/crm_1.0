@@ -65,7 +65,7 @@ const leadFormSchema = z.object({
 interface NewLeadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: (lead: any) => void;
 }
 
 const STEPS = [
@@ -398,9 +398,9 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       // Close modal first (like EditLeadModal)
       onOpenChange(false);
       
-      // Then call success callback to update parent page
-      if (onSuccess) {
-        onSuccess();
+      // Then call success callback with the created lead data to update parent page
+      if (onSuccess && result.lead) {
+        onSuccess(result.lead);
       }
     } catch (error) {
       console.error('❌ [NewLeadModal] Error creating lead:', error);

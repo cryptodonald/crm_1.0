@@ -85,8 +85,11 @@ interface UseLeadsDataProps {
   loadAll?: boolean; // New prop to control whether to load all data
 }
 
+// 🔒 Filtri vuoti stabilizzati per evitare dependency loops
+const EMPTY_FILTERS_DATA: LeadsFilters = Object.freeze({});
+
 export function useLeadsData({
-  filters = {},
+  filters = EMPTY_FILTERS_DATA,
   pageSize = 25,
   sortField = 'Data',
   sortDirection = 'desc',
@@ -98,6 +101,21 @@ export function useLeadsData({
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState<string | undefined>();
+  
+  // 🔧 Stabilizza filters per evitare re-render loops
+  const stableFilters = useMemo(() => {
+    if (!filters || Object.keys(filters).length === 0) {
+      return EMPTY_FILTERS_DATA;
+    }
+    return filters;
+  }, [
+    filters?.stato && filters.stato.join(','),
+    filters?.provenienza && filters.provenienza.join(','), 
+    filters?.dataInizio,
+    filters?.dataFine,
+    filters?.città,
+    filters?.search,
+  ]);
 
   // buildQueryParams è ora definita globalmente sopra
 
@@ -107,9 +125,9 @@ export function useLeadsData({
       setLoading(true);
       setError(null);
 
-      // Costruisci parametri di query
+      // Costruisci parametri di query con filtri stabili
       const queryParams = buildQueryParams(
-        filters,
+        stableFilters,
         loadAll,
         loadAll ? undefined : pageSize, // Se loadAll è true, non limitare la dimensione
         resetData || loadAll ? undefined : offset, // Se loadAll è true, non usare offset
@@ -168,23 +186,21 @@ export function useLeadsData({
     } finally {
       setLoading(false);
     }
-  }, [filters, loadAll, pageSize, sortField, sortDirection]);
+  }, [stableFilters, loadAll, pageSize, sortField, sortDirection, offset]); // 🔧 Usa stableFilters invece di filters
 
   // Ricarica solo quando cambiano filtri che richiedono nuova query Airtable
   // I filtri client-side (search) non dovrebbero triggerare nuove chiamate API
   useEffect(() => {
     fetchLeads(true);
   }, [
-    filters.stato,
-    filters.provenienza, 
-    filters.dataInizio,
-    filters.dataFine,
-    filters.città,
-    loadAll,
-    pageSize,
-    sortField,
-    sortDirection
-  ]); // Rimuoviamo 'filters.search' per evitare chiamate API inutili
+    stableFilters.stato && stableFilters.stato.join(','),
+    stableFilters.provenienza && stableFilters.provenienza.join(','), 
+    stableFilters.dataInizio,
+    stableFilters.dataFine,
+    stableFilters.città,
+    // ⚠️ NON includiamo stableFilters.search per evitare chiamate API su ogni keystroke
+    fetchLeads, // Include fetchLeads per evitare stale closure
+  ]); // 🔧 Usiamo proprietà specifiche di stableFilters invece di oggetto intero
 
   // Funzione per caricare più dati (disponibile solo se loadAll=false)
   const loadMore = () => {
@@ -193,8 +209,8 @@ export function useLeadsData({
     }
   };
 
-  // Refresh manuale
-  const refresh = (forceRefresh = false) => {
+  // Refresh manuale (stabilizzato con useCallback)
+  const refresh = useCallback((forceRefresh = false) => {
     setOffset(undefined);
     
     if (forceRefresh) {
@@ -204,9 +220,9 @@ export function useLeadsData({
           setLoading(true);
           setError(null);
 
-          // Costruisci parametri con force refresh
+          // Costruisci parametri con force refresh usando filtri stabili
           const queryParams = buildQueryParams(
-            filters,
+            stableFilters,
             loadAll,
             loadAll ? undefined : pageSize,
             undefined, // no offset per force refresh
@@ -245,19 +261,28 @@ export function useLeadsData({
     } else {
       fetchLeads(true);
     }
-  };
+  }, [fetchLeads, stableFilters, loadAll, pageSize, sortField, sortDirection]); // 🔧 Usa stableFilters
 
   // 🎆 Enterprise Periodic Sync Registration
-  const syncId = `leads-${JSON.stringify(filters)}`;
-  const syncName = 'Leads Data';
+  const syncId = useMemo(() => {
+    const filtersKey = Object.keys(stableFilters).length > 0 ? JSON.stringify(stableFilters) : '{}';
+    return `leads-${filtersKey}`;
+  }, [stableFilters]); // 🔧 Usa stableFilters per evitare cambio continuo dell'ID
   
+  // 🔧 Reference stabile per periodic sync
+  const stableRefresh = useCallback(async () => {
+    setOffset(undefined);
+    await fetchLeads(true); // Usa fetchLeads direttamente per evitare dependency loop
+  }, [fetchLeads]); // Solo fetchLeads come dipendenza
+  
+  // ✅ Periodic sync riattivato dopo fix del loop
   usePeriodicSync(
     syncId,
-    syncName,
-    refresh,
+    'Leads Data',
+    stableRefresh,
     {
-      interval: 45000, // 45 seconds (slightly longer than activities)
-      enabled: true,
+      interval: 45000, // 45 seconds
+      enabled: true, // ✅ RIATTIVATO - loop risolto
     }
   );
 
@@ -277,6 +302,21 @@ export function useLeadsStats(filters: LeadsFilters = {}) {
   const [stats, setStats] = useState<LeadsStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 🔧 Stabilizza filters per evitare re-render loops nelle stats
+  const stableFilters = useMemo(() => {
+    if (!filters || Object.keys(filters).length === 0) {
+      return EMPTY_FILTERS_DATA;
+    }
+    return filters;
+  }, [
+    filters?.stato && filters.stato.join(','),
+    filters?.provenienza && filters.provenienza.join(','),
+    filters?.dataInizio,
+    filters?.dataFine,
+    filters?.città,
+    filters?.search,
+  ]);
 
   const fetchStats = async () => {
     try {
@@ -284,7 +324,7 @@ export function useLeadsStats(filters: LeadsFilters = {}) {
       setError(null);
 
       // Recupera tutti i leads per calcolare le statistiche usando l'API
-      const queryParams = buildQueryParams(filters, true); // loadAll = true per le stats
+      const queryParams = buildQueryParams(stableFilters, true); // loadAll = true per le stats
       const response = await fetch(`/api/leads?${queryParams.toString()}`);
 
       if (!response.ok) {
@@ -370,7 +410,7 @@ export function useLeadsStats(filters: LeadsFilters = {}) {
 
   useEffect(() => {
     fetchStats();
-  }, [filters]);
+  }, [stableFilters]); // 🔧 Usa stableFilters al posto di filters
 
   return { stats, loading, error, refresh: fetchStats };
 }

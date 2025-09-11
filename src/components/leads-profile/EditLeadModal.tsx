@@ -43,6 +43,7 @@ interface EditLeadModalProps {
   onOpenChange: (open: boolean) => void;
   lead: LeadData;
   onUpdated?: () => void;
+  onUpdateLead?: (leadId: string, updates: Partial<any>) => Promise<boolean>; // 🚀 Optimistic update function
 }
 
 const STEPS = [
@@ -51,7 +52,7 @@ const STEPS = [
   { id: 3, name: 'Documenti', component: DocumentiStep },
 ];
 
-export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadModalProps) {
+export function EditLeadModal({ open, onOpenChange, lead, onUpdated, onUpdateLead }: EditLeadModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -100,9 +101,8 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
   const goToPreviousStep = () => setCurrentStep((s) => Math.max(1, s - 1));
 
 
-  // Funzione di salvataggio completamente nuova seguendo la documentazione API
+  // 🚀 NEW: Optimistic update function
   const onSubmit = async (data: LeadFormData) => {
-    console.log('🚨🚨🚨 ONSUBMIT CHIAMATA! 🚨🚨🚨');
     console.log('🚀 [EditLeadModal] onSubmit function called with data:', data);
     
     if (isSubmitting) {
@@ -111,7 +111,33 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
     }
     
     setIsSubmitting(true);
-    console.log('🔄 [EditLeadModal] Set isSubmitting to true');
+    
+    // 🚀 Try optimistic update first
+    if (onUpdateLead) {
+      console.log('🚀 [EditLeadModal] Using optimistic update');
+      
+      const leadId = lead.id || lead.ID;
+      const success = await onUpdateLead(leadId, data);
+      
+      if (success) {
+        console.log('✅ [EditLeadModal] Optimistic update successful');
+        toast.success('Lead aggiornato con successo!');
+        onOpenChange(false);
+        if (onUpdated) {
+          await onUpdated();
+        }
+        setIsSubmitting(false);
+        return;
+      } else {
+        console.log('❌ [EditLeadModal] Optimistic update failed');
+        toast.error('Errore durante l\'aggiornamento del lead');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    
+    // 🔄 Fallback to direct API call if no optimistic function
+    console.log('🔄 [EditLeadModal] Falling back to direct API call');
     
     try {
       console.log('🚀 [EditLeadModal] Starting lead update with data:', data);
@@ -210,7 +236,17 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
                 
                 // Chiudi modal e aggiorna
                 onOpenChange(false);
-                if (onUpdated) await onUpdated();
+                if (onUpdated) {
+                  console.log('📣 [EditLeadModal - Fire&Verify] Calling onUpdated callback...');
+                  try {
+                    await onUpdated();
+                    console.log('✅ [EditLeadModal - Fire&Verify] onUpdated completed successfully');
+                  } catch (updatedError) {
+                    console.error('❌ [EditLeadModal - Fire&Verify] onUpdated failed:', updatedError);
+                  }
+                } else {
+                  console.log('⚠️ [EditLeadModal - Fire&Verify] No onUpdated callback provided');
+                }
                 return; // Esce dalla funzione con successo - non processare oltre
               }
             }
@@ -267,7 +303,15 @@ export function EditLeadModal({ open, onOpenChange, lead, onUpdated }: EditLeadM
         
         // Aggiorna la lista se callback fornito
         if (onUpdated) {
-          await onUpdated();
+          console.log('📣 [EditLeadModal] Calling onUpdated callback...');
+          try {
+            await onUpdated();
+            console.log('✅ [EditLeadModal] onUpdated completed successfully');
+          } catch (updatedError) {
+            console.error('❌ [EditLeadModal] onUpdated failed:', updatedError);
+          }
+        } else {
+          console.log('⚠️ [EditLeadModal] No onUpdated callback provided');
         }
       } else {
         throw new Error('API response missing success field');

@@ -50,7 +50,13 @@ class PeriodicSyncManager {
     refresh: (force?: boolean) => Promise<any>,
     config?: Partial<SyncConfig>
   ): void {
-    console.log(`🔄 [PeriodicSync] Registering target: ${name} (${id})`);
+    // Avoid duplicate registrations
+    if (this.targets.has(id)) {
+      // console.log(`♾️ [PeriodicSync] Target already registered: ${id}`);
+      return;
+    }
+    
+    // console.log(`🔄 [PeriodicSync] Registering target: ${name} (${id})`);
     
     this.targets.set(id, {
       id,
@@ -70,7 +76,11 @@ class PeriodicSyncManager {
    * 🔥 Rimuove un target dal sync
    */
   unregisterTarget(id: string): void {
-    console.log(`🗑️ [PeriodicSync] Unregistering target: ${id}`);
+    if (!this.targets.has(id)) {
+      return; // Already unregistered
+    }
+    
+    // console.log(`🗑️ [PeriodicSync] Unregistering target: ${id}`);
     
     this.stopTarget(id);
     this.targets.delete(id);
@@ -85,7 +95,7 @@ class PeriodicSyncManager {
 
     const targetConfig = { ...this.globalConfig, ...config };
     
-    console.log(`▶️ [PeriodicSync] Starting sync for ${target.name} (every ${targetConfig.interval / 1000}s)`);
+    // console.log(`▶️ [PeriodicSync] Starting sync for ${target.name} (every ${targetConfig.interval / 1000}s)`);
 
     const intervalId = setInterval(async () => {
       await this.syncTarget(id, targetConfig);
@@ -102,7 +112,7 @@ class PeriodicSyncManager {
     if (intervalId) {
       clearInterval(intervalId);
       this.intervals.delete(id);
-      console.log(`⏹️ [PeriodicSync] Stopped sync for target: ${id}`);
+      // console.log(`⏹️ [PeriodicSync] Stopped sync for target: ${id}`);
     }
   }
 
@@ -115,14 +125,16 @@ class PeriodicSyncManager {
 
     // Skip se documento non visibile (performance optimization)
     if (!this.isDocumentVisible && !this.pausedDueToInactivity) {
-      console.log(`⏸️ [PeriodicSync] Skipping ${target.name} - document not visible`);
       return;
     }
 
     const startTime = performance.now();
     
     try {
-      console.log(`🔄 [PeriodicSync] Syncing ${target.name}...`);
+      // Only log if it takes more than 100ms (substantial sync)
+      const shouldLog = Math.random() < 0.1; // Log only 10% of syncs
+      
+      if (shouldLog) console.log(`🔄 [PeriodicSync] Syncing ${target.name}...`);
       
       await target.refresh(true); // Force cache bypass
       
@@ -130,7 +142,9 @@ class PeriodicSyncManager {
       target.lastSync = new Date();
       target.errors = 0; // Reset error count on success
       
-      console.log(`✅ [PeriodicSync] ${target.name} synced successfully (${duration.toFixed(2)}ms)`);
+      if (shouldLog || duration > 100) {
+        console.log(`✅ [PeriodicSync] ${target.name} synced (${duration.toFixed(2)}ms)`);
+      }
       
       config.onSuccess?.(target.name, duration);
       
@@ -284,10 +298,24 @@ class PeriodicSyncManager {
   }
 
   /**
-   * 🧹 Cleanup all resources
+   * ⏸️ Pausa temporanea per operazioni ottimistiche
+   */
+  pauseTemporarily(durationMs: number = 10000): void {
+    console.log(`⏸️ [PeriodicSync] Pausing all sync for ${durationMs / 1000}s (optimistic operations)`);
+    
+    this.stopAll();
+    
+    setTimeout(() => {
+      console.log('▶️ [PeriodicSync] Resuming sync after optimistic pause');
+      this.startAll();
+    }, durationMs);
+  }
+
+  /**
+   * 🧧 Cleanup all resources
    */
   destroy(): void {
-    console.log('🧹 [PeriodicSync] Destroying sync manager');
+    console.log('🧧 [PeriodicSync] Destroying sync manager');
     
     this.stopAll();
     this.targets.clear();
@@ -319,11 +347,12 @@ export function usePeriodicSync(
 import React from 'react';
 
 /**
- * 🛠️ Debug utilities
+ * 🔠 Debug utilities
  */
 export const debugPeriodicSync = {
   stats: () => periodicSyncManager.getStats(),
   configure: (config: Partial<SyncConfig>) => periodicSyncManager.configure(config),
   start: () => periodicSyncManager.startAll(),
   stop: () => periodicSyncManager.stopAll(),
+  pauseTemporarily: (durationMs?: number) => periodicSyncManager.pauseTemporarily(durationMs),
 };

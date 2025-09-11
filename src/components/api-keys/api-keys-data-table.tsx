@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { ApiKeyData } from '@/lib/kv';
 import {
   Table,
@@ -74,7 +74,7 @@ interface ApiKeysDataTableProps {
   className?: string;
 }
 
-export function ApiKeysDataTable({
+export const ApiKeysDataTable = React.memo(function ApiKeysDataTable({
   apiKeys,
   loading,
   onEdit,
@@ -153,31 +153,32 @@ export function ApiKeysDataTable({
   }, [searchTerm, selectedCategories, sortBy, sortOrder]);
 
   // Handle category filter toggle
-  const toggleCategory = (category: string) => {
+  const toggleCategory = useCallback((category: string) => {
     setSelectedCategories(prev =>
       prev.includes(category)
         ? prev.filter(c => c !== category)
         : [...prev, category]
     );
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchTerm('');
     setSelectedCategories([]);
     setSortBy(null);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleSort = (column: 'name') => {
+  const handleSort = useCallback((column: 'name') => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(column);
       setSortOrder('asc');
     }
-  };
+  }, [sortBy, sortOrder]);
 
-  const getSortIcon = (column: 'name') => {
+  const getSortIcon = useMemo(() => {
+    const SortIconComponent = (column: 'name') => {
     if (sortBy !== column) {
       return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
     }
@@ -186,12 +187,15 @@ export function ApiKeysDataTable({
     ) : (
       <ArrowDown className="text-foreground/70 h-4 w-4" />
     );
-  };
+    };
+    SortIconComponent.displayName = 'SortIconComponent';
+    return SortIconComponent;
+  }, [sortBy, sortOrder]);
 
-  const handleDeleteClick = (apiKey: ApiKeyData) => {
+  const handleDeleteClick = useCallback((apiKey: ApiKeyData) => {
     setKeyToDelete(apiKey);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
   const handleDeleteConfirm = async () => {
     if (!keyToDelete) return;
@@ -722,4 +726,4 @@ export function ApiKeysDataTable({
       </AlertDialog>
     </div>
   );
-}
+});

@@ -297,10 +297,25 @@ export function NewActivityModal({
         // Then call success callback to update parent page
         if (onSuccess) {
           console.log(`🔄 [Activity Modal] Calling onSuccess callback`);
-          // Passa i dati aggiornati se è edit mode
-          if (isEditMode && result.data) {
-            onSuccess(result.data);
+          console.log(`🔄 [Activity Modal] result.data:`, result.data);
+          
+          // 🚀 Passa sempre i dati dell'attività (sia per create che edit)
+          if (result.data) {
+            // Trasforma i dati Airtable nel formato ActivityData
+            const activityData: ActivityData = {
+              id: result.data.id,
+              ID: result.data.id, // Fallback se non presente
+              createdTime: result.data.createdTime,
+              // Copia tutti i fields dal result.data.fields
+              ...result.data.fields,
+              // Aggiungi titolo calcolato se non presente
+              Titolo: result.data.fields?.Titolo || `${data.Tipo}${data.Obiettivo ? ` - ${data.Obiettivo}` : ''}`
+            };
+            
+            console.log(`✅ [Activity Modal] Sending transformed activity data:`, activityData);
+            onSuccess(activityData);
           } else {
+            console.log(`⚠️ [Activity Modal] No result.data found, calling onSuccess without data`);
             onSuccess();
           }
         } else {

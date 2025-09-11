@@ -30,6 +30,7 @@ import { LeadStageProgressSVG } from './LeadStageProgressSVG';
 import { NewActivityModal } from '@/components/activities';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { uiUpdates } from '@/lib/ui-updates-professional';
 
 interface LeadProfileHeaderProps {
   lead: LeadData;
@@ -321,26 +322,74 @@ export function LeadProfileHeader({ lead, onRefresh }: LeadProfileHeaderProps) {
         onOpenChange={setEditOpen} 
         lead={lead} 
         onUpdated={async () => {
+          console.log('🚀🚀🚀 [LEAD UPDATE] =================================');
+          console.log('🚀 [LEAD UPDATE] STARTING PROFESSIONAL UI UPDATE SYSTEM');
+          console.log('🚀 [LEAD UPDATE] onRefresh available:', !!onRefresh);
+          console.log('🚀 [LEAD UPDATE] lead data:', { id: lead.id || lead.ID, nome: lead.Nome });
+          console.log('🚀🚀🚀 [LEAD UPDATE] =================================');
+          
           if (onRefresh) {
             try {
-              // Tentativo 1: Refresh immediato
-              await onRefresh();
+              console.log('🚀 [LEAD UPDATE] Calling uiUpdates.smart...');
               
-              // Tentativo 2: Refresh con delay
-              setTimeout(async () => {
-                await onRefresh();
-              }, 300);
+              // 🚀 USA IL SISTEMA PROFESSIONALE invece del vecchio triple refresh
+              const success = await uiUpdates.smart(
+                {
+                  type: 'update',
+                  entity: 'lead' as any, // Cast per compatibilità
+                  data: lead,
+                },
+                () => {
+                  // onUIUpdate: Non necessiamo aggiornamento locale per lead
+                  // perché il refresh gestisce tutto
+                  console.log('✅ [LEAD UPDATE] UI update callback triggered - no local update needed');
+                },
+                async () => {
+                  // apiCall: Il refresh è la nostra "API call" per i lead
+                  console.log('🔄 [LEAD UPDATE] Starting onRefresh call...');
+                  const startTime = performance.now();
+                  await onRefresh();
+                  const duration = performance.now() - startTime;
+                  console.log(`✅ [LEAD UPDATE] onRefresh completed in ${duration.toFixed(2)}ms`);
+                  return { success: true };
+                },
+                {
+                  showToast: false, // Il toast è già gestito dal EditLeadModal
+                  timeout: 10000,   // Timeout più lungo per refresh lead
+                  maxRetries: 1,    // Meno retry per refresh
+                }
+              );
               
-              // Tentativo 3: Refresh finale con delay maggiore
-              setTimeout(async () => {
-                await onRefresh();
-              }, 800);
+              console.log(`🎯 [LEAD UPDATE] uiUpdates.smart result: ${success}`);
+              
+              if (success) {
+                console.log('✅✅✅ [LEAD UPDATE] SUCCESS - Professional system worked!');
+              } else {
+                console.log('❌❌❌ [LEAD UPDATE] FAILED - Smart update failed, using emergency recovery');
+                console.log('🆘 [LEAD UPDATE] Starting emergency recovery...');
+                
+                const emergencyResult = await uiUpdates.emergency('lead' as any, () => onRefresh());
+                console.log(`🆘 [LEAD UPDATE] Emergency recovery result: ${emergencyResult.success}`);
+              }
               
             } catch (error) {
-              console.error('❌ Error refreshing lead data:', error);
-              toast.error('Errore nel ricaricamento dati');
+              console.error('💥💥💥 [LEAD UPDATE] CRITICAL ERROR in professional system:', error);
+              console.error('💥 [LEAD UPDATE] Error stack:', error instanceof Error ? error.stack : 'No stack');
+              
+              // Ultimate fallback - manual refresh
+              console.log('🚑 [LEAD UPDATE] Using ultimate fallback - direct onRefresh call');
+              try {
+                await onRefresh();
+                console.log('✅ [LEAD UPDATE] Ultimate fallback succeeded');
+              } catch (fallbackError) {
+                console.error('💥 [LEAD UPDATE] Even ultimate fallback failed:', fallbackError);
+              }
             }
+          } else {
+            console.log('⚠️ [LEAD UPDATE] No onRefresh callback available!');
           }
+          
+          console.log('🏁 [LEAD UPDATE] onUpdated function completed');
         }}
       />
       
