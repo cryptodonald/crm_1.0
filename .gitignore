@@ -40,7 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Debug and utility scripts
-debug-*.js
-decrypt-*.js
-verify-*.js
+# Debug and utility scripts (now organized in scripts/ folder)
+# debug-*.js (now in scripts/debug/)
+# decrypt-*.js (now in scripts/legacy/)
+# verify-*.js (now in scripts/legacy/)

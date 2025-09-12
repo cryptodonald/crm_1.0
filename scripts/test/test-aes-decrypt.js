@@ -2,7 +2,7 @@
  * Test script to verify AES-256 decryption works correctly
  */
 
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '../../.env.local' });
 const { Redis } = require('@upstash/redis');
 const crypto = require('crypto');
 

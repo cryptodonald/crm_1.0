@@ -3,7 +3,7 @@
  * Run with: node migrate-to-aes.js
  */
 
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '../../.env.local' });
 const { Redis } = require('@upstash/redis');
 const crypto = require('crypto');
 

@@ -55,7 +55,7 @@ async function testProductionAPI() {
   // Test 4: Direct database connection with production vars (simulate)
   console.log('\n🔍 Test Connessione Database (usando env locali):');
   try {
-    require('dotenv').config({ path: '.env.local' });
+    require('dotenv').config({ path: '../../.env.local' });
 
     const redis = new Redis({
       url: process.env.KV_REST_API_URL,
