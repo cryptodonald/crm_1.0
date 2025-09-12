@@ -4,7 +4,7 @@
  */
 
 // Load environment variables
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '../../.env.local' });
 
 const { kv } = require('@vercel/kv');
 const { nanoid } = require('nanoid');

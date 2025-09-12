@@ -2,7 +2,7 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 
 // Carica le variabili d'ambiente
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '../../.env.local' });
 
 const AIRTABLE_BASE_ID = 'app359c17lK0Ta8Ws';
 
