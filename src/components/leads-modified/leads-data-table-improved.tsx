@@ -27,6 +27,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +67,21 @@ import {
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
+  RefreshCw,
+  Phone,
+  Mail,
+  MessageSquare,
+  Calendar,
+  UserCheck,
+  RotateCcw,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Pause,
+  Play,
+  Target,
+  CheckSquare,
+  FileText,
 } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '@/components/ui/date-picker';
@@ -66,6 +92,7 @@ import {
   LeadProvenienza,
 } from '@/types/leads';
 import { EditLeadModal } from '@/components/leads-profile/EditLeadModal';
+import { NewActivityModal } from '@/components/activities/new-activity-modal';
 import {
   ClienteColumn,
   ContattiColumn,
@@ -147,6 +174,10 @@ export function LeadsDataTable({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showExportErrorDialog, setShowExportErrorDialog] = useState(false);
+  
+  // Stati per modal attività
+  const [showNewActivityModal, setShowNewActivityModal] = useState(false);
+  const [selectedLeadForActivity, setSelectedLeadForActivity] = useState<string | null>(null);
 
   // Stati disponibili da Airtable
   const STATI_DISPONIBILI: LeadStato[] = [
@@ -165,6 +196,37 @@ export function LeadsDataTable({
     'Referral',
     'Organico',
   ];
+  
+  // Helper per icone stati
+  const getStatoIcon = (stato: LeadStato) => {
+    switch (stato) {
+      case 'Nuovo':
+        return Play;
+      case 'Attivo':
+        return RefreshCw;
+      case 'Qualificato':
+        return UserCheck;
+      case 'Cliente':
+        return CheckCircle;
+      case 'Chiuso':
+        return XCircle;
+      case 'Sospeso':
+        return Pause;
+      default:
+        return Play;
+    }
+  };
+  
+  // Tipi di attività disponibili
+  const TIPI_ATTIVITA = [
+    { tipo: 'Chiamata', icon: Phone },
+    { tipo: 'Email', icon: Mail },
+    { tipo: 'WhatsApp', icon: MessageSquare },
+    { tipo: 'Consulenza', icon: Target },
+    { tipo: 'Follow-up', icon: RotateCcw },
+    { tipo: 'Altro', icon: Calendar },
+  ];
+
 
   // Normalizza stringa di ricerca per telefoni
   const normalizePhoneSearch = (search: string): string => {
@@ -615,6 +677,32 @@ export function LeadsDataTable({
     setEditModalOpen(false);
     setLeadToEdit(null);
   };
+  
+  // 🎯 Context Menu Handlers
+  const handleChangeLeadStatus = async (leadId: string, newStatus: LeadStato) => {
+    console.log('🔄 [ContextMenu] Changing lead status:', leadId, '->', newStatus);
+    if (onUpdateLead) {
+      try {
+        await onUpdateLead(leadId, { Stato: newStatus });
+        console.log('✅ [ContextMenu] Lead status updated successfully');
+      } catch (error) {
+        console.error('❌ [ContextMenu] Failed to update lead status:', error);
+      }
+    }
+  };
+  
+  const handleCreateActivityForLead = (leadId: string) => {
+    console.log('📅 [ContextMenu] Creating activity for lead:', leadId);
+    setSelectedLeadForActivity(leadId);
+    setShowNewActivityModal(true);
+  };
+  
+  const handleActivityCreated = async () => {
+    console.log('✅ [Table] Activity created successfully');
+    setShowNewActivityModal(false);
+    setSelectedLeadForActivity(null);
+    // Potresti voler fare un refresh dei dati qui se necessario
+  };
 
   // Recupera dati utenti dall'API
   const {
@@ -921,7 +1009,9 @@ export function LeadsDataTable({
               </TableRow>
             ) : (
               paginatedLeads.map(lead => (
-                <TableRow key={lead.id}>
+                <ContextMenu key={lead.id}>
+                  <ContextMenuTrigger asChild>
+                    <TableRow>
                   <TableCell>
                     <Checkbox
                       checked={selectedLeads.includes(lead.id)}
@@ -1019,7 +1109,136 @@ export function LeadsDataTable({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
-                </TableRow>
+                    </TableRow>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent className="w-64">
+                    <ContextMenuLabel className="text-sm font-semibold text-muted-foreground">
+                      {lead.Nome || `Lead #${lead.ID}`}
+                    </ContextMenuLabel>
+                    <ContextMenuSeparator />
+                    
+                    <ContextMenuItem
+                      className="cursor-pointer"
+                      onClick={() => handleViewLead(lead.id)}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      Visualizza dettagli
+                    </ContextMenuItem>
+                    
+                    <ContextMenuItem
+                      className="cursor-pointer"
+                      onClick={() => handleEditLead(lead.id)}
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Modifica lead
+                    </ContextMenuItem>
+                    
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger className="cursor-pointer">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Cambia stato
+                      </ContextMenuSubTrigger>
+                      <ContextMenuSubContent>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleChangeLeadStatus(lead.id, 'Nuovo')}
+                        >
+                          <Play className="mr-2 h-4 w-4" />
+                          <span>Nuovo</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleChangeLeadStatus(lead.id, 'Attivo')}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          <span>Attivo</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleChangeLeadStatus(lead.id, 'Qualificato')}
+                        >
+                          <UserCheck className="mr-2 h-4 w-4" />
+                          <span>Qualificato</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleChangeLeadStatus(lead.id, 'Cliente')}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          <span>Cliente</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleChangeLeadStatus(lead.id, 'Chiuso')}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          <span>Chiuso</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleChangeLeadStatus(lead.id, 'Sospeso')}
+                        >
+                          <Pause className="mr-2 h-4 w-4" />
+                          <span>Sospeso</span>
+                        </ContextMenuItem>
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
+                    
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger className="cursor-pointer">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Crea attività
+                      </ContextMenuSubTrigger>
+                      <ContextMenuSubContent>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleCreateActivityForLead(lead.id)}
+                        >
+                          <Phone className="mr-2 h-4 w-4" />
+                          <span>Chiamata</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleCreateActivityForLead(lead.id)}
+                        >
+                          <Mail className="mr-2 h-4 w-4" />
+                          <span>Email</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleCreateActivityForLead(lead.id)}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          <span>Incontro</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleCreateActivityForLead(lead.id)}
+                        >
+                          <CheckSquare className="mr-2 h-4 w-4" />
+                          <span>Task</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleCreateActivityForLead(lead.id)}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          <span>Nota</span>
+                        </ContextMenuItem>
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
+                    
+                    <ContextMenuSeparator />
+                    
+                    <ContextMenuItem
+                      className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
+                      onClick={() => handleDeleteLead(lead.id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Elimina lead
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               ))
             )}
           </TableBody>
@@ -1106,6 +1325,14 @@ export function LeadsDataTable({
           onUpdateLead={onUpdateLead}
         />
       )}
+      
+      {/* New Activity Modal */}
+      <NewActivityModal
+        open={showNewActivityModal}
+        onOpenChange={setShowNewActivityModal}
+        prefilledLeadId={selectedLeadForActivity}
+        onActivityCreated={handleActivityCreated}
+      />
     </div>
   );
 }

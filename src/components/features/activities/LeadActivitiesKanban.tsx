@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -286,6 +287,8 @@ const EmptyColumnState = React.memo(function EmptyColumnState({ columnId, onCrea
 });
 
 const ActivityCard = React.memo(function ActivityCard({ activity, onEdit, onDelete, onStateChange }: ActivityCardProps) {
+  const router = useRouter();
+  
   // Stati disponibili per il menu contestuale
   const STATI_DISPONIBILI = useMemo<ActivityStato[]>(() => [
     'Da Pianificare',
@@ -340,7 +343,21 @@ const ActivityCard = React.memo(function ActivityCard({ activity, onEdit, onDele
 
 
 
-const assignee = useMemo(() => activity['Nome Assegnatario']?.[0], [activity]);
+  const assignee = useMemo(() => activity['Nome Assegnatario']?.[0], [activity]);
+  
+  // Handler per navigazione al dettaglio lead
+  const handleLeadClick = useCallback((leadId: string, leadName?: string) => {
+    if (!leadId) {
+      console.error('❌ [ActivityCard] Lead ID is missing or empty!');
+      return;
+    }
+    
+    try {
+      router.push(`/leads/${leadId}`);
+    } catch (error) {
+      console.error('❌ [ActivityCard] Navigation failed:', error);
+    }
+  }, [router]);
 
   return (
     <ContextMenu>
@@ -429,9 +446,55 @@ const assignee = useMemo(() => activity['Nome Assegnatario']?.[0], [activity]);
               {activity.Tipo}
             </Badge>
             {activity['Nome Lead'] && activity['Nome Lead'][0] && (
-              <Badge variant="outline" className="text-[10px] sm:text-xs">
-                {activity['Nome Lead'][0]}
-              </Badge>
+              (() => {
+                const leadName = activity['Nome Lead']![0];
+                const leadId = activity['ID Lead']?.[0];
+                
+                // Debug: log dei dati disponibili solo se mancante
+                if (!leadId) {
+                  console.log('⚠️ [ActivityCard] Missing lead ID:', {
+                    leadName,
+                    fullIDLeadArray: activity['ID Lead'],
+                    activityId: activity.id
+                  });
+                }
+                
+                if (!leadId) {
+                  // Se non c'è ID, mostra solo il badge senza click
+                  return (
+                    <Badge 
+                      variant="outline" 
+                      className="text-[10px] sm:text-xs opacity-60"
+                      title="Lead ID non disponibile"
+                    >
+                      {leadName}
+                    </Badge>
+                  );
+                }
+                
+                return (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      // Ferma la propagazione degli eventi
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      // Naviga al dettaglio lead
+                      handleLeadClick(leadId, leadName);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium border border-gray-200 bg-white text-gray-900 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-900 transition-colors cursor-pointer dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-blue-900 dark:hover:border-blue-700 dark:hover:text-blue-100 relative z-10"
+                    aria-label={`Vai al lead ${leadName}`}
+                    title={`Clicca per aprire il lead ${leadName}`}
+                  >
+                    {leadName}
+                  </button>
+                );
+              })()
             )}
             {(() => {
               const statusProps = getStatusBadgeProps(activity.Stato);
