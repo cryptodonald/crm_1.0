@@ -9,7 +9,7 @@ import { LeadsDataTable } from '@/components/leads-modified/leads-data-table-imp
 import { LeadsFilters } from '@/types/leads';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Crown } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function ClientsPage() {
   const [filters, setFilters] = useState<Omit<LeadsFilters, 'stato'>>({});
@@ -78,8 +78,7 @@ export default function ClientsPage() {
             {/* Header Section */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-                  <Crown className="h-6 w-6 text-primary" />
+                <h1 className="text-2xl font-bold tracking-tight">
                   Clienti
                 </h1>
                 <p className="text-muted-foreground">
