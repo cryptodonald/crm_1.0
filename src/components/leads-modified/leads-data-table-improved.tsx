@@ -994,33 +994,28 @@ export function LeadsDataTable({
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Azioni</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start"
+                        <DropdownMenuItem
+                          className="cursor-pointer"
                           onClick={() => handleViewLead(lead.id)}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Dettagli
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start"
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer"
                           onClick={() => handleEditLead(lead.id)}
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Modifica
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 group transition-colors"
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
                           onClick={() => handleDeleteLead(lead.id)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4 text-red-600 group-hover:text-red-700 transition-colors" />
+                          <Trash2 className="mr-2 h-4 w-4" />
                           Elimina
-                        </Button>
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

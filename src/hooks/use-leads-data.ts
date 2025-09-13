@@ -190,8 +190,14 @@ export function useLeadsData({
 
   // Ricarica solo quando cambiano filtri che richiedono nuova query Airtable
   // I filtri client-side (search) non dovrebbero triggerare nuove chiamate API
+  // 🔧 Solo se loadAll è true (disabilitato quando hook è inactive)
   useEffect(() => {
-    fetchLeads(true);
+    if (loadAll) {
+      console.log('🔄 [useLeadsData] Auto-fetch triggered (loadAll=true)');
+      fetchLeads(true);
+    } else {
+      console.log('🚫 [useLeadsData] Auto-fetch skipped (loadAll=false)');
+    }
   }, [
     stableFilters.stato && stableFilters.stato.join(','),
     stableFilters.provenienza && stableFilters.provenienza.join(','), 
@@ -200,6 +206,7 @@ export function useLeadsData({
     stableFilters.città,
     // ⚠️ NON includiamo stableFilters.search per evitare chiamate API su ogni keystroke
     fetchLeads, // Include fetchLeads per evitare stale closure
+    loadAll, // Aggiunta dipendenza loadAll
   ]); // 🔧 Usiamo proprietà specifiche di stableFilters invece di oggetto intero
 
   // Funzione per caricare più dati (disponibile solo se loadAll=false)
@@ -275,14 +282,25 @@ export function useLeadsData({
     await fetchLeads(true); // Usa fetchLeads direttamente per evitare dependency loop
   }, [fetchLeads]); // Solo fetchLeads come dipendenza
   
-  // ✅ Periodic sync riattivato dopo fix del loop
+  // 🚫 Periodic sync disabilitato quando i filtri sono vuoti
+  // (questo succede quando il nuovo sistema è attivo)
+  const hasFilters = Object.keys(stableFilters).length > 0 && 
+    Object.values(stableFilters).some(value => 
+      Array.isArray(value) ? value.length > 0 : Boolean(value)
+    );
+  
+  // Debug logging for periodic sync status
+  if (!hasFilters || !loadAll) {
+    console.log(`🚫 [useLeadsData] Periodic sync DISABLED - hasFilters: ${hasFilters}, loadAll: ${loadAll}`);
+  }
+  
   usePeriodicSync(
     syncId,
     'Leads Data',
     stableRefresh,
     {
       interval: 45000, // 45 seconds
-      enabled: true, // ✅ RIATTIVATO - loop risolto
+      enabled: hasFilters && loadAll, // 🚫 Disabilita se no filtri o loadAll false
     }
   );
 

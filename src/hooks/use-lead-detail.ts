@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LeadData, LeadFormData } from '@/types/leads';
 import { useFetchWithRetry } from './use-fetch-with-retry';
+import { useLeadsCacheInvalidation } from './use-leads-cache';
 import { toast } from 'sonner';
 
 interface UseLeadDetailProps {
@@ -23,6 +24,9 @@ export function useLeadDetail({ leadId, refreshKey }: UseLeadDetailProps): UseLe
   const [lead, setLead] = useState<LeadData | null>(null);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  
+  // 🔄 Sistema di cache invalidation condiviso
+  const { invalidateCache } = useLeadsCacheInvalidation();
 
   // 🚀 Sistema di fetch con retry automatico
   const fetchLeadWithRetry = useFetchWithRetry(
@@ -101,7 +105,9 @@ export function useLeadDetail({ leadId, refreshKey }: UseLeadDetailProps): UseLe
 
       // Aggiorna lo stato locale con i dati aggiornati
       setLead(data.lead);
-      console.log(`✅ [useLeadDetail] Lead updated successfully:`, data.lead.ID || leadId);
+      
+      // Invalida la cache di useLeadsList e passa i dati freschi direttamente
+      invalidateCache(leadId, data.lead);
 
       return true;
 
@@ -138,6 +144,10 @@ export function useLeadDetail({ leadId, refreshKey }: UseLeadDetailProps): UseLe
       }
 
       console.log(`✅ [useLeadDetail] Lead deleted successfully: ${leadId}`);
+      
+      // 🔄 Invalida la cache di useLeadsList (no fresh data per delete)
+      invalidateCache(leadId);
+      
       return true;
 
     } catch (err) {

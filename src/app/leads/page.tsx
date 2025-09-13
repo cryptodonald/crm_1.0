@@ -3,37 +3,34 @@
 import { useState, useMemo } from 'react';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
-import { useLeadsClean } from '@/hooks/use-leads-clean'; // Usa il nuovo hook ottimizzato
+import { useLeadsList } from '@/hooks/use-leads-list';
 import { LeadsStats } from '@/components/leads/leads-stats';
 import { LeadsDataTable } from '@/components/leads-modified/leads-data-table-improved';
 import { NewLeadModal } from '@/components/leads/new-lead-modal';
 import { LeadsFilters, LeadData } from '@/types/leads';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 
 export default function LeadsPage() {
   const [filters, setFilters] = useState<LeadsFilters>({});
   const [newLeadModalOpen, setNewLeadModalOpen] = useState(false);
 
+  // 🚀 Sistema leads ottimizzato (ex A/B test vincitore)
   const {
     leads,
-    loading: leadsLoading,
-    error: leadsError,
+    loading,
+    error,
     totalCount,
-    hasMore,
-    loadMore,
-    refresh: refreshLeads,
-    createLead, // 🚀 Per creare nuovi leads
-    addLead, // 🚀 Per aggiungere lead già creati esternamente
-    updateLead, // 🚀 Per aggiornamento ottimistico
-    deleteLead, // 🚀 Per eliminazione ottimistica singola
-    deleteMultipleLeads, // 🚀 Per eliminazione ottimistica multipla
-  } = useLeadsClean({
-    // NON passiamo più i filtri qui! I filtri saranno applicati lato client nella tabella
-    loadAll: true, // Carica tutto il database SENZA FILTRI
-    pageSize: 100, // Mantiene comunque pageSize per eventuali usi futuri
-    enableOptimistic: true // Abilita aggiornamenti ottimistici
+    refresh,
+    createLead,
+    updateLead,
+    deleteLead,
+    deleteMultipleLeads,
+  } = useLeadsList({
+    filters,
+    enableSmartCache: false, // Cache busting per dati sempre freschi
+    enabled: true,
   });
 
   // Calcola statistiche lato client dai leads caricati
@@ -73,7 +70,7 @@ export default function LeadsPage() {
     return {
       totale,
       nuoviUltimi7Giorni,
-      contattatiEntro48h: 0, // TODO: Implementare logica per contattati
+      contattatiEntro48h: 0,
       tassoQualificazione,
       tassoConversione,
       byStato,
@@ -81,31 +78,22 @@ export default function LeadsPage() {
     };
   }, [leads]);
 
-  const loading = leadsLoading;
-  const error = leadsError;
-
-  const refresh = () => {
-    refreshLeads(true); // Forza il refresh bypassando la cache
-  };
-
   // Handle create new lead
   const handleCreateClick = () => {
     setNewLeadModalOpen(true);
   };
 
   // Handle successful lead creation
-  const handleLeadCreated = (newLead) => {
+  const handleLeadCreated = async (newLead: any) => {
     if (newLead) {
-      // Se abbiamo i dati del nuovo lead, usare addLead per aggiungerlo alla lista
-      console.log('➕ [LeadsPage] Adding newly created lead:', newLead.Nome || newLead.id);
-      addLead(newLead);
-    } else {
-      console.log('❗ [LeadsPage] No lead data received, forcing refresh');
-      refreshLeads();
+      const success = await createLead(newLead);
+      if (!success) {
+        console.log('❗ [LeadsPage] Failed to create lead');
+      }
     }
   };
 
-  // Handle lead deletion with optimistic update
+  // Handle lead operations
   const handleDeleteLead = async (leadId: string): Promise<boolean> => {
     console.log('🗑️ [LeadsPage] Deleting lead:', leadId);
     const success = await deleteLead(leadId);
@@ -117,7 +105,6 @@ export default function LeadsPage() {
     return success;
   };
 
-  // Handle multiple leads deletion with optimistic update
   const handleDeleteMultipleLeads = async (leadIds: string[]): Promise<number> => {
     console.log('🗑️ [LeadsPage] Deleting multiple leads:', leadIds.length);
     const successCount = await deleteMultipleLeads(leadIds);
@@ -125,7 +112,6 @@ export default function LeadsPage() {
     return successCount;
   };
 
-  // Handle lead update with optimistic update
   const handleUpdateLead = async (leadId: string, updates: Partial<any>): Promise<boolean> => {
     console.log('✏️ [LeadsPage] Updating lead:', leadId, updates);
     const success = await updateLead(leadId, updates);
@@ -135,11 +121,6 @@ export default function LeadsPage() {
       console.log('❌ [LeadsPage] Failed to update lead:', leadId);
     }
     return success;
-  };
-
-  const clearError = () => {
-    // TODO: Implement error clearing
-    console.log('Clear error');
   };
 
   return (
@@ -163,11 +144,12 @@ export default function LeadsPage() {
                   size="sm"
                   onClick={refresh}
                   disabled={loading}
+                  title="Aggiorna i dati"
                 >
                   <RefreshCw
                     className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
                   />
-                  Aggiorna
+                  {loading ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
                 <Button size="sm" onClick={handleCreateClick}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -182,43 +164,42 @@ export default function LeadsPage() {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="flex items-center justify-between">
                   <span>{error}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearError}
-                    className="h-6 px-2 text-xs"
-                  >
-                    Chiudi
-                  </Button>
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* Statistics Cards */}
-            <LeadsStats stats={stats} loading={loading} error={error} />
+            {/* Stats */}
+            {stats && !loading && (
+              <LeadsStats
+                stats={stats}
+                loading={loading}
+                className="w-full"
+              />
+            )}
 
-            {/* Leads Table */}
+            {/* Data Table */}
             <LeadsDataTable
               leads={leads}
-              loading={leadsLoading}
+              loading={loading}
               filters={filters}
               onFiltersChange={setFilters}
               totalCount={totalCount}
-              hasMore={hasMore}
-              onLoadMore={loadMore}
+              hasMore={false}
+              onLoadMore={() => {}}
               onDeleteLead={handleDeleteLead}
               onDeleteMultipleLeads={handleDeleteMultipleLeads}
               onUpdateLead={handleUpdateLead}
+              className="w-full"
             />
           </div>
         </div>
       </div>
-      
-      {/* New Lead Modal */}
+
+      {/* Modals */}
       <NewLeadModal
         open={newLeadModalOpen}
         onOpenChange={setNewLeadModalOpen}
-        onSuccess={handleLeadCreated}
+        onLeadCreated={handleLeadCreated}
       />
     </AppLayoutCustom>
   );

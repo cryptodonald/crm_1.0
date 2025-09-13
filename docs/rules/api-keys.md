@@ -15,12 +15,12 @@
 ### ❌ **NEVER DO THIS**
 
 ```typescript
-// WRONG - Direct environment variable usage
-const apiKey = process.env.AIRTABLE_API_KEY;
-const baseId = process.env.AIRTABLE_BASE_ID;
+// WRONG - Direct environment variable usage (deprecated system)
+const apiKey = process.env.AIRTABLE_API_KEY; // ❌ Legacy approach
+const baseId = process.env.AIRTABLE_BASE_ID;  // ❌ Legacy approach
 
-// WRONG - Hardcoded values
-const USERS_TABLE_ID = 'tbl141xF7ZQskCqGh';
+// WRONG - Hardcoded values (security risk)
+const USERS_TABLE_ID = 'tbl141xF7ZQskCqGh'; // ❌ Should be dynamic
 ```
 
 ### ✅ **ALWAYS DO THIS**
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
 
 ## 🔄 **Migration Guide**
 
-### If you find old API routes using `process.env`:
+### Migrating from Legacy System:
 
 1. **Import the API Key Service:**
 
@@ -181,14 +181,14 @@ export async function GET(request: NextRequest) {
    import { getAirtableKey, getAirtableBaseId } from '@/lib/api-keys-service';
    ```
 
-2. **Replace hardcoded values:**
+2. **Replace deprecated environment variable usage:**
 
    ```typescript
-   // Before
+   // ❌ Before (Legacy - deprecated)
    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
    const AIRTABLE_BASE_ID = 'app359c17lK0Ta8Ws';
 
-   // After
+   // ✅ After (Modern - current system)
    const [apiKey, baseId] = await Promise.all([
      getAirtableKey(),
      getAirtableBaseId(),
@@ -892,23 +892,22 @@ Abbiamo successfully evoluto il CRM da un sistema basato su variabili d'ambiente
 ### **❌ PRIMA (Sistema Obsoleto)**
 
 ```bash
-# File .env.local (55 righe di variabili statiche)
-AIRTABLE_API_KEY=patKEe4q8UeW13rVL...
-WHATSAPP_ACCESS_TOKEN=EAAK4HqeL9VkBPb...
-GITHUB_TOKEN=github_pat_11AXMP4NQ...
-GOOGLE_MAPS_API_KEY=AIzaSyDBE98G...
-NEXTAUTH_SECRET=imA5cZ/fImiq...
-# ... +50 altre variabili
+# ❌ OBSOLETE: Previous system (55+ environment variables)
+# Example of what we replaced:
+# AIRTABLE_API_KEY=patKEe4q8UeW13rVL...
+# WHATSAPP_ACCESS_TOKEN=EAAK4HqeL9VkBPb...
+# GITHUB_TOKEN=github_pat_11AXMP4NQ...
+# ... +50+ other static variables (now dynamically managed)
 ```
 
-**Problemi:**
+**Problemi del Sistema Legacy:**
 
-- 🚫 Chiavi statiche (redeploy per cambiarle)
+- 🚫 Chiavi statiche (redeploy richiesto per modifiche)
 - 🚫 Nessun tracking dell'utilizzo
 - 🚫 Nessuna scadenza automatica
-- 🚫 Nessun controllo granulare
-- 🚫 Nessuna crittografia
-- 🚫 Nessuna gestione UI
+- 🚫 Nessun controllo granulare dei permessi
+- 🚫 Nessuna crittografia (plain text storage)
+- 🚫 Nessuna interfaccia di gestione
 
 ### **✅ DOPO (Sistema Unificato)**
 

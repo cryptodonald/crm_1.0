@@ -5,6 +5,10 @@ import { invalidateLeadCache, invalidateUsersCache } from '@/lib/cache';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 import { LeadFormData } from '@/types/leads';
 
+// 💥 DISABLE ALL NEXT.JS CACHING FOR THIS ROUTE
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Helper function to build Airtable filter
 function buildAirtableFilter(searchParams: URLSearchParams): string {
   const conditions: string[] = [];
@@ -267,11 +271,15 @@ export async function GET(request: NextRequest) {
     // Check if user wants to load all records
     const loadAll = searchParams.get('loadAll') === 'true';
 
-    console.log(`🔧 [API] Request parameters:`, {
-      loadAll: loadAll,
-      loadAllParam: searchParams.get('loadAll'),
-      url: request.url,
-    });
+    // Cache clearing se richiesto
+    const clearCache = searchParams.get('clearCache') === 'true';
+    const ultraRefresh = searchParams.get('_ultraRefresh') === 'true';
+    
+    if (clearCache || ultraRefresh) {
+      leadsCache.clear();
+    }
+    
+    console.log(`[API] Loading ${loadAll ? 'all' : 'paginated'} leads${clearCache || ultraRefresh ? ' (cache cleared)' : ''}`);
 
     // Build base query parameters (without pagination)
     const baseParams = new URLSearchParams();
@@ -293,7 +301,10 @@ export async function GET(request: NextRequest) {
 
     if (loadAll) {
       // Controlla se è richiesto un force refresh (bypass cache)
-      const forceRefresh = searchParams.get('_forceRefresh');
+      const forceRefresh = searchParams.get('_forceRefresh') || 
+                          searchParams.get('skipCache') === 'true' || 
+                          clearCache || 
+                          ultraRefresh;
       
       let cachedData = null;
       let cacheKey = '';

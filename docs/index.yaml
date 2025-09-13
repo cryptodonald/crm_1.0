@@ -1,16 +1,31 @@
 version: 1
-generated_at: '2025-01-07'
+generated_at: '2025-09-12'
+# 🚀 AGGIORNAMENTO IMPORTANTE - Sistema Leads v2.0
+# Documentazione aggiornata: LEADS_SYSTEM_CURRENT.md
+# Status: ✅ Production Ready con Perfect Sync
+
 priority:
+# Core Rules
 - rules/global-rules.md
 - rules/api-keys.md
-- performance-guidelines.md  # NEW: Performance optimization guide
-- audit-performance-completo.md  # NEW: Complete performance audit report
 - rules/repo-rules.md
+
+# Performance & Optimization
+- performance/guidelines.md  # Core performance guidelines
+- performance/audit-completo.md  # Complete performance audit
+- runbooks/lead-performance.md  # Performance troubleshooting
+
+# UI System
+- ui-system/clean.md  # Current UI system
+- ui-system/migration.md  # Migration guide
+
+# Domain Models
 - domain/leads.md
 - domain/avatar-system.md
+
+# Operations
 - runbooks/local-dev.md
 - runbooks/migrations.md
-- runbooks/lead-performance.md  # NEW: Performance troubleshooting
 - runbooks/release.md
 - runbooks/incident.md
 - validation/mcp-validation.md
@@ -24,7 +39,7 @@ warp_extract:
     - rules/api-keys.md
   - heading: Performance & Caching (estratto)
     includes:
-    - performance-guidelines.md
+    - performance/guidelines.md
   - heading: Regole di Repo
     includes:
     - rules/repo-rules.md

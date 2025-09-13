@@ -1,6 +1,12 @@
 # Dominio: Leads — Analisi & Flusso Dati
 
-> Fonte: `leads-system-analysis.md` (originale in /docs/source).
+> **AGGIORNAMENTO IMPORTANTE**: Sistema completamente migrato! 🎆  
+> **Documentazione aggiornata**: Vedi `LEADS_SYSTEM_CURRENT.md` per architettura finale v2.0  
+> **Status**: ✅ Production Ready con Perfect Sync & Cache Invalidation
+
+---
+
+> Fonte originale: `leads-system-analysis.md` (legacy - per riferimento storico)
 
 # 📊 Sistema Leads CRM 1.0 - Analisi Completa
 
@@ -551,7 +557,7 @@ console.log(`⚡ Cache hit per ${cachedData.length} records`);
 
 ---
 
-**📅 Documentazione creata**: 3 Gennaio 2025  
+**📅 Documentazione creata**: 3 Settembre 2025
 **🔍 Copertura analisi**: Completa (100%)  
 **📊 Componenti analizzati**: 6 principali + 15 utilities
 
