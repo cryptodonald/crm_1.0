@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# API Keys sync script (contains sensitive credentials)
+scripts/sync-remote-keys.js
+
 # vercel
 .vercel
 

@@ -16,6 +16,7 @@
     "test:coverage": "vitest --coverage",
     "type-check": "tsc --noEmit",
     "validate": "npm run type-check && npm run lint && npm run test",
+    "sync-keys": "node scripts/sync-remote-keys.js",
     "clean": "rm -rf .next dist coverage",
     "deploy": "npm run validate && vercel --prod",
     "deploy:preview": "vercel"
