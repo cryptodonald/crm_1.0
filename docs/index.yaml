@@ -26,6 +26,7 @@ priority:
 # Operations
 - runbooks/local-dev.md
 - runbooks/migrations.md
+- runbooks/remote-keys-sync.md  # API Keys remote sync setup
 - runbooks/release.md
 - runbooks/incident.md
 - validation/mcp-validation.md
@@ -47,6 +48,7 @@ warp_extract:
     includes:
     - runbooks/local-dev.md
     - runbooks/migrations.md
+    - runbooks/remote-keys-sync.md
 sources:
 - source/AVATAR_SYSTEM.md
 - source/README.md
