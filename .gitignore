@@ -44,3 +44,20 @@ next-env.d.ts
 # debug-*.js (now in scripts/debug/)
 # decrypt-*.js (now in scripts/legacy/)
 # verify-*.js (now in scripts/legacy/)
+
+# Temporary and backup folders
+.deprecated/
+.tmp/
+backup/
+*.backup
+*.backup-*
+dev.log
+temp/
+tmp/
+
+# Test files
+src/app/test/
+src/components/test/
+*-test.tsx
+*-ab-test.tsx
+page-test.tsx
