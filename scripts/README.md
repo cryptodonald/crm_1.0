@@ -34,6 +34,26 @@ Script di migrazione critici per aggiornamenti del sistema.
 
 **Scopo:** Migrazione completa di TUTTE le API keys (15+) da `.env.local` al database KV.
 
+### `sync-remote-keys.js` (+ `.template.js`)
+
+**Scopo:** Sincronizzazione dinamica delle API keys dal database KV remoto per lo sviluppo locale.
+
+**Setup:**
+```bash
+# Copia il template sicuro
+cp scripts/migrations/sync-remote-keys.template.js scripts/migrations/sync-remote-keys.js
+
+# Inserisci le tue credenziali nel file copiato
+# Esegui la sincronizzazione
+npm run sync-keys
+```
+
+**Caratteristiche:**
+- Decripta e sincronizza tutte le API keys dal KV remoto
+- Crea automaticamente il file `.env.local`
+- Sistema sicuro: file con credenziali è nel `.gitignore`
+- Supporta 17+ servizi (Airtable, GitHub, Google Maps, ecc.)
+
 **Prerequisiti (per tutti i script di migrazione):**
 - File `.env.local` configurato con:
   - `KV_REST_API_URL`

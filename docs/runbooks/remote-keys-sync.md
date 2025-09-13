@@ -15,12 +15,12 @@ Questa guida spiega come configurare l'ambiente di sviluppo locale utilizzando l
 
 ```bash
 # Copia il template sicuro
-cp scripts/sync-remote-keys.template.js scripts/sync-remote-keys.js
+cp scripts/migrations/sync-remote-keys.template.js scripts/migrations/sync-remote-keys.js
 ```
 
 ### **Passo 2: Inserisci le Credenziali**
 
-Modifica il file `scripts/sync-remote-keys.js` e inserisci le tue credenziali:
+Modifica il file `scripts/migrations/sync-remote-keys.js` e inserisci le tue credenziali:
 
 ```javascript
 const CONFIG = {
@@ -32,7 +32,7 @@ const CONFIG = {
 };
 ```
 
-**⚠️ IMPORTANTE**: Il file `scripts/sync-remote-keys.js` è nel `.gitignore` per proteggere le tue credenziali!
+**⚠️ IMPORTANTE**: Il file `scripts/migrations/sync-remote-keys.js` è nel `.gitignore` per proteggere le tue credenziali!
 
 ### **Passo 2: Sincronizza le Chiavi**
 
@@ -159,10 +159,10 @@ cd crm_1.0
 npm install
 
 # 3. Crea script di sincronizzazione
-cp scripts/sync-remote-keys.template.js scripts/sync-remote-keys.js
+cp scripts/migrations/sync-remote-keys.template.js scripts/migrations/sync-remote-keys.js
 
 # 4. Configura credenziali (modifica il file)
-# Inserisci KV_TOKEN e ENCRYPTION_KEY in scripts/sync-remote-keys.js
+# Inserisci KV_TOKEN e ENCRYPTION_KEY in scripts/migrations/sync-remote-keys.js
 
 # 5. Sincronizza chiavi
 npm run sync-keys
@@ -188,12 +188,12 @@ npm run dev
 ## 🔒 **Sicurezza Critica**
 
 ### **⚠️ File Protetti dal Git**
-- `scripts/sync-remote-keys.js` è nel **`.gitignore`** - NON sarà mai committato
+- `scripts/migrations/sync-remote-keys.js` è nel **`.gitignore`** - NON sarà mai committato
 - `.env.local` è nel **`.gitignore`** - Le variabili locali sono protette
-- Solo `scripts/sync-remote-keys.template.js` è versionato (senza credenziali)
+- Solo `scripts/migrations/sync-remote-keys.template.js` è versionato (senza credenziali)
 
 ### **🛡️ Regole di Sicurezza**
-1. **MAI committare** il file `scripts/sync-remote-keys.js` con le credenziali
+1. **MAI committare** il file `scripts/migrations/sync-remote-keys.js` con le credenziali
 2. **Condividi solo** il template file (`.template.js`) con il team
 3. **Ogni sviluppatore** deve creare la sua copia locale con le sue credenziali
 4. **Verifica sempre** che `.gitignore` contenga i file sensibili
@@ -202,5 +202,5 @@ npm run dev
 ```bash
 # Verifica che i file sensibili non siano tracciati
 git status --ignored | grep sync-remote-keys.js
-# Dovrebbe mostrare: scripts/sync-remote-keys.js (ignored)
+# Dovrebbe mostrare: scripts/migrations/sync-remote-keys.js (ignored)
 ```

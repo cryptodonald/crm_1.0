@@ -34,7 +34,7 @@ yarn-error.log*
 .env*
 
 # API Keys sync script (contains sensitive credentials)
-scripts/sync-remote-keys.js
+scripts/migrations/sync-remote-keys.js
 
 # vercel
 .vercel
