@@ -13,7 +13,10 @@ const PROTECTED_ROUTES = [
   '/developers',
   '/api-keys',
   '/change-password',
+  '/profile',
   '/admin',
+  '/api/admin',
+  '/api/user',
 ];
 
 // Route pubbliche (non richiedono autenticazione)

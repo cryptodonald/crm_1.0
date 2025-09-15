@@ -21,15 +21,28 @@ function EmailConfigurationCard() {
     hasFromAddress: boolean;
     isEnabled: boolean;
   } | null>(null);
+  const [currentValues, setCurrentValues] = useState<{
+    fromAddress: string;
+    enabled: boolean;
+    apiKeyStatus: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState<string | null>(null); // 'api_key' | 'from_address' | 'enabled'
+  const [formData, setFormData] = useState({
+    newApiKey: '',
+    newFromAddress: '',
+    newEnabled: false
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchEmailConfig = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/setup/email');
+      const response = await fetch('/api/admin/email/config');
       const data = await response.json();
       
       if (response.ok && data.success) {
@@ -44,9 +57,80 @@ function EmailConfigurationCard() {
     }
   };
 
+  const fetchCurrentValues = async () => {
+    try {
+      const response = await fetch('/api/admin/email/config', { method: 'PATCH' });
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setCurrentValues(data.values);
+        setFormData({
+          newApiKey: '',
+          newFromAddress: data.values.fromAddress,
+          newEnabled: data.values.enabled
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching current values:', err);
+    }
+  };
+
   useEffect(() => {
     fetchEmailConfig();
+    fetchCurrentValues();
   }, []);
+
+  const handleUpdate = async (action: string, payload: any) => {
+    setIsUpdating(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch('/api/admin/email/config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, ...payload })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setSuccessMessage(data.message);
+        setEmailConfig(data.configuration.config);
+        setEditMode(null);
+        await fetchCurrentValues();
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        setError(data.error || 'Errore nell\'aggiornamento');
+      }
+    } catch (err) {
+      setError('Errore di connessione');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const startEdit = (mode: string) => {
+    setEditMode(mode);
+    setError(null);
+    setSuccessMessage(null);
+  };
+
+  const cancelEdit = () => {
+    setEditMode(null);
+    setError(null);
+    if (currentValues) {
+      setFormData({
+        newApiKey: '',
+        newFromAddress: currentValues.fromAddress,
+        newEnabled: currentValues.enabled
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -97,58 +181,203 @@ function EmailConfigurationCard() {
           <CardTitle>Configurazione Email</CardTitle>
         </div>
         <CardDescription>
-          Configurazioni per l'invio di email dal sistema (archiviate in Vercel KV)
+          Gestisci le configurazioni per l'invio di email dal sistema
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div>
-              <p className="font-medium text-sm">Resend API Key</p>
-              <p className="text-xs text-muted-foreground">Chiave per invio email</p>
-            </div>
-            <div className={`px-2 py-1 rounded text-xs font-medium ${
-              emailConfig?.hasApiKey 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}>
-              {emailConfig?.hasApiKey ? 'Configurata' : 'Mancante'}
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div>
-              <p className="font-medium text-sm">Indirizzo FROM</p>
-              <p className="text-xs text-muted-foreground">Email mittente</p>
-            </div>
-            <div className={`px-2 py-1 rounded text-xs font-medium ${
-              emailConfig?.hasFromAddress 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}>
-              {emailConfig?.hasFromAddress ? 'Configurato' : 'Mancante'}
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div>
-              <p className="font-medium text-sm">Servizio Email</p>
-              <p className="text-xs text-muted-foreground">Stato servizio</p>
-            </div>
-            <div className={`px-2 py-1 rounded text-xs font-medium ${
-              emailConfig?.isEnabled 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {emailConfig?.isEnabled ? 'Attivo' : 'Disabilitato'}
-            </div>
-          </div>
+      <CardContent className="space-y-6">
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <Alert>
+            <IconCheck className="h-4 w-4" />
+            <AlertDescription>{successMessage}</AlertDescription>
+          </Alert>
+        )}
+        
+        {error && (
+          <Alert variant="destructive">
+            <IconAlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Configuration Cards */}
+        <div className="space-y-4">
+          {/* Resend API Key */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Resend API Key</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {currentValues?.apiKeyStatus || 'Caricamento...'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`px-2 py-1 rounded text-xs font-medium ${
+                    emailConfig?.hasApiKey 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {emailConfig?.hasApiKey ? 'Configurata' : 'Mancante'}
+                  </div>
+                  {editMode !== 'api_key' && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => startEdit('api_key')}
+                      disabled={isUpdating}
+                    >
+                      Modifica
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              {editMode === 'api_key' && (
+                <div className="mt-4 space-y-3 border-t pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newApiKey">Nuova API Key Resend</Label>
+                    <Input
+                      id="newApiKey"
+                      type="password"
+                      placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"
+                      value={formData.newApiKey}
+                      onChange={(e) => setFormData({...formData, newApiKey: e.target.value})}
+                      disabled={isUpdating}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Inserisci la tua API key Resend (deve iniziare con "re_")
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleUpdate('update_api_key', { apiKey: formData.newApiKey })}
+                      disabled={isUpdating || !formData.newApiKey.startsWith('re_')}
+                    >
+                      {isUpdating ? (
+                        <><IconLoader2 className="h-3 w-3 animate-spin mr-1" />Salvando...</>
+                      ) : (
+                        'Salva'
+                      )}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={cancelEdit} disabled={isUpdating}>
+                      Annulla
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* FROM Address */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Indirizzo FROM</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {currentValues?.fromAddress || 'Caricamento...'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`px-2 py-1 rounded text-xs font-medium ${
+                    emailConfig?.hasFromAddress 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {emailConfig?.hasFromAddress ? 'Configurato' : 'Mancante'}
+                  </div>
+                  {editMode !== 'from_address' && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => startEdit('from_address')}
+                      disabled={isUpdating}
+                    >
+                      Modifica
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              {editMode === 'from_address' && (
+                <div className="mt-4 space-y-3 border-t pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newFromAddress">Indirizzo Email Mittente</Label>
+                    <Input
+                      id="newFromAddress"
+                      type="email"
+                      placeholder="CRM Sistema <noreply@tuodominio.com>"
+                      value={formData.newFromAddress}
+                      onChange={(e) => setFormData({...formData, newFromAddress: e.target.value})}
+                      disabled={isUpdating}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Deve essere un dominio verificato su Resend
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleUpdate('update_from_address', { fromAddress: formData.newFromAddress })}
+                      disabled={isUpdating || !formData.newFromAddress.includes('@')}
+                    >
+                      {isUpdating ? (
+                        <><IconLoader2 className="h-3 w-3 animate-spin mr-1" />Salvando...</>
+                      ) : (
+                        'Salva'
+                      )}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={cancelEdit} disabled={isUpdating}>
+                      Annulla
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Email Service Toggle */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Servizio Email</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {emailConfig?.isEnabled ? 'Il servizio email è attivo' : 'Il servizio email è disabilitato'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`px-2 py-1 rounded text-xs font-medium ${
+                    emailConfig?.isEnabled 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {emailConfig?.isEnabled ? 'Attivo' : 'Disabilitato'}
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant={emailConfig?.isEnabled ? 'destructive' : 'default'}
+                    onClick={() => handleUpdate('toggle_enabled', { enabled: !emailConfig?.isEnabled })}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? (
+                      <><IconLoader2 className="h-3 w-3 animate-spin mr-1" />Aggiornando...</>
+                    ) : (
+                      emailConfig?.isEnabled ? 'Disabilita' : 'Abilita'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
-        <div className="mt-4 p-3 bg-muted rounded-lg">
+        <div className="mt-6 p-3 bg-muted rounded-lg">
           <p className="text-sm text-muted-foreground">
-            <strong>Nota:</strong> Le chiavi email sono archiviate in modo sicuro in Vercel KV 
-            e non sono visibili nella pagina API Keys per motivi di sicurezza.
+            <strong>Sicurezza:</strong> Le configurazioni email sono archiviate in modo sicuro in Vercel KV. 
+            Le API key non sono mai visualizzate per motivi di sicurezza.
           </p>
         </div>
       </CardContent>
