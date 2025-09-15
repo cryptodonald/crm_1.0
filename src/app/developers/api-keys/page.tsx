@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { useEnvVars } from '@/hooks/use-env-vars';
+import { useAuth } from '@/contexts/auth-context';
 import { ApiKeysStats } from '@/components/api-keys/api-keys-stats';
 import { ApiKeysDataTable } from '@/components/api-keys/api-keys-data-table';
 import { CreateApiKeyButton } from '@/components/api-keys/create-api-key-button';
@@ -11,10 +13,12 @@ import { ApiKeysEditDialog } from '@/components/api-keys/api-keys-edit-dialog';
 import { ApiKeyDetailsDialog } from '@/components/api-keys/api-keys-details-dialog';
 import { ApiKeyData } from '@/lib/kv';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ApiKeysPage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const {
     apiKeys,
     stats,
@@ -29,6 +33,17 @@ export default function ApiKeysPage() {
     clearError,
     refresh,
   } = useEnvVars();
+  
+  // Verifica se l'utente è admin
+  const isAdmin = user?.ruolo === 'Admin';
+  
+  // Effetto per reindirizzare non-admin
+  useEffect(() => {
+    if (!authLoading && user && !isAdmin) {
+      console.log('🚫 [ApiKeysPage] Non-admin user attempting access, redirecting to dashboard');
+      router.push('/dashboard');
+    }
+  }, [user, isAdmin, authLoading, router]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingApiKey, setEditingApiKey] = useState<ApiKeyData | null>(null);
@@ -59,6 +74,42 @@ export default function ApiKeysPage() {
     setEditingApiKey(null);
     refresh();
   };
+
+  // Loading state durante autenticazione
+  if (authLoading) {
+    return (
+      <AppLayoutCustom>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-500">Verifica autorizzazioni...</p>
+          </div>
+        </div>
+      </AppLayoutCustom>
+    );
+  }
+  
+  // Accesso negato per non-admin
+  if (user && !isAdmin) {
+    return (
+      <AppLayoutCustom>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center max-w-md">
+            <ShieldX className="mx-auto h-12 w-12 text-red-500 mb-4" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Accesso Negato
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Solo gli amministratori possono accedere alla gestione delle API Keys.
+            </p>
+            <Button onClick={() => router.push('/dashboard')} variant="outline">
+              Torna alla Dashboard
+            </Button>
+          </div>
+        </div>
+      </AppLayoutCustom>
+    );
+  }
 
   return (
     <AppLayoutCustom>

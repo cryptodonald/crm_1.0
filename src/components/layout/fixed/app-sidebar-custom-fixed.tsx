@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/auth-context';
 import {
   IconCalendar,
   IconChartBar,
@@ -89,6 +90,11 @@ const data = {
 export function AppSidebarCustomFixed({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth();
+  
+  // Verifica se l'utente è admin
+  const isAdmin = user?.ruolo === 'Admin';
+  
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -113,7 +119,10 @@ export function AppSidebarCustomFixed({
       </SidebarHeader>
       <SidebarContent>
         <NavMainFixed items={data.navMain} />
-        <NavDocumentsSimpleFixed items={data.developers} title="Developers" />
+        {/* Mostra sezione Developers solo agli admin */}
+        {isAdmin && (
+          <NavDocumentsSimpleFixed items={data.developers} title="Developers" />
+        )}
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
