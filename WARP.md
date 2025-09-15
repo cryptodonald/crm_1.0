@@ -1,11 +1,6 @@
 # WARP.md — Operational Rules
 > Fonte: docs/index.yaml (version 1) — generato automaticamente
 
-### 0ter) Onboarding repo (all’avvio)
-- Leggi `AGENT_README.md`.
-- Leggi `docs/index.yaml` e poi i file in `priority`.
-- Applica `WARP.md` come estratto operativo locale (override dove specificato).
-- **Ignora** `docs/source/` e qualunque cartella che inizi con `_`.
 
 ## Sicurezza & Anti-allucinazioni
 
@@ -71,12 +66,12 @@
 ### ❌ **NEVER DO THIS**
 
 ```typescript
-// WRONG - Direct environment variable usage
-const apiKey = process.env.AIRTABLE_API_KEY;
-const baseId = process.env.AIRTABLE_BASE_ID;
+// WRONG - Direct environment variable usage (deprecated system)
+const apiKey = process.env.AIRTABLE_API_KEY; // ❌ Legacy approach
+const baseId = process.env.AIRTABLE_BASE_ID;  // ❌ Legacy approach
 
-// WRONG - Hardcoded values
-const USERS_TABLE_ID = 'tbl141xF7ZQskCqGh';
+// WRONG - Hardcoded values (security risk)
+const USERS_TABLE_ID = 'tbl141xF7ZQskCqGh'; // ❌ Should be dynamic
 ```
 
 ### ✅ **ALWAYS DO THIS**
@@ -229,7 +224,7 @@ export async function GET(request: NextRequest) {
 
 ## 🔄 **Migration Guide**
 
-### If you find old API routes using `process.env`:
+### Migrating from Legacy System:
 
 1. **Import the API Key Service:**
 
@@ -237,14 +232,14 @@ export async function GET(request: NextRequest) {
    import { getAirtableKey, getAirtableBaseId } from '@/lib/api-keys-service';
    ```
 
-2. **Replace hardcoded values:**
+2. **Replace deprecated environment variable usage:**
 
    ```typescript
-   // Before
+   // ❌ Before (Legacy - deprecated)
    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
    const AIRTABLE_BASE_ID = 'app359c17lK0Ta8Ws';
 
-   // After
+   // ✅ After (Modern - current system)
    const [apiKey, baseId] = await Promise.all([
      getAirtableKey(),
      getAirtableBaseId(),
@@ -948,23 +943,22 @@ Abbiamo successfully evoluto il CRM da un sistema basato su variabili d'ambiente
 ### **❌ PRIMA (Sistema Obsoleto)**
 
 ```bash
-# File .env.local (55 righe di variabili statiche)
-AIRTABLE_API_KEY=patKEe4q8UeW13rVL...
-WHATSAPP_ACCESS_TOKEN=EAAK4HqeL9VkBPb...
-GITHUB_TOKEN=github_pat_11AXMP4NQ...
-GOOGLE_MAPS_API_KEY=AIzaSyDBE98G...
-NEXTAUTH_SECRET=imA5cZ/fImiq...
-# ... +50 altre variabili
+# ❌ OBSOLETE: Previous system (55+ environment variables)
+# Example of what we replaced:
+# AIRTABLE_API_KEY=patKEe4q8UeW13rVL...
+# WHATSAPP_ACCESS_TOKEN=EAAK4HqeL9VkBPb...
+# GITHUB_TOKEN=github_pat_11AXMP4NQ...
+# ... +50+ other static variables (now dynamically managed)
 ```
 
-**Problemi:**
+**Problemi del Sistema Legacy:**
 
-- 🚫 Chiavi statiche (redeploy per cambiarle)
+- 🚫 Chiavi statiche (redeploy richiesto per modifiche)
 - 🚫 Nessun tracking dell'utilizzo
 - 🚫 Nessuna scadenza automatica
-- 🚫 Nessun controllo granulare
-- 🚫 Nessuna crittografia
-- 🚫 Nessuna gestione UI
+- 🚫 Nessun controllo granulare dei permessi
+- 🚫 Nessuna crittografia (plain text storage)
+- 🚫 Nessuna interfaccia di gestione
 
 ### **✅ DOPO (Sistema Unificato)**
 
@@ -1216,98 +1210,450 @@ _Sistema implementato il 31 Agosto 2025 - CRM 1.0 Enterprise Edition_
 
 ## Performance & Caching (estratto)
 
-<!-- BEGIN:performance-guidelines.md -->
-# 🚀 Performance Guidelines — Enterprise
+<!-- BEGIN:performance/guidelines.md -->
+# 🚀 Performance Guidelines - CRM Enterprise
 
-> Aggiornato 2025-01-07 con ottimizzazioni implementate.
+> **Versione 2.0** - Aggiornato 2025-01-07  
+> Implementate ottimizzazioni che riducono il tempo di caricamento pagine da **10+ secondi** a **~100ms**
 
-## 🎯 Target Performance
-- **Lead API**: <100ms (cached) / <800ms (uncached)
+---
+
+## 🎯 **Performance Targets & SLA**
+
+### Target Operativi
+- **Lead Detail API**: <100ms (cached) / <800ms (uncached)
 - **Users API**: <110ms (cached) / <600ms (uncached)
-- **Cache Hit Rate**: >85%
-- **Error Rate**: <2%
+- **Cache Hit Rate**: >85% per dati stabili
+- **Error Rate**: <2% con retry automatico
+- **Page Load Time**: <200ms per pagine già in cache
 
-## 🗄️ Sistema Caching
+### SLA di Produzione
+- **P95 Latency**: <1.5s per qualsiasi pagina
+- **Availability**: >99.9%
+- **MTTR**: <5 minuti per performance issues
 
-### ✅ **SEMPRE usa il sistema di cache**
+---
+
+## 🗄️ **Sistema di Caching Intelligente**
+
+### 🔥 Pattern Obbligatorio per API Routes
 
 ```typescript
-// API Routes - Pattern ottimizzato
-import { getCachedLead, getCachedUsers, invalidateLeadCache } from '@/lib/cache';
+// src/app/api/example/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getCachedLead, invalidateLeadCache } from '@/lib/cache';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
+import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
 
-export async function GET(request: NextRequest) {
-  const startTime = performance.now();
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  const requestStart = performance.now();
+  const { id } = await params;
   
   try {
-    // 🚀 Usa caching intelligente
-    const result = await getCachedLead(leadId, async () => {
-      // Fetch logic qui
-      return await fetchFromAirtable();
+    console.log(`🔍 [API] Starting request for: ${id}`);
+
+    // 🚀 SEMPRE usa il sistema di caching
+    const result = await getCachedLead(id, async () => {
+      // Get credentials in parallel
+      const [apiKey, baseId, tableId] = await Promise.all([
+        getAirtableKey(),
+        getAirtableBaseId(),
+        getAirtableLeadsTableId(),
+      ]);
+
+      if (!apiKey || !baseId || !tableId) {
+        throw new Error('Missing Airtable credentials');
+      }
+
+      // Direct Airtable call with compression
+      const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip, deflate, br', // 🚀 Compressione
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Airtable API error: ${response.status}`);
+      }
+
+      const record = await response.json();
+      return {
+        id: record.id,
+        createdTime: record.createdTime,
+        ...record.fields, // 🚀 Tutti i campi disponibili
+      };
     });
+
+    const totalTime = performance.now() - requestStart;
+    const wasCached = totalTime < 100; // Cache threshold
     
-    const totalTime = performance.now() - startTime;
-    recordApiLatency('lead_api', totalTime, totalTime < 100);
+    // 📊 SEMPRE registra metriche
+    recordApiLatency('lead_api', totalTime, wasCached);
     
-    return NextResponse.json({ success: true, lead: result });
+    console.log(`✅ [API] Completed: ${id} in ${totalTime.toFixed(2)}ms (cached: ${wasCached})`);
+    
+    return NextResponse.json({
+      success: true,
+      lead: result,
+      _timing: {
+        total: Math.round(totalTime),
+        cached: wasCached,
+      }
+    });
+
   } catch (error) {
-    recordError('lead_api', error.message);
-    throw error;
+    const totalTime = performance.now() - requestStart;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // 📊 SEMPRE registra errori
+    recordError('lead_api', errorMessage);
+    recordApiLatency('lead_api', totalTime, false);
+    
+    console.error(`❌ [API] Error in ${totalTime.toFixed(2)}ms:`, error);
+    
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch lead',
+        _timing: { total: Math.round(totalTime), cached: false }
+      },
+      { status: 500 }
+    );
   }
 }
 
-// Invalidazione dopo update
-export async function PUT() {
-  // ... update logic
-  await invalidateLeadCache(leadId); // 🚀 Invalida cache
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  // ... update logic ...
+  
+  // 🚀 SEMPRE invalida cache dopo modifiche
+  await invalidateLeadCache(id);
+  
+  return NextResponse.json({ success: true });
 }
 ```
 
-### 🔄 **Retry Logic negli Hook**
+### 🎯 TTL Configuration
 
 ```typescript
-// Hook con retry automatico
+// Cache TTL per tipo di dato
+const CACHE_CONFIG = {
+  // Dati che cambiano frequentemente
+  leads: 60,        // 1 minuto (modificati spesso)
+  activities: 30,   // 30 secondi (nuove attività)
+  
+  // Dati stabili
+  users: 300,       // 5 minuti (cambiano raramente)
+  products: 600,    // 10 minuti (molto stabili)
+  
+  // Configurazioni
+  apiKeys: 300,     // 5 minuti (gestite centralmente)
+};
+```
+
+---
+
+## 🔄 **Retry Logic & Resilienza**
+
+### Pattern Hook Ottimizzato
+
+```typescript
+// src/hooks/use-optimized-lead.ts
 import { useFetchWithRetry } from '@/hooks/use-fetch-with-retry';
+import { toast } from 'sonner';
 
-const { data, loading, error, retry } = useFetchWithRetry(
-  async () => {
-    const response = await fetch(`/api/leads/${leadId}`);
-    return response.json();
-  },
-  {
-    maxRetries: 2,
-    baseDelay: 1000,
-    timeout: 15000
-  }
-);
-```
+export function useOptimizedLead(leadId: string) {
+  const { data: lead, loading, error, retry } = useFetchWithRetry(
+    async () => {
+      console.log(`🔄 [Hook] Fetching lead: ${leadId}`);
+      
+      const response = await fetch(`/api/leads/${leadId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'API returned unsuccessful response');
+      }
+      
+      return data.lead;
+    },
+    {
+      maxRetries: 2,
+      baseDelay: 1000,    // 1s, 2s, 4s progression
+      timeout: 15000,     // 15s timeout per Airtable
+      onRetry: (attempt, error) => {
+        toast.warning(`Tentativo ${attempt} di ricaricamento...`);
+        console.warn(`⚠️ [Hook] Retry ${attempt} per ${leadId}:`, error.message);
+      }
+    }
+  );
 
-## 📊 Monitoring & Alerts
-
-### ⚡ **Metriche automatiche**
-- Ogni API route deve registrare latency e errori
-- Alert automatici per soglie critiche (>5s)
-- Dashboard disponibile in `/docs/runbooks/lead-performance.md`
-
-### 🛡️ **Gestione Errori**
-```typescript
-// ✅ BUONA gestione errori
-try {
-  const result = await apiCall();
-} catch (error) {
-  recordError('api_name', error.message, error.status);
-  // Graceful degradation
-  return fallbackResponse;
+  return { lead, loading, error, retry };
 }
 ```
 
-### ❌ **NON FARE**
-- Non disabilitare il caching senza motivo
-- Non fare chiamate API senza retry logic
-- Non ignorare le metriche di performance
-- Non hardcodare timeout bassi (<10s per Airtable)
+### Configurazione Retry Avanzata
 
-<!-- END:performance-guidelines.md -->
+```typescript
+// Configurazione retry per diversi scenari
+const RETRY_CONFIGS = {
+  // API critiche (lead, users)
+  critical: {
+    maxRetries: 3,
+    baseDelay: 1000,
+    maxDelay: 8000,
+    timeout: 15000,
+  },
+  
+  // API secondarie (analytics, logs)
+  secondary: {
+    maxRetries: 2,
+    baseDelay: 500,
+    maxDelay: 4000,
+    timeout: 10000,
+  },
+  
+  // Background tasks
+  background: {
+    maxRetries: 5,
+    baseDelay: 2000,
+    maxDelay: 30000,
+    timeout: 30000,
+  },
+};
+```
+
+---
+
+## 📊 **Performance Monitoring Automatico**
+
+### Metriche Obbligatorie
+
+```typescript
+// Ogni API route deve implementare questo pattern
+import { recordApiLatency, recordError, recordCacheEvent } from '@/lib/performance-monitor';
+
+// In ogni API call
+recordApiLatency('api_name', latency, wasCached);
+recordError('api_name', errorMessage, statusCode);
+recordCacheEvent('hit' | 'miss', 'service_name');
+```
+
+### Dashboard & Alert
+
+```typescript
+// Accesso dashboard in development
+import { performanceMonitor } from '@/lib/performance-monitor';
+
+// Console debug
+console.log('Performance Stats:', performanceMonitor.getDashboardData());
+
+// Health check automatico
+const isHealthy = await performanceMonitor.healthCheck();
+```
+
+### Alert Thresholds
+
+```typescript
+// Configurazione alert automatici
+const ALERT_THRESHOLDS = {
+  lead_api_latency: { warning: 1500, error: 3000, critical: 5000 },
+  users_api_latency: { warning: 1000, error: 2000, critical: 3000 },
+  cache_hit_rate: { warning: 80, error: 60, critical: 40 },
+  error_rate: { warning: 5, error: 10, critical: 20 },
+};
+```
+
+---
+
+## 🎨 **UI Performance Best Practices**
+
+### Suspense & Loading States
+
+```typescript
+// src/components/optimized-lead-page.tsx
+import { LeadDetailSuspense } from '@/components/ui/suspense-wrapper';
+
+export function OptimizedLeadPage({ leadId }: { leadId: string }) {
+  return (
+    <LeadDetailSuspense 
+      onRetry={() => console.log('Retry triggered by user')}
+    >
+      <LeadDetailContent leadId={leadId} />
+    </LeadDetailSuspense>
+  );
+}
+
+// Componente con hook ottimizzato
+function LeadDetailContent({ leadId }: { leadId: string }) {
+  const { lead, loading, error, retry } = useOptimizedLead(leadId);
+  
+  if (error) {
+    return (
+      <div className="error-state">
+        <p>Errore: {error}</p>
+        <button onClick={retry}>Riprova</button>
+      </div>
+    );
+  }
+  
+  return <div>{/* Contenuto lead */}</div>;
+}
+```
+
+### Smart Loading (300ms Delay)
+
+```typescript
+// Previene flash di loading per richieste veloci
+function SmartSkeleton({ showAfter = 300 }: { showAfter?: number }) {
+  const [shouldShow, setShouldShow] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShouldShow(true), showAfter);
+    return () => clearTimeout(timer);
+  }, [showAfter]);
+
+  if (!shouldShow) return null;
+  return <Skeleton />;
+}
+```
+
+---
+
+## 🚨 **Troubleshooting Common Issues**
+
+### Issue: Cache Miss Rate Alta (>40%)
+
+**Cause:**
+- TTL troppo basso per il tipo di dato
+- Invalidazione troppo frequente
+- Chiavi cache non ottimizzate
+
+**Soluzioni:**
+```typescript
+// ✅ Aumenta TTL per dati stabili
+getCachedUsers(fetchFn); // TTL 300s vs 60s
+
+// ✅ Invalidazione specifica
+invalidateLeadCache(leadId); // Solo questo lead
+// vs
+cacheService.clearAll(); // ❌ Troppo aggressivo
+```
+
+### Issue: API Latency >5s
+
+**Diagnosi:**
+```bash
+# Test manuale
+curl -w "Total: %{time_total}s\n" -s -o /dev/null "http://localhost:3000/api/leads/recXXX"
+
+# Check logs
+npm run dev 2>&1 | grep -E "(TIMING|Cache|Perf)"
+```
+
+**Soluzioni:**
+- Verifica credentials Airtable
+- Check connettività KV database
+- Review query complexity
+
+### Issue: Memory Leaks nei Hook
+
+**Prevenzione:**
+```typescript
+// ✅ Cleanup automatico
+useEffect(() => {
+  const controller = new AbortController();
+  
+  fetchData({ signal: controller.signal });
+  
+  return () => controller.abort(); // 🚀 Cleanup
+}, [dependency]);
+```
+
+---
+
+## ✅ **Performance Checklist**
+
+### Per Nuove API Routes
+
+- [ ] Implementato `getCached*` wrapper
+- [ ] Gestione errori con `recordError`
+- [ ] Timing logs con `recordApiLatency`
+- [ ] Invalidazione cache su update/delete
+- [ ] Compressione gzip negli headers
+- [ ] Timeout appropriato (15s+ per Airtable)
+
+### Per Nuovi Hook
+
+- [ ] Uso di `useFetchWithRetry` 
+- [ ] Configurazione retry appropriata
+- [ ] Cleanup su unmount
+- [ ] Toast notifications per UX
+- [ ] Error boundary compatibility
+
+### Per Componenti UI
+
+- [ ] Suspense wrapper con skeleton intelligente
+- [ ] Loading states con 300ms delay
+- [ ] Error states con retry
+- [ ] Accessibility maintained
+
+---
+
+## 📈 **Performance Testing**
+
+### Load Testing
+
+```bash
+# Test basic performance
+ab -n 100 -c 10 "http://localhost:3000/api/leads/recXXX"
+
+# Cache performance
+for i in {1..10}; do
+  curl -w "Run $i: %{time_total}s\n" -s -o /dev/null "http://localhost:3000/api/users"
+done
+```
+
+### Monitoring Production
+
+```typescript
+// Health checks automatici
+setInterval(async () => {
+  const health = await performanceMonitor.getDashboardData();
+  if (health.systemHealth === 'critical') {
+    // Alert system
+    sendSlackAlert('Performance degradation detected');
+  }
+}, 60000); // Check ogni minuto
+```
+
+---
+
+## 🔮 **Future Improvements**
+
+### Planned Optimizations
+
+1. **GraphQL Layer**: Single endpoint per query complesse
+2. **Edge Caching**: Vercel Edge per cache geografica
+3. **Prefetching**: Preload data per navigation prevedibili
+4. **Service Worker**: Offline-first per dati critici
+
+### Experimental Features
+
+- **Streaming Responses**: Per dataset grandi
+- **Real-time Updates**: WebSocket per cache invalidation
+- **AI Prefetching**: ML per predire next page loads
+
+---
+
+**Mantainer**: Dev Team  
+**Last Updated**: 2025-01-07  
+**Next Review**: 2025-02-07  
+
+> 📖 Per troubleshooting dettagliato: [/docs/runbooks/lead-performance.md](runbooks/lead-performance.md)
+<!-- END:performance/guidelines.md -->
 
 ## Regole di Repo
 
@@ -1903,3 +2249,212 @@ try {
 3. **Non-blocking usage tracking**: Usage recording doesn't slow down requests
 4. **Health checks**: Use `apiKeyService.healthCheck()` for monitoring
 <!-- END:runbooks/migrations.md -->
+
+<!-- BEGIN:runbooks/remote-keys-sync.md -->
+# 🔑 Sincronizzazione API Keys Remote per Sviluppo Locale
+
+Questa guida spiega come configurare l'ambiente di sviluppo locale utilizzando le API keys remote dal sistema di produzione, senza dover mantenere un `.env.local` completo.
+
+## 🎯 **Vantaggi del Sistema**
+
+- ✅ **Chiavi sempre aggiornate**: Usa le chiavi da produzione in tempo reale
+- ✅ **Configurazione minima**: Solo 2 credenziali da inserire
+- ✅ **Sicurezza**: Le chiavi sono crittografate nel database
+- ✅ **Semplicità**: Un comando per sincronizzare tutto
+
+## 🛠️ **Setup Rapido**
+
+### **Passo 1: Configura lo Script**
+
+```bash
+# Copia il template sicuro
+cp scripts/migrations/sync-remote-keys.template.js scripts/migrations/sync-remote-keys.js
+```
+
+### **Passo 2: Inserisci le Credenziali**
+
+Modifica il file `scripts/migrations/sync-remote-keys.js` e inserisci le tue credenziali:
+
+```javascript
+const CONFIG = {
+  REMOTE_KV_URL: 'https://mint-mammal-42977.upstash.io',
+  REMOTE_KV_TOKEN: 'IL_TUO_TOKEN_KV_QUI', // 🔑 Inserire qui
+  ENCRYPTION_KEY: 'LA_TUA_MASTER_KEY_QUI', // 🔐 Inserire qui
+  USER_ID: 'user_admin_001',
+  TENANT_ID: 'tenant_doctorbed',
+};
+```
+
+**⚠️ IMPORTANTE**: Il file `scripts/migrations/sync-remote-keys.js` è nel `.gitignore` per proteggere le tue credenziali!
+
+### **Passo 2: Sincronizza le Chiavi**
+
+```bash
+npm run sync-keys
+```
+
+### **Passo 3: Avvia il Server di Sviluppo**
+
+```bash
+npm run dev
+```
+
+## 🔧 **Come Ottenere le Credenziali**
+
+### **KV Token**
+Vai su [Vercel Dashboard](https://vercel.com/dashboard) → KV Database → Settings → REST API
+
+### **Encryption Master Key**
+Puoi trovarla nell'attuale `.env.local` alla riga:
+```bash
+ENCRYPTION_MASTER_KEY="CRM1.0-SecureMasterKey-2025-Enterprise-ScalableArchitecture"
+```
+
+## 📊 **Cosa Fa lo Script**
+
+1. **Si connette** al database KV di produzione
+2. **Recupera** tutte le API keys del tuo utente
+3. **Decripta** le chiavi usando la master key
+4. **Crea** un file `.env.local` completo
+5. **Mappa** i servizi alle variabili d'ambiente
+
+## 🔑 **Chiavi Sincronizzate**
+
+Lo script recupera automaticamente:
+
+- **Airtable**: API key, Base ID, tutte le tabelle
+- **GitHub**: Token, private key, webhook secret  
+- **Google Maps**: API key
+- **NextAuth**: Secret
+- **Webhook URLs**: Airtable, WhatsApp
+- **Configurazioni di base**: KV, user context
+
+## ⚡ **Output di Esempio**
+
+```bash
+$ npm run sync-keys
+
+🔄 Sincronizzazione chiavi API remote...
+📊 Trovate 19 chiavi per l'utente
+✅ airtable -> AIRTABLE_API_KEY
+✅ airtable-base-id -> AIRTABLE_BASE_ID  
+✅ airtable-leads-table -> AIRTABLE_LEADS_TABLE_ID
+✅ github-token -> GITHUB_TOKEN
+✅ google-maps-api -> NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+...
+
+🎉 Sincronizzazione completata!
+📊 16 API keys recuperate e decriptate
+📝 File .env.local aggiornato
+🚀 Ora puoi eseguire: npm run dev
+```
+
+## 🛡️ **Sicurezza**
+
+- ✅ **Credenziali locali**: Conservate solo nel file di script  
+- ✅ **Crittografia**: Tutte le chiavi sono crittografate AES-256
+- ✅ **Isolamento**: Ogni developer ha il suo user context
+- ✅ **Accesso controllato**: Solo le chiavi del tuo utente/tenant
+
+## 🔄 **Workflow di Sviluppo**
+
+1. **Prima sessione**: Configura script con credenziali
+2. **Ogni avvio**: Esegui `npm run sync-keys`
+3. **Sviluppo**: Lavora normalmente con `npm run dev`
+4. **Aggiornamenti**: Le chiavi sono sempre sincronizzate con produzione
+
+## 🔍 **Troubleshooting**
+
+### **Errore: Token KV non configurato**
+```
+⛔️ Errore: REMOTE_KV_TOKEN non configurato
+🔧 Modifica il file scripts/sync-remote-keys.js
+```
+**Soluzione**: Inserisci il token KV nel CONFIG
+
+### **Errore: Master Key non configurata**
+```
+⛔️ Errore: ENCRYPTION_KEY non configurata  
+🔧 Modifica il file scripts/sync-remote-keys.js
+```
+**Soluzione**: Inserisci la master key nel CONFIG
+
+### **Errore: Impossibile decriptare**
+```
+⚠️ Impossibile decriptare: airtable
+```
+**Soluzione**: Verifica che la ENCRYPTION_KEY sia corretta
+
+### **Errore: KV API Error**
+```  
+❌ KV API Error: 401
+```
+**Soluzione**: Verifica che REMOTE_KV_TOKEN sia valido
+
+## 🆚 **Confronto: Metodi di Setup**
+
+| Metodo | Pro | Contro |
+|--------|-----|--------|
+| **`.env.local` manuale** | Completo controllo | Devi mantenere sincronizzato |
+| **Sync script** | Sempre aggiornato | Setup iniziale richiesto |
+| **Solo produzione** | Nessun setup locale | Devi testare su prod |
+
+## 🚀 **Workflow Consigliato**
+
+Per nuovo sviluppatore:
+
+```bash
+# 1. Clona repository
+git clone https://github.com/cryptodonald/crm_1.0.git
+cd crm_1.0
+
+# 2. Installa dipendenze  
+npm install
+
+# 3. Crea script di sincronizzazione
+cp scripts/migrations/sync-remote-keys.template.js scripts/migrations/sync-remote-keys.js
+
+# 4. Configura credenziali (modifica il file)
+# Inserisci KV_TOKEN e ENCRYPTION_KEY in scripts/migrations/sync-remote-keys.js
+
+# 5. Sincronizza chiavi
+npm run sync-keys
+
+# 6. Avvia sviluppo
+npm run dev
+```
+
+Per aggiornamento periodico:
+
+```bash
+# Sincronizza chiavi (se cambiate su prod)
+npm run sync-keys
+
+# Riavvia server
+npm run dev
+```
+
+---
+
+**💡 Suggerimento**: Puoi aggiungere `npm run sync-keys` al tuo script di setup o pre-dev hook per automatizzare completamente il processo.
+
+## 🔒 **Sicurezza Critica**
+
+### **⚠️ File Protetti dal Git**
+- `scripts/migrations/sync-remote-keys.js` è nel **`.gitignore`** - NON sarà mai committato
+- `.env.local` è nel **`.gitignore`** - Le variabili locali sono protette
+- Solo `scripts/migrations/sync-remote-keys.template.js` è versionato (senza credenziali)
+
+### **🛡️ Regole di Sicurezza**
+1. **MAI committare** il file `scripts/migrations/sync-remote-keys.js` con le credenziali
+2. **Condividi solo** il template file (`.template.js`) con il team
+3. **Ogni sviluppatore** deve creare la sua copia locale con le sue credenziali
+4. **Verifica sempre** che `.gitignore` contenga i file sensibili
+
+### **🔍 Verifica Sicurezza**
+```bash
+# Verifica che i file sensibili non siano tracciati
+git status --ignored | grep sync-remote-keys.js
+# Dovrebbe mostrare: scripts/migrations/sync-remote-keys.js (ignored)
+```
+<!-- END:runbooks/remote-keys-sync.md -->

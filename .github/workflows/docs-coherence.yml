@@ -22,7 +22,7 @@ jobs:
             npm i -D js-yaml
           fi
       - name: Regenerate docs
-        run: node scripts/generate-docs.mjs
+        run: node scripts/docs/generate-docs.mjs
       - name: Verify derivatives in sync
         run: |
           git diff --exit-code README.md WARP.md
