@@ -300,6 +300,7 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
                                     <div className="flex-shrink-0">
                                       <AvatarLead
                                         nome={user.nome}
+                                        customAvatar={user.avatar}
                                         isAdmin={user.ruolo === 'Admin'}
                                         size="md"
                                         showTooltip={false}
@@ -343,6 +344,7 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
                     <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
                       <AvatarLead
                         nome={selectedAssegnatarioUser.nome}
+                        customAvatar={selectedAssegnatarioUser.avatar}
                         isAdmin={selectedAssegnatarioUser.ruolo === 'Admin'}
                         size="sm"
                         showTooltip={false}

@@ -195,7 +195,7 @@ export function LeadDetailHeader({
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         {/* Left: identity */}
         <div className="flex items-center gap-4 min-w-0">
-          <AvatarLead nome={lead.Nome || lead.ID} size="xl" showTooltip={false} />
+          <AvatarLead nome={lead.Nome || lead.ID} customAvatar={lead.Avatar} size="xl" showTooltip={false} />
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-3 min-w-0 flex-wrap">
               {editingName ? (
@@ -267,7 +267,7 @@ export function LeadDetailHeader({
                       <div className="flex items-center gap-2 min-w-0">
                         {selectedUser ? (
                           <>
-                            <AvatarLead nome={selectedUser.nome} size="sm" showTooltip={false} />
+                            <AvatarLead nome={selectedUser.nome} customAvatar={(usersData && selectedUser && usersData[selectedUser.id]?.avatar) || undefined} isAdmin={selectedUser.ruolo === 'Admin'} size="sm" showTooltip={false} />
                             <div className="min-w-0">
                               <div className="flex items-center gap-1 min-w-0">
                                 <span className="truncate text-sm font-medium">{selectedUser.nome}</span>
@@ -305,7 +305,7 @@ export function LeadDetailHeader({
                           {usersArray.map((user) => (
                             <CommandItem key={user.id} onSelect={() => { onUpdate({ Assegnatario: [user.id] }); setAssigneeOpen(false); }} className="cursor-pointer">
                               <div className="flex items-center gap-3 w-full">
-                                <div className="flex-shrink-0"><AvatarLead nome={user.nome} size="md" showTooltip={false} /></div>
+                                <div className="flex-shrink-0"><AvatarLead nome={user.nome} customAvatar={(usersData && usersData[user.id]?.avatar) || undefined} isAdmin={user.ruolo === 'Admin'} size="md" showTooltip={false} /></div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
                                     <span className="font-medium text-sm truncate">{user.nome}</span>

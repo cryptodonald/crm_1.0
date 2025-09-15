@@ -272,6 +272,7 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                                   <div className="flex-shrink-0">
                                     <AvatarLead
                                       nome={user.nome}
+                                      customAvatar={user.avatar}
                                       isAdmin={user.ruolo === 'Admin'}
                                       size="md"
                                       showTooltip={false}
@@ -315,6 +316,7 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                   <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
                     <AvatarLead
                       nome={selectedAssegnatarioUser.nome}
+                      customAvatar={selectedAssegnatarioUser.avatar}
                       isAdmin={selectedAssegnatarioUser.ruolo === 'Admin'}
                       size="sm"
                       showTooltip={false}
@@ -384,6 +386,7 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                                   <div className="flex-shrink-0">
                                     <AvatarLead
                                       nome={lead.Nome}
+                                      customAvatar={lead.Avatar}
                                       size="md"
                                       showTooltip={false}
                                     />
@@ -430,6 +433,7 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                         <div key={leadId} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
                           <AvatarLead
                             nome={lead.Nome}
+                            customAvatar={lead.Avatar}
                             size="sm"
                             showTooltip={false}
                           />

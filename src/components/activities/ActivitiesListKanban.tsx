@@ -130,6 +130,8 @@ const ActivityListItem: React.FC<ActivityListItemProps> = ({ activity, onEdit, c
       <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all group">
         <div className="flex-shrink-0">
           <AvatarLead nome={assignee || 'N/A'} size="sm" showTooltip={false} />
+          {/* Nota: Per ottenere l'avatar personalizzato dell'assignee, 
+               servirebbero i dati degli utenti passati dal componente genitore */}
         </div>
         
         <div className="flex-1 min-w-0">
@@ -217,6 +219,8 @@ const ActivityListItem: React.FC<ActivityListItemProps> = ({ activity, onEdit, c
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <AvatarLead nome={assignee || 'Non assegnata'} size="sm" showTooltip={false} />
+            {/* Nota: Per ottenere l'avatar personalizzato dell'assignee, 
+                 servirebbero i dati degli utenti passati dal componente genitore */}
             <span className="text-sm text-gray-700 truncate">{assignee || 'Non assegnata'}</span>
           </div>
           {activity.Data && (

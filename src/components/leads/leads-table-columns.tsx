@@ -90,21 +90,13 @@ export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
 
   return (
     <div className="flex items-center space-x-3">
-      {/* Avatar */}
-      <Avatar className="h-10 w-10">
-        <AvatarImage
-          src={lead.Avatar || getAvatarPath(lead.Nome)}
-          alt={lead.Nome}
-        />
-        <AvatarFallback
-          className={cn(
-            'text-sm font-medium text-white',
-            getAvatarColor(lead.Provenienza)
-          )}
-        >
-          {getInitials(lead.Nome)}
-        </AvatarFallback>
-      </Avatar>
+      {/* Avatar usando componente AvatarLead con supporto avatar personalizzato */}
+      <AvatarLead
+        nome={lead.Nome}
+        customAvatar={lead.Avatar}
+        size="lg"
+        showTooltip={false}
+      />
 
       {/* Info principale */}
       <div className="min-w-0 flex-1">
@@ -489,7 +481,7 @@ export function AssegnatarioColumn({
           className="hover:bg-muted h-auto w-full justify-start p-1 min-h-[44px]"
           onClick={() => onAssigneeClick?.(assegnatarioId)}
         >
-          {/* Avatar usando AvatarLead */}
+          {/* Avatar usando AvatarLead con Avatar_URL dell'utente */}
           <AvatarLead
             nome={userData.nome}
             customAvatar={userData.avatar}

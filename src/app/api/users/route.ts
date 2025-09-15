@@ -15,6 +15,7 @@ interface AirtableUser {
     Email?: string;
     Ruolo?: string;
     Avatar?: string;
+    Avatar_URL?: string;
     Telefono?: string;
   };
   createdTime: string;
@@ -51,6 +52,7 @@ async function fetchAllUsers(
           u.searchParams.append('fields[]', 'Email');
           u.searchParams.append('fields[]', 'Ruolo');
           u.searchParams.append('fields[]', 'Avatar');
+          u.searchParams.append('fields[]', 'Avatar_URL');
           u.searchParams.append('fields[]', 'Telefono');
         }
         return u;
@@ -91,14 +93,29 @@ async function fetchAllUsers(
       const data = await response.json();
 
       // Trasforma i dati Airtable nel nostro formato
-      const transformedUsers = data.records.map((record: AirtableUser) => ({
-        id: record.id,
-        nome: record.fields.Nome || '',
-        email: record.fields.Email || '',
-        ruolo: record.fields.Ruolo || 'Staff',
-        avatar: record.fields.Avatar || '',
-        telefono: record.fields.Telefono || '',
-      }));
+      const transformedUsers = data.records.map((record: AirtableUser) => {
+        // Prioritizza Avatar_URL sui vecchi attachment Avatar
+        let avatarUrl = '';
+        if (record.fields.Avatar_URL) {
+          avatarUrl = record.fields.Avatar_URL;
+        } else if (record.fields.Avatar) {
+          // Fallback per vecchi attachment (se ancora presenti)
+          if (Array.isArray(record.fields.Avatar) && record.fields.Avatar.length > 0) {
+            avatarUrl = (record.fields.Avatar as any)[0].url || '';
+          } else if (typeof record.fields.Avatar === 'string') {
+            avatarUrl = record.fields.Avatar;
+          }
+        }
+        
+        return {
+          id: record.id,
+          nome: record.fields.Nome || '',
+          email: record.fields.Email || '',
+          ruolo: record.fields.Ruolo || 'Staff',
+          avatar: avatarUrl,
+          telefono: record.fields.Telefono || '',
+        };
+      });
 
       users.push(...transformedUsers);
       offset = data.offset;

@@ -157,7 +157,7 @@ export function LeadProfileHeader({ lead, onRefresh }: LeadProfileHeaderProps) {
         {/* Sezione 1: avatar, nome, stato, indirizzo, ID */}
         <div className="flex flex-col items-start gap-3 sm:gap-4 md:flex-row md:items-center">
           <div className="relative">
-            <AvatarLead nome={lead.Nome || lead.ID} size="xl" showTooltip={false} />
+            <AvatarLead nome={lead.Nome || lead.ID} customAvatar={lead.Avatar} size="xl" showTooltip={false} />
           </div>
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
@@ -254,7 +254,7 @@ export function LeadProfileHeader({ lead, onRefresh }: LeadProfileHeaderProps) {
           <div className="space-y-1 min-w-0">
             <div className="text-xs text-muted-foreground">Assegnatario</div>
             <div className="flex items-center gap-2 min-w-0">
-              <AvatarLead nome={assegnatarioName || '—'} size="sm" showTooltip={false} />
+              <AvatarLead nome={assegnatarioName || '—'} customAvatar={(users && lead.Assegnatario?.[0] && (users as any)[lead.Assegnatario[0]]?.avatar) || undefined} isAdmin={(users && lead.Assegnatario?.[0] && (users as any)[lead.Assegnatario[0]]?.ruolo) === 'Admin'} size="sm" showTooltip={false} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <button 
@@ -278,7 +278,11 @@ export function LeadProfileHeader({ lead, onRefresh }: LeadProfileHeaderProps) {
           <div className="space-y-1 min-w-0">
             <div className="text-xs text-muted-foreground">Referenza</div>
             <div className="flex items-center gap-2 min-w-0">
-              <AvatarLead nome={referenzaName || '—'} size="sm" showTooltip={false} />
+              <AvatarLead nome={referenzaName || '—'} customAvatar={(() => {
+                const refId = (lead as any).Referenza?.[0];
+                const ref = refId && (allLeads as any[])?.find((l) => l.id === refId || l.ID === refId);
+                return ref?.Avatar;
+              })()} size="sm" showTooltip={false} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <button 

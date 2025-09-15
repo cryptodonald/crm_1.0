@@ -51,6 +51,7 @@ import { DataTablePersistentFilter } from '@/components/data-table/data-table-pe
 import type { Option } from '@/types/data-table';
 import { NewActivityModal } from '@/components/activities';
 import { useActivitiesClean } from '@/hooks/use-activities-clean';
+import { useUsers } from '@/hooks/use-users';
 // Removed old complex system imports
 
 import {
@@ -85,6 +86,7 @@ interface ActivityCardProps {
   onEdit: (activity: ActivityData) => void;
   onDelete: (activity: ActivityData) => void;
   onStateChange: (activity: ActivityData, newState: ActivityStato) => void;
+  usersData?: Record<string, { nome: string; ruolo: string; avatar?: string }> | null;
 }
 
 // Funzioni per i badge (dalla pagina demo-badges) - Memoizzate globalmente
@@ -286,7 +288,7 @@ const EmptyColumnState = React.memo(function EmptyColumnState({ columnId, onCrea
   );
 });
 
-const ActivityCard = React.memo(function ActivityCard({ activity, onEdit, onDelete, onStateChange }: ActivityCardProps) {
+const ActivityCard = React.memo(function ActivityCard({ activity, onEdit, onDelete, onStateChange, usersData }: ActivityCardProps) {
   const router = useRouter();
   
   // Stati disponibili per il menu contestuale
@@ -526,6 +528,16 @@ const ActivityCard = React.memo(function ActivityCard({ activity, onEdit, onDele
             <div className="flex items-center gap-2">
               <AvatarLead
                 nome={assignee || 'Non assegnata'}
+                customAvatar={(() => {
+                  if (!assignee || !activity.Assegnatario?.[0] || !usersData) return undefined;
+                  const userId = activity.Assegnatario[0];
+                  return usersData[userId]?.avatar;
+                })()}
+                isAdmin={(() => {
+                  if (!assignee || !activity.Assegnatario?.[0] || !usersData) return false;
+                  const userId = activity.Assegnatario[0];
+                  return usersData[userId]?.ruolo === 'Admin';
+                })()}
                 size="sm"
                 showTooltip={false}
                 className="w-6 h-6 sm:w-8 sm:h-8"
@@ -710,6 +722,9 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
   const [activityToEdit, setActivityToEdit] = useState<ActivityData | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<ActivityData | null>(null);
+  
+  // 🚀 Users data for avatars
+  const { users } = useUsers();
   
   // 🚀 NEW CLEAN SYSTEM - Simple React state with optimistic updates
   const {
@@ -1242,6 +1257,7 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
                       onEdit={handleEditActivity}
                       onDelete={handleDeleteActivity}
                       onStateChange={handleStateChange}
+                      usersData={users}
                     />
                   ))
                 )}
@@ -1262,6 +1278,7 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
                 onEdit={handleEditActivity}
                 onDelete={handleDeleteActivity}
                 onStateChange={handleStateChange}
+                usersData={users}
               />
             );
           }}
