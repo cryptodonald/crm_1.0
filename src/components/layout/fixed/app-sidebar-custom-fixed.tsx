@@ -30,11 +30,6 @@ import {
 } from '@/components/ui/sidebar';
 
 const data = {
-  user: {
-    name: 'Admin User',
-    email: 'admin@crm.com',
-    avatar: '',
-  },
   navMain: [
     {
       title: 'Dashboard',
@@ -121,7 +116,7 @@ export function AppSidebarCustomFixed({
         <NavDocumentsSimpleFixed items={data.developers} title="Developers" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   );

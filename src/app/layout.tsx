@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
+import { AuthProvider } from '@/contexts/auth-context';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import './globals.css';
 
@@ -35,9 +36,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NuqsAdapter>
-            {children}
-          </NuqsAdapter>
+          <AuthProvider>
+            <NuqsAdapter>
+              {children}
+            </NuqsAdapter>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
