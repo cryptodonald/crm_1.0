@@ -64,3 +64,11 @@ src/components/test/
 *-test.tsx
 *-ab-test.tsx
 page-test.tsx
+
+# User uploads and temporary files
+public/uploads/
+cookies.txt
+temp_debug.js
+debug-token.js
+set-test-password.js
+setup-email.js
