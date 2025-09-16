@@ -46,13 +46,13 @@ export function useOrdersList({
       importo_max: filters.importo_max,
     };
   }, [
-    filters?.stato_ordine && filters.stato_ordine.join(','),
-    filters?.stato_pagamento && filters.stato_pagamento.join(','),
-    filters?.venditore_id,
-    filters?.data_da,
-    filters?.data_a,
-    filters?.importo_min,
-    filters?.importo_max,
+    JSON.stringify(filters.stato_ordine || []),
+    JSON.stringify(filters.stato_pagamento || []),
+    filters.venditore_id,
+    filters.data_da,
+    filters.data_a,
+    filters.importo_min,
+    filters.importo_max,
   ]);
 
   // 🚀 Sistema di fetch con retry automatico

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,20 +30,29 @@ import { it } from 'date-fns/locale';
 import Link from 'next/link';
 
 export default function OrdersPage() {
-  const { orders, loading, error, totalCount } = useOrdersList({
-    pageSize: 10, // Solo per recent orders nella dashboard
-  });
+  const { orders, loading, error, totalCount } = useOrdersList();
 
   // Calcola le statistiche dai dati caricati
-  const stats = orders.length > 0 ? calculateOrdersStats(orders) : null;
+  const stats = React.useMemo(() => {
+    if (!orders || orders.length === 0) return null;
+    try {
+      return calculateOrdersStats(orders);
+    } catch (error) {
+      console.warn('Error calculating orders stats:', error);
+      return null;
+    }
+  }, [orders]);
 
   // Filtra gli ordini recenti (ultimi 5)
-  const recentOrders = orders
-    .sort((a, b) => {
-      if (!a.Data_Ordine || !b.Data_Ordine) return 0;
-      return new Date(b.Data_Ordine).getTime() - new Date(a.Data_Ordine).getTime();
-    })
-    .slice(0, 5);
+  const recentOrders = React.useMemo(() => {
+    if (!orders || orders.length === 0) return [];
+    return [...orders]
+      .sort((a, b) => {
+        if (!a.Data_Ordine || !b.Data_Ordine) return 0;
+        return new Date(b.Data_Ordine).getTime() - new Date(a.Data_Ordine).getTime();
+      })
+      .slice(0, 5);
+  }, [orders]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
