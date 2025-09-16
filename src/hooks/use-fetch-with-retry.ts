@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 
 /**
  * 🚀 Hook con Retry Esponenziale per Performance UI
@@ -68,7 +68,15 @@ export function useFetchWithRetry<T>(
   fetchFn: () => Promise<T>,
   options: RetryOptions = {}
 ): UseFetchWithRetryResult<T> {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
+  // Memoize options to prevent recreation on every render
+  const opts = useMemo(() => ({ ...DEFAULT_OPTIONS, ...options }), [
+    options.maxRetries,
+    options.baseDelay,
+    options.maxDelay,
+    options.timeout,
+    options.retryOn,
+    options.onRetry
+  ]);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   

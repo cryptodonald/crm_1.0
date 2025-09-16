@@ -189,13 +189,13 @@ export function useOrdersList({
     if (!isDisabled) {
       fetchOrdersWithRetry.execute();
     }
-  }, [stableFilters, refreshKey, isDisabled, fetchOrdersWithRetry]);
+  }, [stableFilters, refreshKey, isDisabled, fetchOrdersWithRetry.execute]);
 
   // 🔄 Refresh function
   const refresh = useCallback(async () => {
     console.log('🔄 [useOrdersList] Manual refresh triggered');
     await fetchOrdersWithRetry.execute();
-  }, [fetchOrdersWithRetry]);
+  }, [fetchOrdersWithRetry.execute]);
 
   // 📝 Create order function
   const createOrder = useCallback(async (orderData: any): Promise<boolean> => {
