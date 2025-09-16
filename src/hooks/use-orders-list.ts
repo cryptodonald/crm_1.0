@@ -132,18 +132,24 @@ export function useOrdersList({
     };
   }, [fetchUrl, enableSmartCache]);
 
+  // Stable retry callback
+  const onRetryCallback = useCallback((attempt: number, error: any) => {
+    toast.warning(`Tentativo ${attempt} di ricaricamento ordini...`);
+    console.warn(`⚠️ [useOrdersList] Retry ${attempt}:`, error.message);
+  }, []);
+
+  // Stable retry options
+  const retryOptions = useMemo(() => ({
+    maxRetries: 2,
+    baseDelay: 1000,
+    timeout: 20000,
+    onRetry: onRetryCallback
+  }), [onRetryCallback]);
+
   // Sistema di fetch con retry automatico con funzione stabile
   const fetchOrdersWithRetry = useFetchWithRetry(
     fetchOrdersFn,
-    {
-      maxRetries: 2,
-      baseDelay: 1000,
-      timeout: 20000,
-      onRetry: (attempt, error) => {
-        toast.warning(`Tentativo ${attempt} di ricaricamento ordini...`);
-        console.warn(`⚠️ [useOrdersList] Retry ${attempt}:`, error.message);
-      }
-    }
+    retryOptions
   );
 
   // Sincronizza stato degli ordini con il fetch result

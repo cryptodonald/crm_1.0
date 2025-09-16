@@ -27,7 +27,6 @@ export interface FetchState<T> {
   loading: boolean;
   error: string | null;
   retryCount: number;
-  lastAttempt: number | null;
 }
 
 export interface UseFetchWithRetryResult<T> extends FetchState<T> {
@@ -85,7 +84,6 @@ export function useFetchWithRetry<T>(
     loading: false,
     error: null,
     retryCount: 0,
-    lastAttempt: null,
   });
 
   // Calcola delay con backoff esponenziale + jitter
@@ -123,7 +121,6 @@ export function useFetchWithRetry<T>(
       loading: false,
       error: null,
       retryCount: 0,
-      lastAttempt: null,
     });
   }, [cancel]);
 
@@ -136,7 +133,6 @@ export function useFetchWithRetry<T>(
       ...prev,
       loading: true,
       error: null,
-      lastAttempt: Date.now(),
     }));
 
     let lastError: any = null;
