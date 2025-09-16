@@ -26,7 +26,7 @@ interface UseOrdersListReturn {
 export function useOrdersList({ 
   filters = {}, 
   refreshKey,
-  enableSmartCache = false,
+  enableSmartCache = true,  // Enable cache by default to prevent infinite loops
   enabled = true
 }: UseOrdersListProps = {}): UseOrdersListReturn {
   
@@ -36,6 +36,11 @@ export function useOrdersList({
 
   // 🔧 Stabilizza i filtri per evitare re-render loops
   const stableFilters = useMemo(() => {
+    // Se filters è vuoto o undefined, return un oggetto vuoto stabile
+    if (!filters || Object.keys(filters).length === 0) {
+      return {};
+    }
+    
     return {
       stato_ordine: filters.stato_ordine,
       stato_pagamento: filters.stato_pagamento,
@@ -46,113 +51,90 @@ export function useOrdersList({
       importo_max: filters.importo_max,
     };
   }, [
-    JSON.stringify(filters.stato_ordine || []),
-    JSON.stringify(filters.stato_pagamento || []),
-    filters.venditore_id,
-    filters.data_da,
-    filters.data_a,
-    filters.importo_min,
-    filters.importo_max,
+    filters?.stato_ordine?.length > 0 ? JSON.stringify(filters.stato_ordine) : '',
+    filters?.stato_pagamento?.length > 0 ? JSON.stringify(filters.stato_pagamento) : '',
+    filters?.venditore_id || '',
+    filters?.data_da || '',
+    filters?.data_a || '',
+    filters?.importo_min ?? '',
+    filters?.importo_max ?? '',
   ]);
 
-  // 🚀 Sistema di fetch con retry automatico
+  // Stable refresh key to prevent undefined issues
+  const stableRefreshKey = useMemo(() => refreshKey ?? 0, [refreshKey]);
+
+  // Memoize fetch URL to prevent recreation
+  const fetchUrl = useMemo(() => {
+    const queryParams = new URLSearchParams();
+    
+    // Aggiungi filtri solo se esistono
+    if (stableFilters?.stato_ordine && stableFilters.stato_ordine.length > 0) {
+      stableFilters.stato_ordine.forEach(stato => queryParams.append('stato_ordine', stato));
+    }
+    if (stableFilters?.stato_pagamento && stableFilters.stato_pagamento.length > 0) {
+      stableFilters.stato_pagamento.forEach(stato => queryParams.append('stato_pagamento', stato));
+    }
+    if (stableFilters?.venditore_id) queryParams.set('venditore_id', stableFilters.venditore_id);
+    if (stableFilters?.data_da) queryParams.set('data_da', stableFilters.data_da);
+    if (stableFilters?.data_a) queryParams.set('data_a', stableFilters.data_a);
+    if (stableFilters?.importo_min !== undefined) queryParams.set('importo_min', stableFilters.importo_min.toString());
+    if (stableFilters?.importo_max !== undefined) queryParams.set('importo_max', stableFilters.importo_max.toString());
+    
+    // Sempre carica tutto per la lista
+    queryParams.set('loadAll', 'true');
+    queryParams.set('sortField', 'Data_Ordine');
+    queryParams.set('sortDirection', 'desc');
+
+    // Only add cache busting when explicitly disabled AND for refresh
+    if (!enableSmartCache && stableRefreshKey > 0) {
+      queryParams.set('_t', stableRefreshKey.toString());
+      queryParams.set('skipCache', 'true');
+    }
+
+    return `/api/orders?${queryParams.toString()}`;
+  }, [stableFilters, enableSmartCache, stableRefreshKey]);
+
+  // 🚀 Ultra-stable fetch function
+  const fetchOrdersFn = useCallback(async () => {
+    console.log('🔍 [useOrdersList] Fetching orders from:', fetchUrl);
+    
+    const response = await fetch(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: enableSmartCache ? 'default' : 'no-store',
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Orders non trovati');
+      }
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.records) {
+      throw new Error('Formato risposta non valido');
+    }
+
+    console.log(`✅ [useOrdersList] Loaded ${data.records.length} orders successfully`);
+    return {
+      records: data.records.map((record: any) => ({
+        id: record.id,
+        createdTime: record.createdTime,
+        ...record.fields
+      })),
+      totalCount: data.records.length,
+      fromCache: data.fromCache || false
+    };
+  }, [fetchUrl, enableSmartCache]);
+
+  // Sistema di fetch con retry automatico con funzione stabile
   const fetchOrdersWithRetry = useFetchWithRetry(
-    async () => {
-      console.log('🔍 [useOrdersList] Fetching orders with filters:', stableFilters);
-
-      // Costruisci query params
-      const queryParams = new URLSearchParams();
-      
-      // Aggiungi filtri
-      if (stableFilters.stato_ordine && stableFilters.stato_ordine.length > 0) {
-        stableFilters.stato_ordine.forEach(stato => queryParams.append('stato_ordine', stato));
-      }
-      if (stableFilters.stato_pagamento && stableFilters.stato_pagamento.length > 0) {
-        stableFilters.stato_pagamento.forEach(stato => queryParams.append('stato_pagamento', stato));
-      }
-      if (stableFilters.venditore_id) queryParams.set('venditore_id', stableFilters.venditore_id);
-      if (stableFilters.data_da) queryParams.set('data_da', stableFilters.data_da);
-      if (stableFilters.data_a) queryParams.set('data_a', stableFilters.data_a);
-      if (stableFilters.importo_min !== undefined) queryParams.set('importo_min', stableFilters.importo_min.toString());
-      if (stableFilters.importo_max !== undefined) queryParams.set('importo_max', stableFilters.importo_max.toString());
-      
-      // Sempre carica tutto per la lista
-      queryParams.set('loadAll', 'true');
-      queryParams.set('sortField', 'Data_Ordine');
-      queryParams.set('sortDirection', 'desc');
-
-      // 🎯 Smart cache vs always fresh
-      console.log('🔍 [useOrdersList] Cache decision - enableSmartCache:', enableSmartCache);
-      if (!enableSmartCache) {
-        // ⚡ Cache busting per dati sempre freschi
-        const cacheBuster = Date.now();
-        queryParams.set('_t', cacheBuster.toString());
-        queryParams.set('skipCache', 'true');
-        queryParams.set('_forceRefresh', cacheBuster.toString());
-        console.log('🚀 [useOrdersList] Cache busting enabled - forcing fresh data', {
-          cacheBuster,
-          skipCache: queryParams.get('skipCache'),
-          _forceRefresh: queryParams.get('_forceRefresh'),
-          url: `/api/orders?${queryParams.toString()}`
-        });
-      } else {
-        console.log('🧠 [useOrdersList] Smart cache enabled');
-      }
-
-      const fetchUrl = `/api/orders?${queryParams.toString()}`;
-      
-      // 💥 EXTREME cache busting per non-smart cache
-      const finalUrl = enableSmartCache 
-        ? fetchUrl 
-        : `${fetchUrl}&__cb=${Date.now()}&__r=${Math.random()}&__bust=${Date.now()}-${Math.random()}-${performance.now()}`;
-      
-      console.log('📡 [useOrdersList] Final URL:', finalUrl);
-      
-      const response = await fetch(finalUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, private',
-          'Pragma': 'no-cache', 
-          'Expires': '0',
-          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
-          'If-None-Match': '*',
-          'X-Debug-Source': 'useOrdersList-cache-bust',
-          'X-Request-Time': Date.now().toString(),
-          'X-Random-Buster': Math.random().toString(),
-          'X-Cache-Buster': `${Date.now()}-${Math.random()}`,
-        },
-        cache: 'no-store',
-        mode: 'cors',
-        credentials: 'same-origin',
-        redirect: 'follow'
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Orders non trovati');
-        }
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.records) {
-        throw new Error('Formato risposta non valido');
-      }
-
-      console.log(`✅ [useOrdersList] Loaded ${data.records.length} orders successfully`);
-      return {
-        records: data.records.map((record: any) => ({
-          id: record.id,
-          createdTime: record.createdTime,
-          ...record.fields
-        })),
-        totalCount: data.records.length,
-        fromCache: data.fromCache || false
-      };
-    },
+    fetchOrdersFn,
     {
       maxRetries: 2,
       baseDelay: 1000,
@@ -189,7 +171,7 @@ export function useOrdersList({
     if (!isDisabled) {
       fetchOrdersWithRetry.execute();
     }
-  }, [stableFilters, refreshKey, isDisabled, fetchOrdersWithRetry.execute]);
+  }, [stableFilters, stableRefreshKey, isDisabled, fetchOrdersWithRetry.execute]);
 
   // 🔄 Refresh function
   const refresh = useCallback(async () => {
