@@ -15,6 +15,7 @@ import {
   IconRobot,
   IconActivity,
   IconCommand,
+  IconPackage,
 } from '@tabler/icons-react';
 
 import { NavDocumentsSimpleFixed } from '../nav-documents-simple-fixed';
@@ -56,6 +57,11 @@ const data = {
       title: 'Ordini',
       url: '/orders',
       icon: IconShoppingCart,
+    },
+    {
+      title: 'Prodotti',
+      url: '/products',
+      icon: IconPackage,
     },
     {
       title: 'Reports',

@@ -1,0 +1,57 @@
+structure_name,field_id,field_name,code,name,description,price_modifier,cost_modifier,active
+Materasso,modello,Modello,M1,Memory Comfort,Materasso in memory foam con zona differenziata,0,0,true
+Materasso,modello,Modello,M2,Pocket Spring Deluxe,Materasso a molle insacchettate premium,50,20,true
+Materasso,modello,Modello,M3,Hybrid Pro,Materasso ibrido memory e molle,80,30,true
+Materasso,larghezza,Larghezza,80,Larghezza 80cm,Per letto singolo standard,0,0,true
+Materasso,larghezza,Larghezza,90,Larghezza 90cm,Per letto singolo comodo,-10,-5,true
+Materasso,larghezza,Larghezza,120,Larghezza 120cm,Per letto matrimoniale piccolo,20,10,true
+Materasso,larghezza,Larghezza,140,Larghezza 140cm,Per letto matrimoniale standard,40,18,true
+Materasso,larghezza,Larghezza,160,Larghezza 160cm,Per letto matrimoniale comodo,60,25,true
+Materasso,larghezza,Larghezza,180,Larghezza 180cm,Per letto king size,80,35,true
+Materasso,lunghezza,Lunghezza,190,Lunghezza 190cm,Lunghezza standard europea,0,0,true
+Materasso,lunghezza,Lunghezza,200,Lunghezza 200cm,Lunghezza comoda,15,8,true
+Materasso,lunghezza,Lunghezza,210,Lunghezza 210cm,Lunghezza extra per persone alte,25,12,true
+Materasso,taglia_sx,Taglia Sinistra,0L,Taglia Morbida,Taglia morbida per comfort superiore,0,0,true
+Materasso,taglia_sx,Taglia Sinistra,1M,Taglia Media,Taglia media per supporto bilanciato,0,0,true
+Materasso,taglia_sx,Taglia Sinistra,2H,Taglia Rigida,Taglia rigida per supporto ortopedico,0,0,true
+Materasso,taglia_dx,Taglia Destra,0L,Taglia Morbida,Taglia morbida per comfort superiore (lato destro),0,0,true
+Materasso,taglia_dx,Taglia Destra,1M,Taglia Media,Taglia media per supporto bilanciato (lato destro),0,0,true
+Materasso,taglia_dx,Taglia Destra,2H,Taglia Rigida,Taglia rigida per supporto ortopedico (lato destro),0,0,true
+Materasso,topper_sx,Topper Sinistro,T1,Topper Basic,Topper sottile 3cm,45,20,true
+Materasso,topper_sx,Topper Sinistro,T2,Topper Comfort,Topper medio 5cm,75,35,true
+Materasso,topper_sx,Topper Sinistro,T3,Topper Premium,Topper spesso 7cm memory,120,55,true
+Materasso,topper_dx,Topper Destro,T1,Topper Basic,Topper sottile 3cm (lato destro),45,20,true
+Materasso,topper_dx,Topper Destro,T2,Topper Comfort,Topper medio 5cm (lato destro),75,35,true
+Materasso,topper_dx,Topper Destro,T3,Topper Premium,Topper spesso 7cm memory (lato destro),120,55,true
+Materasso,cover,Cover,C1,Cover Basico,Cover standard in tessuto base,25,12,true
+Materasso,cover,Cover,C2,Cover Comfort,Cover in tessuto tecnico traspirante,45,20,true
+Materasso,cover,Cover,C3,Cover Premium,Cover in tessuto naturale antibatterico,75,35,true
+Materasso,cover,Cover,C4,Cover Luxury,Cover in tessuto premium con zip perimetrale,120,55,true
+Rete,modello,Modello,R1,Rete Basic,Rete a doghe fisse standard,0,0,true
+Rete,modello,Modello,R2,Rete Comfort,Rete a doghe regolabili,80,35,true
+Rete,modello,Modello,R3,Rete Premium,Rete a doghe premium con ammortizzatori,150,68,true
+Rete,larghezza,Larghezza,80,Larghezza 80cm,Per materasso singolo 80cm,0,0,true
+Rete,larghezza,Larghezza,90,Larghezza 90cm,Per materasso singolo 90cm,5,2,true
+Rete,larghezza,Larghezza,120,Larghezza 120cm,Per materasso matrimoniale 120cm,25,12,true
+Rete,larghezza,Larghezza,140,Larghezza 140cm,Per materasso matrimoniale 140cm,40,18,true
+Rete,larghezza,Larghezza,160,Larghezza 160cm,Per materasso matrimoniale 160cm,55,25,true
+Rete,larghezza,Larghezza,180,Larghezza 180cm,Per materasso king size 180cm,75,35,true
+Rete,lunghezza,Lunghezza,190,Lunghezza 190cm,Lunghezza standard 190cm,0,0,true
+Rete,lunghezza,Lunghezza,200,Lunghezza 200cm,Lunghezza comoda 200cm,15,8,true
+Rete,colore_telaio,Colore Telaio,BK,Nero,Telaio verniciato nero opaco,0,0,true
+Rete,colore_telaio,Colore Telaio,WH,Bianco,Telaio verniciato bianco opaco,5,2,true
+Rete,colore_telaio,Colore Telaio,LW,Legno Wengé,Telaio effetto legno scuro,15,8,true
+Rete,colore_telaio,Colore Telaio,LN,Legno Naturale,Telaio effetto legno chiaro,12,6,true
+Rete,modello_piedino,Modello Piedino,P1,Piedino Basic,Piedino standard cilindrico,0,0,true
+Rete,modello_piedino,Modello Piedino,P2,Piedino Comfort,Piedino ergonomico con base larga,15,8,true
+Rete,modello_piedino,Modello Piedino,P3,Piedino Premium,Piedino regolabile in altezza,35,18,true
+Rete,misura_piedino,Misura Piedino,20,Altezza 20cm,Piedino basso per letti contenitore,0,0,true
+Rete,misura_piedino,Misura Piedino,25,Altezza 25cm,Piedino medio standard,3,1,true
+Rete,misura_piedino,Misura Piedino,30,Altezza 30cm,Piedino alto per pulizia agevole,5,2,true
+Rete,misura_piedino,Misura Piedino,35,Altezza 35cm,Piedino extra alto,8,4,true
+Rete,colore_piedino,Colore Piedino,BK,Nero,Piedini verniciati nero,0,0,true
+Rete,colore_piedino,Colore Piedino,WH,Bianco,Piedini verniciati bianco,2,1,true
+Rete,colore_piedino,Colore Piedino,CR,Cromato,Piedini cromati lucidi,8,4,true
+Rete,motorizzazione,Motorizzazione,NO,Nessuna,Rete manuale senza motorizzazione,0,0,true
+Rete,motorizzazione,Motorizzazione,EC,Elettrica Basic,Motorizzazione elettrica a 2 motori,450,200,true
+Rete,motorizzazione,Motorizzazione,EP,Elettrica Premium,Motorizzazione elettrica a 4 motori con telecomando,750,350,true

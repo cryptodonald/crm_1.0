@@ -78,6 +78,7 @@ export function DocumentiStep({ form }: DocumentiStepProps) {
   const uploadFileToBlob = async (file: File): Promise<any> => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('category', 'leads'); // Specifica la categoria per i leads
     
     const response = await fetch('/api/upload', {
       method: 'POST',

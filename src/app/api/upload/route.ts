@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { getBlobToken } from '@/lib/api-keys-service';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 
@@ -12,8 +12,10 @@ export async function POST(request: NextRequest) {
     const parseStart = performance.now();
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const category = formData.get('category') as string || 'general'; // Default category
     const parseTime = performance.now() - parseStart;
     console.log(`📁 [TIMING] Upload parsing: ${parseTime.toFixed(2)}ms`);
+    console.log(`📂 [CATEGORY] Upload category: ${category}`);
     
     if (!file) {
       recordError('upload_api', 'No file provided');
@@ -79,10 +81,10 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 [BLOB UPLOAD] Starting upload for:', file.name);
 
-    // Genera un nome file univoco
+    // Genera un nome file univoco con categoria appropriata
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const uniqueFileName = `leads/${timestamp}-${cleanFileName}`;
+    const uniqueFileName = `${category}/${timestamp}-${cleanFileName}`;
     
     const uploadStart = performance.now();
 
@@ -142,6 +144,91 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to upload file',
+        success: false,
+        details: errorMessage,
+        _timing: {
+          total: Math.round(totalTime),
+        }
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/upload - Delete file from blob storage
+ */
+export async function DELETE(request: NextRequest) {
+  const requestStart = performance.now();
+  
+  try {
+    console.log('🗑️ [Delete API] Starting DELETE request');
+    
+    const { searchParams } = new URL(request.url);
+    const fileUrl = searchParams.get('url');
+    
+    if (!fileUrl) {
+      recordError('delete_upload_api', 'No file URL provided');
+      return NextResponse.json(
+        { 
+          error: 'File URL is required',
+          success: false,
+        },
+        { status: 400 }
+      );
+    }
+    
+    console.log(`🗑️ [Delete API] Attempting to delete: ${fileUrl}`);
+    
+    const credentialsStart = performance.now();
+    // Ottieni il token Vercel Blob
+    const blobToken = await getBlobToken();
+    const credentialsTime = performance.now() - credentialsStart;
+    console.log(`🔑 [TIMING] Delete credentials: ${credentialsTime.toFixed(2)}ms`);
+    
+    if (!blobToken) {
+      throw new Error('Vercel Blob token not available');
+    }
+    
+    const deleteStart = performance.now();
+    
+    // Cancella il file dal blob storage
+    await del(fileUrl, {
+      token: blobToken,
+    });
+    
+    const deleteTime = performance.now() - deleteStart;
+    console.log(`🗑️ [TIMING] Blob delete: ${deleteTime.toFixed(2)}ms`);
+    
+    const totalTime = performance.now() - requestStart;
+    
+    // 📈 Record performance metrics
+    recordApiLatency('delete_upload_api', totalTime, false);
+    
+    console.log(`✅ [Delete API] Successfully deleted file in ${totalTime.toFixed(2)}ms`);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'File deleted successfully',
+      _timing: {
+        total: Math.round(totalTime),
+        credentials: Math.round(credentialsTime),
+        delete: Math.round(deleteTime),
+      }
+    });
+  } catch (error) {
+    const totalTime = performance.now() - requestStart;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // 📈 Record error metrics
+    recordError('delete_upload_api', errorMessage);
+    recordApiLatency('delete_upload_api', totalTime, false);
+    
+    console.error(`❌ [Delete API] Error in ${totalTime.toFixed(2)}ms:`, error);
+    
+    return NextResponse.json(
+      { 
+        error: 'Failed to delete file',
         success: false,
         details: errorMessage,
         _timing: {

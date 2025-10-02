@@ -212,7 +212,7 @@ async function createOrders(apiKey, baseId, leadsTableId, usersTableId) {
       { name: 'Data_Saldo', type: 'date' },
       { name: 'Scadenza_Pagamento', type: 'date' },
       { name: 'Note_Pagamento', type: 'multilineText' },
-      { name: 'Finanziamento_Richiesto', type: 'checkbox',
+      { name: 'Finanziamento_Richiesto', type: 'checkbox' },
       { name: 'Istituto_Finanziario', type: 'singleLineText' },
       { name: 'Importo_Finanziato', type: 'currency', options: { symbol: '€', precision: 2 } },
       {

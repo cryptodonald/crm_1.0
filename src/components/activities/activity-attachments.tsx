@@ -102,6 +102,7 @@ export function ActivityAttachments({ form }: ActivityAttachmentsProps) {
   const uploadFileToBlob = async (file: File): Promise<any> => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('category', 'activities'); // Specifica la categoria per le attività
     
     const response = await fetch('/api/upload', {
       method: 'POST',

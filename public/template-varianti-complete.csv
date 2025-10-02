@@ -1,0 +1,87 @@
+structure_name,field_id,field_name,code,name,description,price_modifier,cost_modifier,active
+Materasso,modello,Modello,M1,Modello Basic,Materasso entry level senza memory foam,0,0,true
+Materasso,modello,Modello,M2,Modello Comfort,Materasso con strato memory foam 5cm,150,75,true
+Materasso,modello,Modello,M3,Modello Premium,Materasso memory foam alta densità + gel,300,150,true
+Materasso,modello,Modello,M4,Modello Luxury,Materasso top gamma con memory gel e molle insacchettate,500,250,true
+Materasso,larghezza,Larghezza,080,Larghezza 80cm,Singolo francese,0,0,true
+Materasso,larghezza,Larghezza,090,Larghezza 90cm,Singolo standard,-50,-25,true
+Materasso,larghezza,Larghezza,120,Larghezza 120cm,Una piazza e mezza,50,25,true
+Materasso,larghezza,Larghezza,140,Larghezza 140cm,Matrimoniale piccolo,100,50,true
+Materasso,larghezza,Larghezza,160,Larghezza 160cm,Matrimoniale standard,150,75,true
+Materasso,larghezza,Larghezza,170,Larghezza 170cm,Matrimoniale grande,180,90,true
+Materasso,larghezza,Larghezza,180,Larghezza 180cm,King size,220,110,true
+Materasso,larghezza,Larghezza,200,Larghezza 200cm,Super king,300,150,true
+Materasso,lunghezza,Lunghezza,190,Lunghezza 190cm,Lunghezza standard,0,0,true
+Materasso,lunghezza,Lunghezza,195,Lunghezza 195cm,Lunghezza intermedia,25,12,true
+Materasso,lunghezza,Lunghezza,200,Lunghezza 200cm,Lunghezza lunga,50,25,true
+Materasso,lunghezza,Lunghezza,210,Lunghezza 210cm,Lunghezza extra,100,50,true
+Materasso,taglia_sx,Taglia Sinistra,##,Nessuna taglia,Non utilizzare taglie diverse,0,0,true
+Materasso,taglia_sx,Taglia Sinistra,0S,Taglia S sinistra,Rigidità morbida lato sinistro,30,15,true
+Materasso,taglia_sx,Taglia Sinistra,0M,Taglia M sinistra,Rigidità media lato sinistro,35,18,true
+Materasso,taglia_sx,Taglia Sinistra,0L,Taglia L sinistra,Rigidità sostenuta lato sinistro,40,20,true
+Materasso,taglia_sx,Taglia Sinistra,0X,Taglia XL sinistra,Rigidità extra sostenuta lato sinistro,50,25,true
+Materasso,taglia_dx,Taglia Destra,##,Nessuna taglia,Non utilizzare taglie diverse,0,0,true
+Materasso,taglia_dx,Taglia Destra,0S,Taglia S destra,Rigidità morbida lato destro,30,15,true
+Materasso,taglia_dx,Taglia Destra,0M,Taglia M destra,Rigidità media lato destro,35,18,true
+Materasso,taglia_dx,Taglia Destra,0L,Taglia L destra,Rigidità sostenuta lato destro,40,20,true
+Materasso,taglia_dx,Taglia Destra,0X,Taglia XL destra,Rigidità extra sostenuta lato destro,50,25,true
+Materasso,topper_sx,Topper Sinistro,##,Nessun topper,Senza strato aggiuntivo,0,0,true
+Materasso,topper_sx,Topper Sinistro,T1,Topper Basic,Strato aggiuntivo 3cm memory foam,80,40,true
+Materasso,topper_sx,Topper Sinistro,T2,Topper Memory,Strato aggiuntivo 5cm memory foam,120,60,true
+Materasso,topper_sx,Topper Sinistro,T3,Topper Gel,Strato aggiuntivo memory foam con gel,160,80,true
+Materasso,topper_sx,Topper Sinistro,T4,Topper Premium,Strato aggiuntivo memory gel + climatizzato,220,110,true
+Materasso,topper_sx,Topper Sinistro,T5,Topper Luxury,Strato 7cm memory gel + termoregolazione,300,150,true
+Materasso,topper_dx,Topper Destro,##,Nessun topper,Senza strato aggiuntivo,0,0,true
+Materasso,topper_dx,Topper Destro,T1,Topper Basic,Strato aggiuntivo 3cm memory foam,80,40,true
+Materasso,topper_dx,Topper Destro,T2,Topper Memory,Strato aggiuntivo 5cm memory foam,120,60,true
+Materasso,topper_dx,Topper Destro,T3,Topper Gel,Strato aggiuntivo memory foam con gel,160,80,true
+Materasso,topper_dx,Topper Destro,T4,Topper Premium,Strato aggiuntivo memory gel + climatizzato,220,110,true
+Materasso,topper_dx,Topper Destro,T5,Topper Luxury,Strato 7cm memory gel + termoregolazione,300,150,true
+Materasso,cover,Cover,##,Nessun cover,Rivestimento standard incluso,0,0,true
+Materasso,cover,Cover,C1,Cover Basic,Rivestimento antiacaro traspirante,50,25,true
+Materasso,cover,Cover,C2,Cover Waterproof,Rivestimento impermeabile lavabile,80,40,true
+Materasso,cover,Cover,C3,Cover Antiacaro,Rivestimento certificato antiacaro e antibatterico,100,50,true
+Materasso,cover,Cover,C4,Cover Premium,Rivestimento in fibra di bambù termoregolante,150,75,true
+Materasso,cover,Cover,C5,Cover Luxury,Rivestimento Tencel con trattamento Silver+,200,100,true
+Rete,modello,Modello,R1,Rete Basic,Rete a doghe base senza regolazioni,0,0,true
+Rete,modello,Modello,R2,Rete Comfort,Rete a doghe con regolatori di rigidità,120,60,true
+Rete,modello,Modello,R3,Rete Premium,Rete a doghe ammortizzate con sospensioni,250,125,true
+Rete,modello,Modello,R4,Rete Luxury,Rete ergonomica con zone differenziate,400,200,true
+Rete,larghezza,Larghezza,080,Larghezza 80cm,Singolo francese,0,0,true
+Rete,larghezza,Larghezza,090,Larghezza 90cm,Singolo standard,-50,-25,true
+Rete,larghezza,Larghezza,120,Larghezza 120cm,Una piazza e mezza,50,25,true
+Rete,larghezza,Larghezza,140,Larghezza 140cm,Matrimoniale piccolo,100,50,true
+Rete,larghezza,Larghezza,160,Larghezza 160cm,Matrimoniale standard,150,75,true
+Rete,larghezza,Larghezza,170,Larghezza 170cm,Matrimoniale grande,180,90,true
+Rete,larghezza,Larghezza,180,Larghezza 180cm,King size,220,110,true
+Rete,larghezza,Larghezza,200,Larghezza 200cm,Super king,300,150,true
+Rete,lunghezza,Lunghezza,190,Lunghezza 190cm,Lunghezza standard,0,0,true
+Rete,lunghezza,Lunghezza,195,Lunghezza 195cm,Lunghezza intermedia,25,12,true
+Rete,lunghezza,Lunghezza,200,Lunghezza 200cm,Lunghezza lunga,50,25,true
+Rete,lunghezza,Lunghezza,210,Lunghezza 210cm,Lunghezza extra,100,50,true
+Rete,colore_telaio,Colore Telaio,BK,Nero,Telaio in acciaio verniciato nero,0,0,true
+Rete,colore_telaio,Colore Telaio,WH,Bianco,Telaio in acciaio verniciato bianco,20,10,true
+Rete,colore_telaio,Colore Telaio,GR,Grigio,Telaio in acciaio verniciato grigio antracite,25,12,true
+Rete,colore_telaio,Colore Telaio,LW,Legno,Telaio in legno massello di faggio,80,40,true
+Rete,colore_telaio,Colore Telaio,LO,Legno Olmo,Telaio in legno di olmo verniciato,120,60,true
+Rete,modello_piedino,Modello Piedino,##,Nessun piedino,Rete da inserire in contenitore o letto,0,0,true
+Rete,modello_piedino,Modello Piedino,P1,Piedino Basic,Piedino cilindrico in acciaio verniciato,25,12,true
+Rete,modello_piedino,Modello Piedino,P2,Piedino Comfort,Piedino con regolazione altezza,45,22,true
+Rete,modello_piedino,Modello Piedino,P3,Piedino Premium,Piedino ergonomico con ammortizzazione,80,40,true
+Rete,modello_piedino,Modello Piedino,P4,Piedino Design,Piedino cromato design moderno,120,60,true
+Rete,misura_piedino,Misura Piedino,##,Nessuna misura,Per reti senza piedini,0,0,true
+Rete,misura_piedino,Misura Piedino,15,15cm,Altezza piedino 15cm,0,0,true
+Rete,misura_piedino,Misura Piedino,20,20cm,Altezza piedino 20cm,5,2,true
+Rete,misura_piedino,Misura Piedino,25,25cm,Altezza piedino 25cm,10,5,true
+Rete,misura_piedino,Misura Piedino,30,30cm,Altezza piedino 30cm,15,7,true
+Rete,misura_piedino,Misura Piedino,35,35cm,Altezza piedino 35cm,20,10,true
+Rete,colore_piedino,Colore Piedino,BK,Nero,Piedino verniciato nero,0,0,true
+Rete,colore_piedino,Colore Piedino,WH,Bianco,Piedino verniciato bianco,5,2,true
+Rete,colore_piedino,Colore Piedino,CR,Cromato,Piedino cromato lucido,20,10,true
+Rete,colore_piedino,Colore Piedino,LW,Legno,Piedino in legno massello,30,15,true
+Rete,motorizzazione,Motorizzazione,##,Nessuna motorizzazione,Rete fissa senza motori,0,0,true
+Rete,motorizzazione,Motorizzazione,M1,Motore Basic,Motorizzazione testa con telecomando,300,150,true
+Rete,motorizzazione,Motorizzazione,M2,Motore Comfort,Motorizzazione testa + piedi con memory,450,225,true
+Rete,motorizzazione,Motorizzazione,M3,Motore Premium,Doppia motorizzazione indipendente,650,325,true
+Rete,motorizzazione,Motorizzazione,EC,Motore Elettronico,Sistema elettronico con app e posizioni preimpostate,1200,600,true
+Rete,motorizzazione,Motorizzazione,SM,Smart Massage,Motorizzazione con massaggio integrato,1800,900,true

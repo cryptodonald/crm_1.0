@@ -4,5 +4,10 @@
   "User": "tbl141xF7ZQskCqGh",
   "Automations": "tblSd4GAZo9yHQvG0",
   "Products": "tblEFvr3aT2jQdYUL",
-  "Test_Product_Variants": "tbl3pVjaj48qufJrO"
+  "Product_Variants": "tblGnZgea6HlO2pJ4",
+  "Product_Price_History": "tblXtMoiDwLEBG5WE",
+  "Orders": "tblkqfCMabBpVD1fP",
+  "Order_Items": "tblxzhMCa5UJOMZqC",
+  "Commission_Payments": "tblbn6gRCwpmYICdZ",
+  "Payment_Transactions": "tbl2bzbSxMDch72CY"
 }
