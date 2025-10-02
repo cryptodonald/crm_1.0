@@ -80,6 +80,7 @@ export const useCalendar = (): UseCalendarReturn => {
         case 'month':
           return addMonths(prev, 1);
         case 'week':
+        case 'agenda': // L'agenda naviga come la settimana
           return new Date(prev.getTime() + 7 * 24 * 60 * 60 * 1000);
         case 'day':
           return new Date(prev.getTime() + 24 * 60 * 60 * 1000);
@@ -95,6 +96,7 @@ export const useCalendar = (): UseCalendarReturn => {
         case 'month':
           return subMonths(prev, 1);
         case 'week':
+        case 'agenda': // L'agenda naviga come la settimana
           return new Date(prev.getTime() - 7 * 24 * 60 * 60 * 1000);
         case 'day':
           return new Date(prev.getTime() - 24 * 60 * 60 * 1000);
@@ -166,11 +168,13 @@ export const useCalendar = (): UseCalendarReturn => {
       }
       
       case 'agenda': {
-        // Per l'agenda, mostra il prossimo mese
-        const start = new Date();
+        // Per l'agenda, mostra la settimana corrente (navigabile con < >)
+        const start = new Date(currentDate);
+        start.setDate(currentDate.getDate() - ((currentDate.getDay() + 6) % 7));
         start.setHours(0, 0, 0, 0);
         
-        const end = addMonths(start, 1);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
         end.setHours(23, 59, 59, 999);
         
         return { start, end };
@@ -189,14 +193,21 @@ export const useCalendar = (): UseCalendarReturn => {
       case 'week': {
         const { start, end } = getDateRange();
         if (isSameMonth(start, end)) {
-          return format(start, "d", { locale: it }) + '-' + format(end, "d MMMM yyyy", { locale: it });
+          return format(start, "d", { locale: it }) + '-' + format(end, "d MMM yy", { locale: it });
         }
-        return format(start, "d MMM", { locale: it }) + ' - ' + format(end, "d MMM yyyy", { locale: it });
+        // Formato più compatto per settimane che attraversano mesi diversi
+        return format(start, "d/M", { locale: it }) + ' - ' + format(end, "d/M/yy", { locale: it });
       }
       case 'day':
         return format(currentDate, 'EEEE, d MMMM yyyy', { locale: it });
-      case 'agenda':
-        return 'Prossime attività';
+      case 'agenda': {
+        // Stesso formato della settimana per coerenza
+        const { start, end } = getDateRange();
+        if (isSameMonth(start, end)) {
+          return format(start, "d", { locale: it }) + '-' + format(end, "d MMM yy", { locale: it });
+        }
+        return format(start, "d/M", { locale: it }) + ' - ' + format(end, "d/M/yy", { locale: it });
+      }
       default:
         return format(currentDate, 'MMMM yyyy', { locale: it });
     }

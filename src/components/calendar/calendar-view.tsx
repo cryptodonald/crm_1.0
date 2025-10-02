@@ -1,13 +1,14 @@
 'use client';
 
 /**
- * 📅 CalendarView - Componente principale vista calendario
+ * 📅 CalendarView - Replica Google Calendar per CRM
  * 
- * Supporta multiple viste:
- * - Vista mese: Griglia 7x6 giorni
- * - Vista settimana: Timeline 7 giorni con orari
- * - Vista giorno: Timeline dettagliata singolo giorno
- * - Vista agenda: Lista attività ordinate per data
+ * Design coerente con il resto del CRM:
+ * - Vista mese: Griglia Google Calendar classica
+ * - Vista settimana: Timeline con slot orari
+ * - Vista agenda: Lista attività cronologica
+ * - Colori: Solo muted, primary, secondary (no custom colors)
+ * - Icone: Solo Lucide React (no emoji)
  */
 
 import React from 'react';
@@ -16,7 +17,12 @@ import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Plus } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar, Clock, Plus, Phone, Mail, MessageSquare, Users, RotateCcw, FileText } from 'lucide-react';
 import type { CalendarView } from '@/hooks/use-calendar';
 import type { ActivityData } from '@/types/activities';
 import { KANBAN_COLUMNS, getKanbanColumnFromState } from '@/types/activities';
@@ -46,111 +52,213 @@ const ActivityCard: React.FC<{
   const columnConfig = KANBAN_COLUMNS[kanbanColumn];
   
   // Determina il colore in base allo stato
-  const getStatusColor = (stato: string) => {
+  // Usa colori distintivi per ogni categoria di stato
+  const getStatusVariant = (stato: string): 'default' | 'secondary' | 'outline' | 'destructive' => {
     switch (kanbanColumn) {
       case 'to-do':
-        return 'bg-blue-100 border-blue-200 text-blue-800';
+        return 'outline'; // Blu outline per attività da fare
       case 'in-progress':
-        return 'bg-yellow-100 border-yellow-200 text-yellow-800';
+        return 'secondary'; // Ambra per attività in corso
       case 'done':
-        return 'bg-green-100 border-green-200 text-green-800';
+        return 'default'; // Verde per attività completate
       default:
-        return 'bg-gray-100 border-gray-200 text-gray-800';
+        return 'outline';
     }
   };
 
-  const getPriorityColor = (priorita?: string) => {
+  const getStatusClasses = (stato: string) => {
+    switch (kanbanColumn) {
+      case 'to-do':
+        return 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100'; // Blu per attività da fare
+      case 'in-progress':
+        return 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100'; // Ambra per in corso
+      case 'done':
+        return 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-200'; // Verde per completate
+      default:
+        return 'border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
+
+  const getPriorityIndicator = (priorita?: string) => {
+    // Solo un piccolo indicatore, no colori invasivi
     switch (priorita) {
       case 'Urgente':
-        return 'bg-red-500';
+        return 'border-l-2 border-l-destructive';
       case 'Alta':
-        return 'bg-orange-500';
-      case 'Media':
-        return 'bg-yellow-500';
-      case 'Bassa':
-        return 'bg-green-500';
+        return 'border-l-2 border-l-primary';
       default:
-        return 'bg-gray-400';
+        return '';
     }
   };
 
   const getTypeIcon = (tipo: string) => {
+    const iconProps = { className: 'w-3 h-3 text-muted-foreground' };
     switch (tipo) {
       case 'Chiamata':
-        return '📞';
+        return <Phone {...iconProps} />;
       case 'WhatsApp':
-        return '💬';
+        return <MessageSquare {...iconProps} />;
       case 'Email':
-        return '📧';
+        return <Mail {...iconProps} />;
       case 'SMS':
-        return '💬';
+        return <MessageSquare {...iconProps} />;
       case 'Consulenza':
-        return '👥';
+        return <Users {...iconProps} />;
       case 'Follow-up':
-        return '🔄';
+        return <RotateCcw {...iconProps} />;
       default:
-        return '📋';
+        return <FileText {...iconProps} />;
     }
   };
 
   if (compact) {
+    // Versione compatta per celle calendario - stile Google Calendar
     return (
-      <button
+      <div
         onClick={onClick}
         className={cn(
-          'w-full text-left px-2 py-1 rounded text-xs border transition-colors hover:opacity-80',
-          getStatusColor(activity.Stato)
+          'w-full text-left px-1.5 py-1 mb-0.5 rounded-sm border transition-all cursor-pointer text-xs',
+          'hover:shadow-sm hover:border-foreground/30 hover:bg-background/50',
+          getStatusClasses(activity.Stato),
+          getPriorityIndicator(activity.Priorità),
+          // Rendi le attività completate leggermente più opache
+          kanbanColumn === 'done' && 'opacity-80'
         )}
       >
-        <div className="flex items-center gap-1">
-          <span>{getTypeIcon(activity.Tipo)}</span>
-          <span className="truncate flex-1">
-            {activity['Nome Lead'] && activity['Nome Lead'][0] || 'Attività'}
-          </span>
-          {activity.Priorità && (
-            <div className={cn('w-2 h-2 rounded-full', getPriorityColor(activity.Priorità))} />
-          )}
+        <div className="flex items-center gap-1 min-w-0">
+          <div className="flex-shrink-0">
+            {getTypeIcon(activity.Tipo)}
+          </div>
+          <div className="truncate flex-1 font-medium leading-tight">
+            {(() => {
+              // Logica fallback migliorata per il nome dell'attività
+              if (activity['Nome Lead'] && activity['Nome Lead'][0]) {
+                return activity['Nome Lead'][0];
+              }
+              if (activity.Titolo && activity.Titolo !== '') {
+                return activity.Titolo;
+              }
+              if (activity.Obiettivo && activity.Obiettivo !== '') {
+                return activity.Obiettivo;
+              }
+              // Fallback finale con tipo di attività
+              return activity.Tipo || 'Attività';
+            })()}
+          </div>
         </div>
         {activity.Data && (
-          <div className="text-xs opacity-60 mt-1">
+          <div className="text-[10px] text-muted-foreground mt-0.5 leading-none">
             {format(new Date(activity.Data), 'HH:mm')}
           </div>
         )}
-      </button>
+      </div>
     );
   }
 
+  // Versione espansa per vista agenda
   return (
-    <button
+    <div
       onClick={onClick}
       className={cn(
-        'w-full text-left p-3 rounded-lg border transition-colors hover:opacity-80',
-        getStatusColor(activity.Stato)
+        'w-full p-4 rounded-lg border transition-all cursor-pointer',
+        'hover:shadow-sm hover:border-foreground/20 bg-background',
+        getStatusClasses(activity.Stato),
+        getPriorityIndicator(activity.Priorità),
+        // Rendi le attività completate leggermente più opache
+        kanbanColumn === 'done' && 'opacity-80'
       )}
     >
-      <div className="flex items-start gap-2">
-        <span className="text-lg">{getTypeIcon(activity.Tipo)}</span>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">
+          {getTypeIcon(activity.Tipo)}
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">
-              {activity['Nome Lead'] && activity['Nome Lead'][0] || 'Attività'}
-            </span>
-            {activity.Priorità && (
-              <div className={cn('w-3 h-3 rounded-full', getPriorityColor(activity.Priorità))} />
-            )}
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="font-medium text-sm truncate">
+                {activity['Nome Lead'] && activity['Nome Lead'][0] || activity.Titolo || 'Attività'}
+              </h4>
+              <p className="text-sm text-muted-foreground mt-1">
+                {activity.Tipo}
+                {activity.Obiettivo && ` • ${activity.Obiettivo}`}
+              </p>
+            </div>
+            <Badge variant={getStatusVariant(activity.Stato)} className="text-xs shrink-0 ml-2">
+              {activity.Stato}
+            </Badge>
           </div>
-          <div className="text-sm opacity-70 mt-1">
-            {activity.Tipo} - {activity.Stato}
-          </div>
+          
+          {activity.Note && (
+            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+              {activity.Note}
+            </p>
+          )}
+          
           {activity.Data && (
-            <div className="flex items-center gap-1 text-xs opacity-60 mt-1">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
               <Clock className="w-3 h-3" />
-              {format(new Date(activity.Data), 'HH:mm')}
+              {format(new Date(activity.Data), 'EEEE d MMMM, HH:mm', { locale: it })}
             </div>
           )}
         </div>
       </div>
-    </button>
+    </div>
+  );
+};
+
+// ===== DAY ACTIVITIES POPOVER COMPONENT =====
+const DayActivitiesPopover: React.FC<{
+  date: Date;
+  activities: ActivityData[];
+  onActivityClick: (activity: ActivityData) => void;
+  children: React.ReactNode;
+}> = ({ date, activities, onActivityClick, children }) => {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        {children}
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="start">
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-4 h-4" />
+            <h3 className="font-semibold">
+              {format(date, 'EEEE, d MMMM yyyy', { locale: it })}
+            </h3>
+            <Badge variant="outline" className="text-xs">
+              {activities.length}
+            </Badge>
+          </div>
+          
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {activities.map((activity, index) => (
+              <div
+                key={activity.id}
+                onClick={() => {
+                  setOpen(false);
+                  onActivityClick(activity);
+                }}
+                className="cursor-pointer"
+              >
+                <ActivityCard
+                  activity={activity}
+                  compact={true}
+                  onClick={() => {}} // onClick vuoto per evitare conflitti
+                />
+              </div>
+            ))}
+          </div>
+          
+          {activities.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nessuna attività per questo giorno
+            </p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -212,20 +320,20 @@ const MonthView: React.FC<{
   const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header giorni della settimana */}
-      <div className="grid grid-cols-7 gap-px bg-muted p-1 rounded-t-lg">
+    <div className="flex flex-col h-full bg-background border rounded-lg">
+      {/* Header giorni della settimana - stile Google Calendar */}
+      <div className="grid grid-cols-7 border-b">
         {dayNames.map(day => (
-          <div key={day} className="bg-background p-2 text-center font-medium text-sm text-muted-foreground">
+          <div key={day} className="p-3 text-center font-medium text-sm text-muted-foreground border-r last:border-r-0">
             {day}
           </div>
         ))}
       </div>
 
-      {/* Griglia calendario */}
-      <div className="flex-1 grid grid-rows-6 gap-px bg-muted p-1 rounded-b-lg">
+      {/* Griglia calendario - celle più grandi stile Google */}
+      <div className="flex-1 flex flex-col">
         {weeks.map((week, weekIndex) => (
-          <React.Fragment key={weekIndex}>
+          <div key={weekIndex} className="flex-1 grid grid-cols-7 border-b last:border-b-0">
             {week.map(day => {
               const dayActivities = getActivitiesForDate(day);
               const isDayToday = checkIsToday(day);
@@ -236,26 +344,61 @@ const MonthView: React.FC<{
                 <div
                   key={day.toISOString()}
                   className={cn(
-                    'bg-background p-2 flex flex-col gap-1 min-h-[120px] cursor-pointer transition-colors',
-                    'hover:bg-muted/50',
-                    isDaySelected && 'ring-2 ring-primary',
-                    !isDayCurrentMonth && 'text-muted-foreground bg-muted/30'
+                    // Responsive: più piccole su mobile, più grandi su desktop
+                    'relative min-h-[110px] md:min-h-[130px] lg:min-h-[150px] p-1.5 md:p-2.5 border-r last:border-r-0 cursor-pointer transition-colors group overflow-hidden',
+                    'hover:bg-muted/30 touch-manipulation', // touch-friendly
+                    isDaySelected && 'bg-primary/5 ring-1 ring-primary/20',
+                    !isDayCurrentMonth && 'text-muted-foreground/50 bg-muted/10'
                   )}
                   onClick={() => onDateClick(day)}
                 >
-                  {/* Numero giorno */}
-                  <div className="flex items-center justify-between">
-                    <span className={cn(
-                      'text-sm font-medium',
-                      isDayToday && 'bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center'
-                    )}>
-                      {format(day, 'd')}
-                    </span>
-                    {/* Bottone aggiungi attività */}
+                  {/* Header cella con numero giorno */}
+                  <div className="flex items-center justify-between mb-2">
+                    {/* Numero del giorno - cliccabile se ci sono molte attività */}
+                    {dayActivities.length > 4 ? (
+                      <DayActivitiesPopover
+                        date={day}
+                        activities={dayActivities}
+                        onActivityClick={onActivityClick}
+                      >
+                        <div 
+                          className={cn(
+                            'relative cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5 transition-colors',
+                            'text-sm font-semibold',
+                            isDayToday && 'text-primary',
+                            !isDayToday && isDayCurrentMonth && 'text-foreground',
+                            !isDayCurrentMonth && 'text-muted-foreground/50'
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Vedi tutte le ${dayActivities.length} attività`}
+                        >
+                          {format(day, 'd')}
+                          {isDayToday && (
+                            <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full"></div>
+                          )}
+                        </div>
+                      </DayActivitiesPopover>
+                    ) : (
+                      <div className="relative">
+                        <span className={cn(
+                          'text-sm font-semibold inline-block',
+                          isDayToday && 'text-primary',
+                          !isDayToday && isDayCurrentMonth && 'text-foreground',
+                          !isDayCurrentMonth && 'text-muted-foreground/50'
+                        )}>
+                          {format(day, 'd')}
+                        </span>
+                        {isDayToday && (
+                          <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full"></div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Bottone add attività - visibile al hover */}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-5 h-5 p-0 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity"
+                      className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         onCreateActivity(day);
@@ -265,26 +408,44 @@ const MonthView: React.FC<{
                     </Button>
                   </div>
 
-                  {/* Attività del giorno */}
-                  <div className="flex-1 space-y-1 overflow-hidden">
-                    {dayActivities.slice(0, 3).map(activity => (
-                      <ActivityCard
+                  {/* Lista attività del giorno */}
+                  <div className="space-y-1 overflow-hidden">
+                    {dayActivities.slice(0, 4).map((activity, index) => (
+                      <div
                         key={activity.id}
-                        activity={activity}
-                        compact
-                        onClick={() => onActivityClick(activity)}
-                      />
-                    ))}
-                    {dayActivities.length > 3 && (
-                      <div className="text-xs text-muted-foreground text-center py-1">
-                        +{dayActivities.length - 3} altre
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onActivityClick(activity);
+                        }}
+                      >
+                        <ActivityCard
+                          activity={activity}
+                          compact
+                          onClick={() => onActivityClick(activity)}
+                        />
                       </div>
+                    ))}
+                    
+                    {/* Indicator per attività aggiuntive con popover */}
+                    {dayActivities.length > 4 && (
+                      <DayActivitiesPopover
+                        date={day}
+                        activities={dayActivities}
+                        onActivityClick={onActivityClick}
+                      >
+                        <div 
+                          className="text-xs text-muted-foreground px-2 py-1 hover:bg-muted/50 rounded cursor-pointer transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          +{dayActivities.length - 4} altre attività
+                        </div>
+                      </DayActivitiesPopover>
                     )}
                   </div>
                 </div>
               );
             })}
-          </React.Fragment>
+          </div>
         ))}
       </div>
     </div>
@@ -297,7 +458,8 @@ const WeekView: React.FC<{
   activities: ActivityData[];
   onActivityClick: (activity: ActivityData) => void;
   onCreateActivity: (date: Date) => void;
-}> = ({ currentDate, activities, onActivityClick, onCreateActivity }) => {
+  isToday: (date: Date) => boolean;
+}> = ({ currentDate, activities, onActivityClick, onCreateActivity, isToday: checkIsToday }) => {
   // Calcola i giorni della settimana
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = eachDayOfInterval({
@@ -307,53 +469,161 @@ const WeekView: React.FC<{
 
   // Ore della giornata (8-20)
   const hours = Array.from({ length: 13 }, (_, i) => i + 8);
+  
+  // Filtra e raggruppa attività per giorno e ora
+  const getActivitiesForDayAndHour = (day: Date, hour: number) => {
+    return activities.filter(activity => {
+      if (!activity.Data) return false;
+      const activityDate = new Date(activity.Data);
+      return (
+        isSameDay(activityDate, day) &&
+        activityDate.getHours() === hour
+      );
+    });
+  };
+  
+  // Ottieni tutte le attività per un giorno
+  const getActivitiesForDay = (day: Date) => {
+    return activities.filter(activity => {
+      if (!activity.Data) return false;
+      return isSameDay(new Date(activity.Data), day);
+    });
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header giorni */}
-      <div className="flex border-b">
-        <div className="w-16 p-2 border-r"></div>
-        {weekDays.map(day => (
-          <div key={day.toISOString()} className="flex-1 p-2 text-center border-r last:border-r-0">
-            <div className="font-medium">{format(day, 'EEE d', { locale: it })}</div>
-            {isToday(day) && (
-              <div className="w-2 h-2 bg-primary rounded-full mx-auto mt-1"></div>
-            )}
-          </div>
-        ))}
+    <div className="flex flex-col h-full bg-background border rounded-lg">
+      {/* Header giorni della settimana - stile come MonthView */}
+      <div className="grid grid-cols-8 border-b">
+        <div className="p-3 border-r text-xs text-muted-foreground"></div>
+        {weekDays.map(day => {
+          const isDayToday = checkIsToday(day);
+          return (
+            <div key={day.toISOString()} className="p-3 text-center border-r last:border-r-0">
+              <div className="font-medium text-sm mb-1">{format(day, 'EEE', { locale: it })}</div>
+              <div className={cn(
+                'text-lg font-semibold h-8 w-8 flex items-center justify-center rounded-full mx-auto transition-colors',
+                isDayToday && 'bg-primary text-primary-foreground',
+                !isDayToday && 'text-foreground hover:bg-muted'
+              )}>
+                {format(day, 'd')}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Griglia orari */}
+      {/* Griglia orari con stile simile al mese */}
       <div className="flex-1 overflow-auto">
-        <div className="flex min-h-full">
-          {/* Colonna orari */}
-          <div className="w-16 border-r">
-            {hours.map(hour => (
-              <div key={hour} className="h-16 p-2 border-b text-xs text-muted-foreground">
-                {hour}:00
-              </div>
-            ))}
-          </div>
-
-          {/* Colonne giorni */}
-          {weekDays.map(day => (
-            <div key={day.toISOString()} className="flex-1 border-r last:border-r-0">
-              {hours.map(hour => (
+        {hours.map(hour => (
+          <div key={hour} className="grid grid-cols-8 border-b last:border-b-0 min-h-[80px]">
+            {/* Colonna orari */}
+            <div className="p-2 border-r text-xs text-muted-foreground bg-muted/20 flex items-start">
+              <span className="font-medium">{hour}:00</span>
+            </div>
+            
+            {/* Colonne giorni */}
+            {weekDays.map(day => {
+              const hourActivities = getActivitiesForDayAndHour(day, hour);
+              const dayActivities = getActivitiesForDay(day);
+              
+              return (
                 <div
-                  key={hour}
-                  className="h-16 p-1 border-b hover:bg-muted/50 cursor-pointer"
+                  key={`${day.toISOString()}-${hour}`}
+                  className={cn(
+                    'relative p-2 border-r last:border-r-0 cursor-pointer transition-colors group min-h-[80px]',
+                    'hover:bg-muted/30'
+                  )}
                   onClick={() => {
                     const dateTime = new Date(day);
                     dateTime.setHours(hour, 0, 0, 0);
                     onCreateActivity(dateTime);
                   }}
                 >
-                  {/* TODO: Mostra attività per questo slot temporale */}
+                  {/* Bottone add attività - visibile al hover */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1 right-1 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const dateTime = new Date(day);
+                      dateTime.setHours(hour, 0, 0, 0);
+                      onCreateActivity(dateTime);
+                    }}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                  
+                  {/* Attività per questo slot temporale */}
+                  <div className="space-y-1">
+                    {hourActivities.slice(0, 2).map((activity) => (
+                      <div
+                        key={activity.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onActivityClick(activity);
+                        }}
+                      >
+                        <ActivityCard
+                          activity={activity}
+                          compact={true}
+                          onClick={() => onActivityClick(activity)}
+                        />
+                      </div>
+                    ))}
+                    {hourActivities.length > 2 && (
+                      <DayActivitiesPopover
+                        date={day}
+                        activities={hourActivities}
+                        onActivityClick={onActivityClick}
+                      >
+                        <div 
+                          className="text-xs text-muted-foreground px-2 py-1 hover:bg-muted/50 rounded cursor-pointer transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          +{hourActivities.length - 2} altre attività
+                        </div>
+                      </DayActivitiesPopover>
+                    )}
+                  </div>
+                  
+                  {/* Attività all-day o senza ora specifica - solo nella prima ora (8:00) */}
+                  {hour === 8 && dayActivities.filter(activity => {
+                    if (!activity.Data) return true;
+                    const activityDate = new Date(activity.Data);
+                    const activityHour = activityDate.getHours();
+                    return activityHour === 0 || activityHour < 8 || activityHour > 20;
+                  }).length > 0 && (
+                    <DayActivitiesPopover
+                      date={day}
+                      activities={dayActivities.filter(activity => {
+                        if (!activity.Data) return true;
+                        const activityDate = new Date(activity.Data);
+                        const activityHour = activityDate.getHours();
+                        return activityHour === 0 || activityHour < 8 || activityHour > 20;
+                      })}
+                      onActivityClick={onActivityClick}
+                    >
+                      <div 
+                        className="absolute top-2 left-2 right-8 bg-primary/10 border border-primary/30 rounded px-2 py-1 cursor-pointer hover:bg-primary/20 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="text-xs font-medium text-primary">
+                          {dayActivities.filter(activity => {
+                            if (!activity.Data) return true;
+                            const activityDate = new Date(activity.Data);
+                            const activityHour = activityDate.getHours();
+                            return activityHour === 0 || activityHour < 8 || activityHour > 20;
+                          }).length} attività giornaliere
+                        </div>
+                      </div>
+                    </DayActivitiesPopover>
+                  )}
                 </div>
-              ))}
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -449,6 +719,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             activities={activities}
             onActivityClick={onActivityClick}
             onCreateActivity={onCreateActivity}
+            isToday={checkIsToday}
           />
         </div>
       );

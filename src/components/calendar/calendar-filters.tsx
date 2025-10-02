@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
-import { X, Filter, ChevronDown, ChevronRight, Users, Calendar, Clock } from 'lucide-react';
+import { X, Filter, ChevronDown, ChevronRight, Users, Calendar, Clock, Phone, Mail, MessageSquare, RotateCcw, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ActivityData, ActivityStato, ActivityPriorita, ActivityTipo } from '@/types/activities';
 import { KANBAN_COLUMNS, getKanbanColumnFromState } from '@/types/activities';
@@ -131,16 +131,17 @@ const StatusFilters: React.FC<{
     }
   };
 
+  // Design coerente con il resto del CRM - solo colori standard
   const getStatusColor = (kanbanColumn: string) => {
     switch (kanbanColumn) {
       case 'to-do':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-muted border-border text-foreground';
       case 'in-progress':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-muted/70 border-border text-foreground';
       case 'done':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-muted/50 border-border text-muted-foreground';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-muted border-border text-foreground';
     }
   };
 
@@ -215,17 +216,14 @@ const PriorityFilters: React.FC<{
   }, [activities]);
 
   const getPriorityColor = (priorita: string) => {
+    // Solo due livelli di priorità visiva - senza colori invasivi
     switch (priorita) {
       case 'Urgente':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-destructive/10 text-destructive border-destructive/20';
       case 'Alta':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'Media':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Bassa':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-primary/10 text-primary border-primary/20';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -300,21 +298,22 @@ const TypeFilters: React.FC<{
   }, [activities]);
 
   const getTypeIcon = (tipo: string) => {
+    const iconProps = { className: 'w-4 h-4 text-muted-foreground' };
     switch (tipo) {
       case 'Chiamata':
-        return '📞';
+        return <Phone {...iconProps} />;
       case 'WhatsApp':
-        return '💬';
+        return <MessageSquare {...iconProps} />;
       case 'Email':
-        return '📧';
+        return <Mail {...iconProps} />;
       case 'SMS':
-        return '💬';
+        return <MessageSquare {...iconProps} />;
       case 'Consulenza':
-        return '👥';
+        return <Users {...iconProps} />;
       case 'Follow-up':
-        return '🔄';
+        return <RotateCcw {...iconProps} />;
       default:
-        return '📋';
+        return <FileText {...iconProps} />;
     }
   };
 
@@ -349,7 +348,7 @@ const TypeFilters: React.FC<{
               htmlFor={`type-${tipo}`}
               className="text-sm cursor-pointer flex-1 flex items-center gap-2"
             >
-              <span>{getTypeIcon(tipo)}</span>
+              {getTypeIcon(tipo)}
               <span>{tipo}</span>
               <Badge variant="outline" className="text-xs ml-auto">
                 {count}
@@ -414,30 +413,51 @@ export const CalendarFilters: React.FC<CalendarFiltersProps> = ({
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Statistiche rapide */}
+        {/* Panoramica - design simile a LeadsStats */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-muted-foreground">Panoramica</h4>
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
-              <span className="text-sm">Totale attività</span>
-              <Badge>{stats.total}</Badge>
+          
+          {/* Statistiche con design a card dell'immagine */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="from-muted/30 to-muted/60 border-border bg-gradient-to-br p-3 rounded-lg border text-center">
+              <div className="text-2xl font-bold">{(() => {
+                const byStatus = { 'to-do': 0, 'in-progress': 0, 'done': 0 };
+                activities.forEach(activity => {
+                  const kanbanColumn = getKanbanColumnFromState(activity.Stato);
+                  byStatus[kanbanColumn]++;
+                });
+                return byStatus['to-do'];
+              })()}</div>
+              <div className="text-sm text-muted-foreground">Da fare</div>
             </div>
-            {stats.todayCount > 0 && (
-              <div className="flex items-center justify-between p-2 bg-blue-50 rounded">
-                <span className="text-sm">Oggi</span>
-                <Badge variant="secondary">{stats.todayCount}</Badge>
-              </div>
-            )}
-            {stats.weekCount > 0 && (
-              <div className="flex items-center justify-between p-2 bg-yellow-50 rounded">
-                <span className="text-sm">Prossimi 7 giorni</span>
-                <Badge variant="secondary">{stats.weekCount}</Badge>
-              </div>
-            )}
+            <div className="from-muted/30 to-muted/60 border-border bg-gradient-to-br p-3 rounded-lg border text-center">
+              <div className="text-2xl font-bold">{(() => {
+                const byStatus = { 'to-do': 0, 'in-progress': 0, 'done': 0 };
+                activities.forEach(activity => {
+                  const kanbanColumn = getKanbanColumnFromState(activity.Stato);
+                  byStatus[kanbanColumn]++;
+                });
+                return byStatus['in-progress'];
+              })()}</div>
+              <div className="text-sm text-muted-foreground">In corso</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="from-muted/30 to-muted/60 border-border bg-gradient-to-br p-3 rounded-lg border text-center">
+              <div className="text-2xl font-bold">{(() => {
+                const byStatus = { 'to-do': 0, 'in-progress': 0, 'done': 0 };
+                activities.forEach(activity => {
+                  const kanbanColumn = getKanbanColumnFromState(activity.Stato);
+                  byStatus[kanbanColumn]++;
+                });
+                return byStatus['done'];
+              })()}</div>
+              <div className="text-sm text-muted-foreground">Completate</div>
+            </div>
             {stats.overdueCount > 0 && (
-              <div className="flex items-center justify-between p-2 bg-red-50 rounded">
-                <span className="text-sm">In ritardo</span>
-                <Badge variant="destructive">{stats.overdueCount}</Badge>
+              <div className="from-destructive/10 to-destructive/20 border-destructive/20 bg-gradient-to-br p-3 rounded-lg border text-center">
+                <div className="text-2xl font-bold text-destructive">{stats.overdueCount}</div>
+                <div className="text-sm text-destructive/80">In ritardo</div>
               </div>
             )}
           </div>
