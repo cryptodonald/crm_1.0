@@ -79,6 +79,8 @@ export function useProductVariants({
       Posizione: variant.fields.Posizione,
       Obbligatorio: variant.fields.Obbligatorio || false,
       Attivo: variant.fields.Attivo || false,
+      // Include strutture collegate per filtri
+      Product_Structures: variant.fields.Product_Structures || [],
     }));
   }, [fetchUrl]);
 
@@ -154,6 +156,7 @@ export function useProductVariants({
           Posizione: newVariant.fields.Posizione,
           Obbligatorio: newVariant.fields.Obbligatorio || false,
           Attivo: newVariant.fields.Attivo || false,
+          Product_Structures: newVariant.fields.Product_Structures || [],
         },
         ...prevVariants
       ]);

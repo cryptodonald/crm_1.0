@@ -26,6 +26,8 @@ function parseVariantRecord(record: any): ProductVariant {
       Posizione: record.fields.Posizione || undefined,
       Obbligatorio: record.fields.Obbligatorio || false,
       Attivo: record.fields.Attivo || false,
+      // Aggiungi campo per le strutture collegate
+      Product_Structures: record.fields.Product_Structures || [],
     }
   };
 }

@@ -113,46 +113,56 @@ export function IntegratedConfigurator({
     return generateProductCode(selectedStructure, selectedVariants);
   }, [selectedStructure, selectedVariants]);
   
-  // Generate compact product name: just model and dimensions  
+  // Generate compact product name: Struttura + Modello + Dimensioni
   const generatedName = useMemo(() => {
     if (!selectedStructure) return '';
     
-    let baseName = productData.Categoria || 'Prodotto';
+    let compactName = selectedStructure.name; // Inizia con la struttura (es. "Materasso")
     
-    // Convert plural to singular for cleaner names
-    if (baseName === 'Materassi') baseName = 'Materasso';
-    if (baseName === 'Cuscini') baseName = 'Cuscino';
+    // Trova il modello
+    const modelVariant = Object.entries(selectedVariants)
+      .find(([fieldId]) => fieldId === 'modello' || fieldId.toLowerCase().includes('modello'));
     
-    const structureName = selectedStructure.name;
-    
-    // Extract dimensions only
-    const dimensions: string[] = [];
-    
-    Object.entries(selectedVariants).forEach(([fieldId, variantCode]) => {
+    // Aggiungi modello se presente
+    if (modelVariant) {
+      const [fieldId, variantCode] = modelVariant;
       const selectedVariant = variants.find(v => v.Codice_Variante === variantCode);
-      if (!selectedVariant) return;
-      
-      const fieldIdLower = fieldId.toLowerCase();
-      const variantName = selectedVariant.Nome_Variante || '';
-      
-      // Only extract dimensions for the name
-      if (fieldIdLower.includes('larghezza') || fieldIdLower.includes('lunghezza')) {
-        const match = variantName.match(/(\d+)\s*cm/);
-        if (match) dimensions.push(match[1]);
+      if (selectedVariant) {
+        const variantName = selectedVariant.Nome_Variante || '';
+        // Pulisci il nome del modello rimuovendo "Modello " se presente
+        const modelName = variantName.replace(/^Modello\s+/i, '');
+        compactName += ` ${modelName}`;
       }
-    });
+    }
     
-    // Build compact name: "Categoria Struttura Dimensioni"
-    let compactName = `${baseName} ${structureName}`;
+    // Trova e aggiungi le dimensioni (larghezza x lunghezza)
+    const dimensionVariants = Object.entries(selectedVariants)
+      .filter(([fieldId]) => fieldId.toLowerCase().includes('larghezza') || fieldId.toLowerCase().includes('lunghezza'));
     
-    if (dimensions.length >= 2) {
-      compactName += ` ${dimensions[0]}x${dimensions[1]}`;
-    } else if (dimensions.length === 1) {
-      compactName += ` ${dimensions[0]}cm`;
+    if (dimensionVariants.length > 0) {
+      const dimensions: string[] = [];
+      
+      // Ordina: larghezza prima, lunghezza dopo
+      dimensionVariants
+        .sort((a, b) => a[0].toLowerCase().includes('larghezza') ? -1 : 1)
+        .forEach(([fieldId, variantCode]) => {
+          const selectedVariant = variants.find(v => v.Codice_Variante === variantCode);
+          if (selectedVariant) {
+            const variantName = selectedVariant.Nome_Variante || '';
+            const match = variantName.match(/(\d+)/);
+            if (match) dimensions.push(match[1]);
+          }
+        });
+      
+      if (dimensions.length >= 2) {
+        compactName += ` ${dimensions[0]}x${dimensions[1]}`;
+      } else if (dimensions.length === 1) {
+        compactName += ` ${dimensions[0]}cm`;
+      }
     }
     
     return compactName;
-  }, [selectedStructure, selectedVariants, variants, productData.Categoria]);
+  }, [selectedStructure, selectedVariants, variants]);
   
   // Generate detailed description
   const generatedDescription = useMemo(() => {
@@ -381,11 +391,19 @@ export function IntegratedConfigurator({
                 {selectedStructure.fields
                   .sort((a, b) => a.position - b.position)
                   .map((field) => {
-                    // Get real variants for this field type
-                    const fieldVariants = variants.filter(v => 
-                      v.Tipo_Variante?.toLowerCase().includes(field.id?.toLowerCase()) ||
-                      field.id?.toLowerCase().includes(v.Tipo_Variante?.toLowerCase())
-                    );
+                    // Get real variants for this field type and current structure
+                    const fieldVariants = variants.filter(v => {
+                      // Filtra per tipo di campo
+                      const matchesFieldType = v.Tipo_Variante?.toLowerCase().includes(field.id?.toLowerCase()) ||
+                                               field.id?.toLowerCase().includes(v.Tipo_Variante?.toLowerCase());
+                      
+                      // Filtra per struttura (se la variante ha strutture collegate)
+                      const matchesStructure = !v.Product_Structures || 
+                                               v.Product_Structures.length === 0 || 
+                                               v.Product_Structures.includes(selectedStructure.id);
+                      
+                      return matchesFieldType && matchesStructure;
+                    });
                     const activeOptions = fieldVariants
                       .filter(variant => variant.Attivo)
                       .sort((a, b) => (a.Posizione || 0) - (b.Posizione || 0)); // Sort by position

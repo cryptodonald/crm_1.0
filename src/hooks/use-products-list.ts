@@ -196,13 +196,26 @@ export function useProductsList({
 
   // 📊 Calcola statistiche dai prodotti caricati
   const stats = useMemo((): ProductStatsResponse | null => {
-    if (!products || products.length === 0) return null;
+    console.log('🧮 [useProductsList] Calcolando stats con prodotti:', products?.length || 0, products);
+    
+    if (!products || products.length === 0) {
+      console.log('⚠️ [useProductsList] Nessun prodotto trovato, restituendo null');
+      return null;
+    }
 
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const totale = products.length;
     const attivi = products.filter(p => p.Attivo).length;
+    
+    console.log('📊 [useProductsList] Stats base:', { totale, attivi });
+    console.log('🔍 [useProductsList] Primo prodotto dettaglio:', {
+      Attivo: products[0]?.Attivo,
+      tipoAttivo: typeof products[0]?.Attivo,
+      Prezzo_Listino_Attuale: products[0]?.Prezzo_Listino_Attuale,
+      Margine_Standard: products[0]?.Margine_Standard
+    });
     const inEvidenza = products.filter(p => p.In_Evidenza).length;
 
     // Breakdown per categoria

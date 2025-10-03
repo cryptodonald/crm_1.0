@@ -58,13 +58,40 @@ export default function ProductsPage() {
     }
   });
   
-  // Hook per statistiche (manteniamo quello esistente)
-  const { stats } = useProductsList({ 
-    filters: {
-      ...filters,
-      search: searchTerm.length > 2 ? searchTerm : undefined
+  // Calcoliamo le statistiche direttamente dai prodotti di useProducts
+  const directStats = useMemo(() => {
+    if (!products || products.length === 0) return null;
+    
+    const totale = products.length;
+    const attivi = products.filter(p => p.Attivo === true || p.Attivo === 1).length;
+    const inEvidenza = products.filter(p => p.In_Evidenza === true || p.In_Evidenza === 1).length;
+    
+    // Calcoli prezzi
+    const prodottiConPrezzo = products.filter(p => p.Prezzo_Listino_Attuale && p.Prezzo_Listino_Attuale > 0);
+    const prezzoTotaleInventario = prodottiConPrezzo.reduce((sum, p) => sum + (p.Prezzo_Listino_Attuale || 0), 0);
+    const prezzoMedio = prodottiConPrezzo.length > 0 ? prezzoTotaleInventario / prodottiConPrezzo.length : 0;
+    
+    // Margine medio ponderato
+    const prodottiConMargine = products.filter(p => p.Margine_Standard && p.Prezzo_Listino_Attuale);
+    let margineMediaPonderata = 0;
+    if (prodottiConMargine.length > 0) {
+      const sommaMarginePesate = prodottiConMargine.reduce((sum, p) => {
+        const margine = (p.Margine_Standard || 0) * 100; // Convert from decimal to percentage
+        const peso = p.Prezzo_Listino_Attuale || 0;
+        return sum + (margine * peso);
+      }, 0);
+      const sommaPreziTotale = prodottiConMargine.reduce((sum, p) => sum + (p.Prezzo_Listino_Attuale || 0), 0);
+      margineMediaPonderata = sommaPreziTotale > 0 ? sommaMarginePesate / sommaPreziTotale : 0;
     }
-  });
+    
+    return {
+      totalProducts: totale,
+      activeProducts: attivi,
+      featuredProducts: inEvidenza,
+      totalInventoryValue: prezzoTotaleInventario,
+      averageMargin: margineMediaPonderata,
+    };
+  }, [products]);
 
   // Handler per i filtri
   const handleFilterChange = (key: keyof ProductFilters, value: any) => {
@@ -92,22 +119,23 @@ export default function ProductsPage() {
     setSearchTerm('');
   };
 
-  // Calcola statistiche seguendo il pattern di LeadsPage
+  // Calcola statistiche usando directStats (dati diretti da useProducts)
   const productStats = useMemo(() => {
-    if (!stats) return null;
+    if (!directStats) return null;
     
     return {
-      totale: stats.totale ?? 0,
-      attivi: stats.attivi ?? 0,
-      prezzoTotaleInventario: stats.prezzoTotaleInventario ?? 0,
-      prezzoMedio: stats.prezzoMedio ?? 0,
-      margineMediaPonderata: stats.margineMediaPonderata ?? 0,
-      inEvidenza: stats.inEvidenza ?? 0,
-      senzaImmagini: stats.senzaImmagini ?? 0,
+      totale: directStats.totalProducts,
+      attivi: directStats.activeProducts,
+      prezzoTotaleInventario: directStats.totalInventoryValue,
+      prezzoMedio: directStats.totalProducts > 0 ? 
+                   directStats.totalInventoryValue / directStats.totalProducts : 0,
+      margineMediaPonderata: directStats.averageMargin,
+      inEvidenza: directStats.featuredProducts,
+      senzaImmagini: 0, // TODO: aggiungere calcolo se necessario
       // Varianti attive
       variantiAttive: variants.filter(v => v.Attivo).length,
     };
-  }, [stats, variants]);
+  }, [directStats, variants]);
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('it-IT', {

@@ -130,6 +130,8 @@ export interface ProductVariant {
     Posizione?: VariantPosition;
     Obbligatorio?: boolean;
     Attivo?: boolean;
+    // Campo per le strutture collegate (per prodotti strutturati)
+    Product_Structures?: string[];
   };
 }
 
@@ -146,6 +148,8 @@ export interface FlatProductVariant {
   Posizione?: VariantPosition;
   Obbligatorio?: boolean;
   Attivo?: boolean;
+  // Campo per le strutture collegate (per prodotti strutturati)
+  Product_Structures?: string[];
 }
 
 // Form data types for variant

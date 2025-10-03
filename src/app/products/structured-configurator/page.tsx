@@ -333,8 +333,49 @@ export default function StructuredConfiguratorPage() {
     }
 
     try {
-      // Calcola nome prodotto descrittivo
-      const selectedVariantNames = Object.entries(selectedVariants)
+      // Calcola nome prodotto descrittivo con logica specifica per tipo campo
+      const modelVariant = Object.entries(selectedVariants)
+        .find(([fieldId]) => fieldId === 'modello');
+      
+      const sizeVariants = Object.entries(selectedVariants)
+        .filter(([fieldId]) => fieldId === 'larghezza' || fieldId === 'lunghezza');
+      
+      let productName = selectedStructure.name;
+      
+      // Aggiungi modello se presente
+      if (modelVariant) {
+        const [fieldId, variantCode] = modelVariant;
+        const options = realVariantOptions[fieldId] || [];
+        const option = options.find(opt => opt.code === variantCode);
+        if (option) {
+          // Pulisci il nome del modello rimuovendo "Modello " se presente
+          const modelName = option.name.replace(/^Modello\s+/i, '');
+          productName += ` ${modelName}`;
+        }
+      }
+      
+      // Aggiungi dimensioni se presenti (larghezza x lunghezza)
+      if (sizeVariants.length > 0) {
+        const sizeNames = sizeVariants
+          .sort((a, b) => a[0] === 'larghezza' ? -1 : 1) // larghezza prima di lunghezza
+          .map(([fieldId, variantCode]) => {
+            const options = realVariantOptions[fieldId] || [];
+            const option = options.find(opt => opt.code === variantCode);
+            if (option) {
+              // Estrai solo il numero dalle misure (es. "160" da "Larghezza 160cm")
+              const match = option.name.match(/\d+/);
+              return match ? match[0] : variantCode;
+            }
+            return variantCode;
+          })
+          .filter(Boolean);
+        
+        if (sizeNames.length > 0) {
+          productName += ` ${sizeNames.join('x')}`;
+        }
+      }
+      // Genera descrizione completa con tutte le varianti selezionate
+      const allSelectedVariantNames = Object.entries(selectedVariants)
         .map(([fieldId, variantCode]) => {
           const options = realVariantOptions[fieldId] || [];
           const option = options.find(opt => opt.code === variantCode);
@@ -342,8 +383,7 @@ export default function StructuredConfiguratorPage() {
         })
         .filter(Boolean);
       
-      const productName = `${selectedStructure.name} ${selectedVariantNames.slice(0, 3).join(' ')}`;
-      const productDescription = `Configurazione: ${selectedVariantNames.join(', ')}`;
+      const productDescription = `Configurazione: ${allSelectedVariantNames.join(', ')}`;
       
       // Calcola margine in percentuale
       const marginPercentage = pricing.totalPrice > 0 ? 
