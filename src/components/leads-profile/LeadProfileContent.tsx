@@ -6,7 +6,7 @@ import { LeadData, LeadFormData } from '@/types/leads';
 import { LeadActivitiesKanban } from '@/components/features/activities/LeadActivitiesKanban';
 import { NotesPanel } from '@/components/leads-detail/NotesPanel';
 import { FilesPanel } from '@/components/leads-detail/FilesPanel';
-import { LeadOrdersMockPanel } from './OrdersMockPanel';
+import { LeadOrdersPanel } from '../leads-detail/LeadOrdersPanel';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -216,7 +216,7 @@ export function LeadProfileContent({ lead, onLeadUpdated, refreshKey }: LeadProf
       </TabsContent>
 
       <TabsContent value="orders" className="space-y-4 sm:space-y-6">
-        <LeadOrdersMockPanel />
+        <LeadOrdersPanel leadId={lead.ID} />
       </TabsContent>
 
       <TabsContent value="notes" className="space-y-4 sm:space-y-6">

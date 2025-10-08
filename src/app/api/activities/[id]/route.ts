@@ -182,12 +182,12 @@ export async function PUT(
         ...(activityData['Prossima azione'] && { 'Prossima azione': activityData['Prossima azione'] }),
         ...(activityData['Data prossima azione'] && { 'Data prossima azione': activityData['Data prossima azione'] }),
         
-        // Attachments - convert to Airtable format
+        // Attachments - convert to JSON string format
         ...(activityData.allegati && activityData.allegati.length > 0 && {
-          Allegati: activityData.allegati.map(allegato => ({
+          Allegati: JSON.stringify(activityData.allegati.map(allegato => ({
             url: allegato.url,
             filename: allegato.filename
-          }))
+          })))
         }),
       },
     };

@@ -52,6 +52,7 @@ import { ActivityAttachments } from './activity-attachments';
 interface ActivityStepProps {
   form: UseFormReturn<ActivityFormData>;
   prefilledLeadId?: string;
+  activityId?: string; // Optional activity ID for edit mode
 }
 
 // Mock data - in production these would come from API
@@ -150,7 +151,7 @@ const NEXT_ACTIONS: ActivityProssimaAzione[] = [
   'Nessuna',
 ];
 
-export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
+export function ActivityStep({ form, prefilledLeadId, activityId }: ActivityStepProps) {
   const [leadsPopoverOpen, setLeadsPopoverOpen] = useState(false);
   const [usersPopoverOpen, setUsersPopoverOpen] = useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
@@ -709,7 +710,7 @@ export function ActivityStep({ form, prefilledLeadId }: ActivityStepProps) {
       
       {/* Riga 8: Allegati */}
       <div className="border-t pt-6">
-        <ActivityAttachments form={form} />
+        <ActivityAttachments form={form} activityId={activityId} />
       </div>
     </div>
   );

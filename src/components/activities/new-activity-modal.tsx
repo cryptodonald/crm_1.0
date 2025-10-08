@@ -500,7 +500,7 @@ export function NewActivityModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !isSubmitting && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-3">
@@ -554,16 +554,20 @@ export function NewActivityModal({
         </div>
 
         {/* Activity Form Content */}
-        <div className="flex-1 overflow-y-auto px-1">
+        <div className="px-6">
           <Form {...form}>
             <form onSubmit={(e) => {
               e.preventDefault(); // Previeni sempre il submit automatico
               // Il submit avviene solo tramite il pulsante esplicito
-            }} className="space-y-6 h-full flex flex-col">
-              <CurrentStepComponent form={form} prefilledLeadId={prefilledLeadId} />
+            }} className="space-y-6">
+              <CurrentStepComponent 
+                form={form} 
+                prefilledLeadId={prefilledLeadId}
+                {...(currentStep === 4 && isEditMode && activity?.id ? { activityId: activity.id } : {})}
+              />
               
-              {/* Action Buttons - INSIDE FORM */}
-              <div className="flex justify-between border-t pt-4 mt-auto">
+              {/* Action Buttons */}
+              <div className="flex justify-between border-t pt-4 mt-6">
                 <div className="flex gap-2">
                   <Button
                     type="button"

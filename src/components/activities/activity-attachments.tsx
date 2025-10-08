@@ -22,9 +22,11 @@ import {
   AlertTriangle 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface ActivityAttachmentsProps {
   form: UseFormReturn<ActivityFormData>;
+  activityId?: string; // Optional for new activities, required for existing ones
 }
 
 interface FileWithPreview extends File {
@@ -48,7 +50,7 @@ const ALLOWED_TYPES = [
   'text/plain',
 ];
 
-export function ActivityAttachments({ form }: ActivityAttachmentsProps) {
+export function ActivityAttachments({ form, activityId }: ActivityAttachmentsProps) {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
@@ -62,28 +64,86 @@ export function ActivityAttachments({ form }: ActivityAttachmentsProps) {
 
   // Sincronizza uploadedAttachments con il form quando cambia
   useEffect(() => {
+    // Save attachments as array for the form data (will be converted to JSON string in API)
     setValue('allegati', uploadedAttachments);
   }, [uploadedAttachments, setValue]);
 
   // Load existing attachments on mount (for edit mode)
   useEffect(() => {
-    if (currentAttachments && currentAttachments.length > 0 && uploadedAttachments.length === 0) {
-      setUploadedAttachments(currentAttachments);
-      // Create file objects for display (without actual file data for existing attachments)
-      const existingFiles: FileWithPreview[] = currentAttachments.map((attachment: any, index: number) => ({
-        name: attachment.filename || attachment.name,
-        size: attachment.size || 0,
-        type: attachment.contentType || 'application/octet-stream',
-        id: attachment.id || `existing-${index}`,
-        lastModified: Date.now(),
-        webkitRelativePath: '',
-        arrayBuffer: async () => new ArrayBuffer(0),
-        slice: () => new Blob(),
-        stream: () => new ReadableStream(),
-        text: async () => '',
-      } as FileWithPreview));
+    if (currentAttachments && uploadedAttachments.length === 0) {
+      let parsedAttachments: any[] = [];
       
-      setFiles(existingFiles);
+      // Handle both array and JSON string formats
+      if (typeof currentAttachments === 'string') {
+        try {
+          parsedAttachments = JSON.parse(currentAttachments);
+        } catch (e) {
+          console.warn('⚠️ Failed to parse attachments as JSON:', e);
+          parsedAttachments = [];
+        }
+      } else if (Array.isArray(currentAttachments)) {
+        parsedAttachments = currentAttachments;
+      }
+      
+      if (parsedAttachments.length > 0) {
+        setUploadedAttachments(parsedAttachments);
+        
+        // Helper function to infer file type from extension
+        const inferTypeFromFilename = (filename: string): string => {
+          if (!filename) return 'application/octet-stream';
+          const ext = filename.toLowerCase().split('.').pop();
+          
+          switch (ext) {
+            case 'jpg': case 'jpeg': return 'image/jpeg';
+            case 'png': return 'image/png';
+            case 'gif': return 'image/gif';
+            case 'webp': return 'image/webp';
+            case 'pdf': return 'application/pdf';
+            case 'doc': return 'application/msword';
+            case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            case 'xls': return 'application/vnd.ms-excel';
+            case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            case 'txt': return 'text/plain';
+            default: return 'application/octet-stream';
+          }
+        };
+        
+        // Create file objects for display (without actual file data for existing attachments)
+        const existingFiles: FileWithPreview[] = parsedAttachments.map((attachment: any, index: number) => {
+          // Try different field names for contentType (API saves as 'type', some might have 'contentType')
+          const rawContentType = attachment.type || attachment.contentType;
+          const filename = attachment.filename || attachment.name;
+          
+          // If no type or type is octet-stream, try to infer from filename
+          const finalContentType = (rawContentType && rawContentType !== 'application/octet-stream') 
+            ? rawContentType 
+            : inferTypeFromFilename(filename);
+          
+          console.log(`📄 [ActivityAttachments] Loading existing attachment:`, {
+            filename,
+            originalType: attachment.type,
+            originalContentType: attachment.contentType,
+            rawContentType,
+            finalContentType,
+            attachmentId: attachment.id
+          });
+          
+          return {
+            name: filename,
+            size: attachment.size || 0,
+            type: finalContentType,
+            id: attachment.id || `existing-${index}`,
+            lastModified: Date.now(),
+            webkitRelativePath: '',
+            arrayBuffer: async () => new ArrayBuffer(0),
+            slice: () => new Blob(),
+            stream: () => new ReadableStream(),
+            text: async () => '',
+          } as FileWithPreview;
+        });
+        
+        setFiles(existingFiles);
+      }
     }
   }, [currentAttachments, uploadedAttachments.length]);
 
@@ -215,9 +275,20 @@ export function ActivityAttachments({ form }: ActivityAttachmentsProps) {
     e.target.value = '';
   }, [processFiles]);
 
-  const removeFile = (fileId: string) => {
-    console.log('🗑️ Removing file with ID:', fileId);
+  const removeFile = async (fileId: string) => {
+    // Find the attachment to remove
+    const attachmentToRemove = uploadedAttachments.find(attachment => 
+      attachment.id === fileId ||
+      (attachment.filename && attachment.filename.includes(fileId)) ||
+      (attachment.name && attachment.name.includes(fileId))
+    );
     
+    if (!attachmentToRemove) {
+      console.warn('⚠️ Attachment not found for file ID:', fileId);
+      return;
+    }
+    
+    // Remove from UI immediately for better user experience
     setFiles(prev => {
       const updated = prev.filter(f => f.id !== fileId);
       // Revoke object URL for removed files
@@ -225,23 +296,67 @@ export function ActivityAttachments({ form }: ActivityAttachmentsProps) {
       if (removed?.preview) {
         URL.revokeObjectURL(removed.preview);
       }
-      console.log('📋 Files after removal:', updated.map(f => ({ id: f.id, name: f.name })));
       return updated;
     });
     
-    // Also remove from uploaded attachments
     setUploadedAttachments(prev => {
       const updated = prev.filter(attachment => {
-        // Logica semplificata: rimuovi se l'ID del file corrisponde all'ID dell'attachment
-        // oppure se l'ID del file è contenuto nel filename dell'attachment
         const shouldRemove = attachment.id === fileId ||
                             (attachment.filename && attachment.filename.includes(fileId)) ||
                             (attachment.name && attachment.name.includes(fileId));
         return !shouldRemove;
       });
-      console.log('📎 Attachments after removal:', updated.map(a => ({ id: a.id, name: a.filename || a.name })));
       return updated;
     });
+    
+    // If this is an existing attachment (has a URL) and we have an activity ID, call the DELETE API
+    if (attachmentToRemove.url && activityId) {
+      try {
+        const response = await fetch(`/api/activities/${activityId}/attachments?url=${encodeURIComponent(attachmentToRemove.url)}&attachmentId=${attachmentToRemove.id}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.details || 'Failed to delete attachment');
+        }
+        
+        const result = await response.json();
+        
+        // Show success toast
+        toast.success('Allegato eliminato', {
+          description: result.blobDeleted 
+            ? 'File rimosso da database e storage' 
+            : 'File rimosso dal database'
+        });
+        
+      } catch (error) {
+        console.error('❌ Failed to delete attachment from server:', error);
+        
+        // Show error toast
+        toast.error('Errore eliminazione allegato', {
+          description: error instanceof Error ? error.message : 'Errore sconosciuto'
+        });
+        
+        // Ripristina stato in caso di errore
+        const fileToRestore = {
+          ...attachmentToRemove,
+          id: fileId,
+          name: attachmentToRemove.filename || attachmentToRemove.name,
+          size: attachmentToRemove.size || 0,
+          type: attachmentToRemove.type || 'application/octet-stream',
+          lastModified: Date.now(),
+          webkitRelativePath: '',
+          arrayBuffer: async () => new ArrayBuffer(0),
+          slice: () => new Blob(),
+          stream: () => new ReadableStream(),
+          text: async () => '',
+        } as FileWithPreview;
+        
+        setFiles(prev => [...prev, fileToRestore]);
+        setUploadedAttachments(prev => [...prev, attachmentToRemove]);
+      }
+    }
   };
 
   const getFileIcon = (type: string) => {

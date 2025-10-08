@@ -14,9 +14,10 @@ import { ActivityAttachments } from '../activity-attachments';
 
 interface AllegatiStepProps {
   form: UseFormReturn<ActivityFormData>;
+  activityId?: string; // Optional activity ID for edit mode
 }
 
-export function AllegatiStep({ form }: AllegatiStepProps) {
+export function AllegatiStep({ form, activityId }: AllegatiStepProps) {
   const { control } = form;
   
   return (
@@ -51,7 +52,7 @@ export function AllegatiStep({ form }: AllegatiStepProps) {
         
         {/* Allegati */}
         <div>
-          <ActivityAttachments form={form} />
+          <ActivityAttachments form={form} activityId={activityId} />
         </div>
       </div>
     </div>

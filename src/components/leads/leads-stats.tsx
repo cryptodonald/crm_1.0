@@ -112,10 +112,10 @@ export function LeadsStats({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {stats.contattatiEntro48h.toLocaleString('it-IT')}
+            {formatPercentage(stats.contattatiEntro48h)}
           </div>
           <p className="text-muted-foreground mt-1 text-xs">
-            Lead con attività o conversazioni
+            Lead contattati entro 48h dalla creazione
           </p>
         </CardContent>
       </Card>

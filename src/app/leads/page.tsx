@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { useLeadsList } from '@/hooks/use-leads-list';
@@ -11,10 +11,13 @@ import { LeadsFilters, LeadData } from '@/types/leads';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Plus } from 'lucide-react';
+import { ActivityData } from '@/types/activities';
 
 export default function LeadsPage() {
   const [filters, setFilters] = useState<LeadsFilters>({});
   const [newLeadModalOpen, setNewLeadModalOpen] = useState(false);
+  const [activities, setActivities] = useState<ActivityData[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
 
   // 🚀 Sistema leads ottimizzato (ex A/B test vincitore)
   const {
@@ -33,6 +36,28 @@ export default function LeadsPage() {
     enabled: true,
   });
 
+  // Carica tutte le attività per calcolare i "contattati entro 48h"
+  useEffect(() => {
+    async function loadActivities() {
+      if (!leads.length) return;
+      
+      setActivitiesLoading(true);
+      try {
+        const response = await fetch('/api/activities?loadAll=true');
+        if (response.ok) {
+          const data = await response.json();
+          setActivities(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error loading activities:', error);
+      } finally {
+        setActivitiesLoading(false);
+      }
+    }
+
+    loadActivities();
+  }, [leads.length]); // Solo quando cambiano i leads
+
   // Calcola statistiche lato client dai leads caricati
   const stats = useMemo(() => {
     if (!leads.length) return null;
@@ -47,6 +72,38 @@ export default function LeadsPage() {
       return leadDate >= sevenDaysAgo;
     }).length;
     
+    // Lead "contattati" entro 48h - attività entro 48 ore dalla creazione del lead
+    const leadContattatiEntro48h = leads.filter(lead => {
+      // Verifica se il lead ha una data di creazione valida
+      if (!lead.Data) return false;
+      
+      const leadCreationDate = new Date(lead.Data);
+      const leadPlus48Hours = new Date(leadCreationDate.getTime() + 48 * 60 * 60 * 1000); // +48 ore dalla creazione
+      
+      // Trova se ci sono attività per questo lead entro 48 ore dalla sua creazione
+      const hasActivityWithin48h = activities.some(activity => {
+        // Verifica se l'attività è collegata a questo lead
+        const activityLeadIds = activity['ID Lead'] || [];
+        const isLinkedToLead = activityLeadIds.includes(lead.id) || activityLeadIds.includes(lead.ID);
+        
+        if (!isLinkedToLead || !activity.Data) return false;
+        
+        // Verifica se l'attività è stata creata entro 48 ore dalla creazione del lead
+        const activityDate = new Date(activity.Data);
+        return activityDate >= leadCreationDate && activityDate <= leadPlus48Hours;
+      });
+      
+      return hasActivityWithin48h;
+    }).length;
+    
+    console.log('📊 Leads:', leads.length, '| Attività:', activities.length, '| Contattati 48h:', leadContattatiEntro48h);
+    
+    // Calcoli per i tassi
+    const totale = leads.length;
+    
+    // Calcola la percentuale dei lead contattati entro 48h
+    const contattatiEntro48h = totale > 0 ? Math.round((leadContattatiEntro48h / totale) * 100) : 0;
+    
     // Conteggio per stato
     const byStato: Record<string, number> = {};
     leads.forEach(lead => {
@@ -58,9 +115,6 @@ export default function LeadsPage() {
     leads.forEach(lead => {
       byProvenienza[lead.Provenienza] = (byProvenienza[lead.Provenienza] || 0) + 1;
     });
-    
-    // Calcoli per i tassi
-    const totale = leads.length;
     const qualificati = byStato['Qualificato'] || 0;
     const clienti = byStato['Cliente'] || 0;
     
@@ -70,13 +124,13 @@ export default function LeadsPage() {
     return {
       totale,
       nuoviUltimi7Giorni,
-      contattatiEntro48h: 0,
+      contattatiEntro48h,
       tassoQualificazione,
       tassoConversione,
       byStato,
       byProvenienza
     };
-  }, [leads]);
+  }, [leads, activities]);
 
   // Handle create new lead
   const handleCreateClick = () => {

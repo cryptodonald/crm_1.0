@@ -98,6 +98,12 @@ export async function POST(request: NextRequest) {
     console.log(`🚀 [TIMING] Blob upload: ${uploadTime.toFixed(2)}ms`);
 
     console.log('✅ [BLOB UPLOAD] Success:', blob.url);
+    console.log('🔍 [BLOB UPLOAD] Debug URL info:');
+    console.log(`  - Full blob object:`, blob);
+    console.log(`  - URL: ${blob.url}`);
+    console.log(`  - URL type: ${typeof blob.url}`);
+    console.log(`  - Contains blob.vercel-storage.com: ${blob.url.includes('blob.vercel-storage.com')}`);
+    console.log(`  - Contains .vercel.app: ${blob.url.includes('.vercel.app')}`);
 
     // Restituisci il formato compatibile con Airtable
     const airtableAttachment = {
@@ -180,6 +186,17 @@ export async function DELETE(request: NextRequest) {
     
     console.log(`🗑️ [Delete API] Attempting to delete: ${fileUrl}`);
     
+    // Verifica se l'URL sembra essere un Vercel Blob URL
+    const isVercelBlobUrl = fileUrl.includes('blob.vercel-storage.com') || fileUrl.includes('.vercel.app/_vercel/blob/');
+    if (!isVercelBlobUrl) {
+      console.warn(`⚠️ [Delete API] URL non sembra essere un Vercel Blob URL: ${fileUrl}`);
+      return NextResponse.json({
+        success: false,
+        error: 'URL non compatibile con Vercel Blob',
+        details: 'L\'URL fornito non sembra provenire da Vercel Blob Storage',
+      }, { status: 400 });
+    }
+    
     const credentialsStart = performance.now();
     // Ottieni il token Vercel Blob
     const blobToken = await getBlobToken();
@@ -192,13 +209,29 @@ export async function DELETE(request: NextRequest) {
     
     const deleteStart = performance.now();
     
-    // Cancella il file dal blob storage
-    await del(fileUrl, {
-      token: blobToken,
-    });
-    
-    const deleteTime = performance.now() - deleteStart;
-    console.log(`🗑️ [TIMING] Blob delete: ${deleteTime.toFixed(2)}ms`);
+    try {
+      // Cancella il file dal blob storage
+      await del(fileUrl, {
+        token: blobToken,
+      });
+      
+      const deleteTime = performance.now() - deleteStart;
+      console.log(`🗑️ [TIMING] Blob delete: ${deleteTime.toFixed(2)}ms`);
+      
+    } catch (delError) {
+      const deleteTime = performance.now() - deleteStart;
+      console.warn(`⚠️ [Delete API] Vercel Blob delete failed in ${deleteTime.toFixed(2)}ms:`, delError);
+      
+      // Determina se l'errore è critico o meno
+      const errorMessage = delError instanceof Error ? delError.message : 'Unknown delete error';
+      if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+        console.log(`📄 [Delete API] File non trovato (già eliminato?): ${fileUrl}`);
+        // Consideriamo questo come un successo dato che il file non esiste più
+      } else {
+        // Errore più serio, lo rilanciamo
+        throw delError;
+      }
+    }
     
     const totalTime = performance.now() - requestStart;
     

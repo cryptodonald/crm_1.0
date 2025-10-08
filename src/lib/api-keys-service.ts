@@ -152,7 +152,22 @@ class ApiKeyService {
   }
 
   async getBlobToken(): Promise<string | null> {
-    return this.getApiKey('vercel-blob');
+    // Prova prima dal KV database
+    const kvToken = await this.getApiKey('vercel-blob');
+    if (kvToken) {
+      console.log('✅ [Blob Token] Using token from KV database');
+      return kvToken;
+    }
+    
+    // Fallback alle variabili d'ambiente
+    const envToken = process.env.BLOB_READ_WRITE_TOKEN;
+    if (envToken) {
+      console.log('ℹ️ [Blob Token] Using fallback token from environment variables');
+      return envToken;
+    }
+    
+    console.warn('⚠️ [Blob Token] No token found in KV or environment variables');
+    return null;
   }
 
   async getNextAuthSecret(): Promise<string | null> {

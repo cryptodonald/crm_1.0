@@ -11,7 +11,6 @@ import {
   IconSettings,
   IconShoppingCart,
   IconUsers,
-  IconUsersGroup,
   IconRobot,
   IconActivity,
   IconCommand,
@@ -47,11 +46,6 @@ const data = {
       title: 'Attività',
       url: '/activities',
       icon: IconActivity,
-    },
-    {
-      title: 'Clienti',
-      url: '/clients',
-      icon: IconUsersGroup,
     },
     {
       title: 'Ordini',

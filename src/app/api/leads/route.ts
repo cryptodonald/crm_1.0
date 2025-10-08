@@ -490,11 +490,12 @@ export async function POST(request: NextRequest) {
       airtableFields.Referenza = body.Referenza;
     }
     if (body.Allegati && Array.isArray(body.Allegati) && body.Allegati.length > 0) {
-      // Converti gli allegati nel formato corretto per Airtable (solo url e filename)
-      airtableFields.Allegati = body.Allegati.map(allegato => ({
+      // Converti gli allegati in JSON string per il nuovo formato
+      const attachmentsJson = body.Allegati.map(allegato => ({
         url: allegato.url,
         filename: allegato.filename
       }));
+      airtableFields.Allegati = JSON.stringify(attachmentsJson);
     }
 
     const airtableData = {

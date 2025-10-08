@@ -39,7 +39,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search, Play, Pause, RotateCcw, XCircle, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search, Play, Pause, RotateCcw, XCircle, AlertCircle, AlertTriangle, ExternalLink, Download, FileText, FileImage, File } from 'lucide-react';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { ActivityProgress } from '@/components/ui/activity-progress';
 import { formatDistanceToNow } from 'date-fns';
@@ -185,6 +185,99 @@ const ESITI_NEGATIVI = [
 const ESITI_NEUTRALI = [
   'Poco interessato'
 ];
+
+// Helper functions for attachment management
+const handleOpenAttachment = (url: string) => {
+  console.log('🔗 [handleOpenAttachment] Opening URL:', url);
+  try {
+    if (!url) {
+      console.error('❌ [handleOpenAttachment] URL is empty or undefined');
+      toast.error('URL del file non valido');
+      return;
+    }
+    
+    console.log('🔗 [handleOpenAttachment] Calling window.open...');
+    const result = window.open(url, '_blank', 'noopener,noreferrer');
+    console.log('🔗 [handleOpenAttachment] Window.open result:', result);
+    
+    if (!result) {
+      console.warn('⚠️ [handleOpenAttachment] Window.open returned null (popup blocked?)');
+      toast.error('Impossibile aprire il file. Verifica le impostazioni popup del browser.');
+    } else {
+      toast.success('File aperto in una nuova tab!');
+    }
+  } catch (error) {
+    console.error('❌ [handleOpenAttachment] Error:', error);
+    toast.error('Errore nell\'apertura del file');
+  }
+};
+
+const handleDownloadAttachment = async (url: string, filename: string) => {
+  console.log('💾 [handleDownloadAttachment] Starting download:', { url, filename });
+  try {
+    if (!url) {
+      console.error('❌ [handleDownloadAttachment] URL is empty or undefined');
+      toast.error('URL del file non valido');
+      return;
+    }
+    
+    if (!filename) {
+      filename = 'file-senza-nome';
+      console.warn('⚠️ [handleDownloadAttachment] Filename is empty, using fallback:', filename);
+    }
+    
+    console.log('💾 [handleDownloadAttachment] Fetching file...');
+    const response = await fetch(url);
+    console.log('💾 [handleDownloadAttachment] Fetch response:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const blob = await response.blob();
+    console.log('💾 [handleDownloadAttachment] Blob created:', blob.size, 'bytes');
+    
+    const downloadUrl = window.URL.createObjectURL(blob);
+    console.log('💾 [handleDownloadAttachment] Object URL created:', downloadUrl);
+    
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    console.log('💾 [handleDownloadAttachment] Link added to DOM, triggering click...');
+    
+    link.click();
+    
+    // Clean up after a short delay to ensure download starts
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      console.log('💾 [handleDownloadAttachment] Cleanup completed');
+    }, 100);
+    
+    toast.success(`Download avviato: ${filename}`);
+  } catch (e) {
+    console.error('❌ [handleDownloadAttachment] Download error:', e);
+    toast.error(`Errore durante il download: ${e instanceof Error ? e.message : 'Errore sconosciuto'}`);
+  }
+};
+
+const getFileIcon = (type?: string) => {
+  if (!type) return <File className="h-4 w-4 text-gray-500" />;
+  
+  if (type.startsWith('image/')) {
+    return <FileImage className="h-4 w-4 text-blue-500" />;
+  } else if (type === 'application/pdf') {
+    return <FileText className="h-4 w-4 text-red-600" />;
+  } else if (type.includes('word') || type.includes('document')) {
+    return <FileText className="h-4 w-4 text-blue-700" />;
+  } else if (type.includes('excel') || type.includes('sheet')) {
+    return <FileText className="h-4 w-4 text-green-600" />;
+  }
+  return <File className="h-4 w-4 text-gray-500" />;
+};
 
 const getEsitoBadgeProps = (esito: string) => {
   if (ESITI_POSITIVI.includes(esito)) {
@@ -581,17 +674,12 @@ const ActivityCard = React.memo(function ActivityCard({ activity, onEdit, onDele
                 </Badge>
               )}
             </div>
+            {/* Badge allegati - solo visivo, non cliccabile */}
             {activity.Allegati && activity.Allegati.length > 0 ? (
-              <button 
-                className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors dark:bg-zinc-800 dark:hover:bg-zinc-700 sm:px-2 sm:py-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log('Apertura allegati:', activity.Allegati);
-                }}
-              >
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded transition-colors dark:bg-zinc-800 sm:px-2 sm:py-1" title="Allegati disponibili nella tab Allegati">
                 <Paperclip className="w-3 h-3 text-gray-600 dark:text-gray-400 sm:w-4 sm:h-4" />
-                <span className="text-xs text-gray-600 dark:text-gray-400 font-medium sm:text-sm">{activity.Allegati.length}</span>
-              </button>
+                <span className="text-xs text-gray-700 dark:text-gray-300 sm:text-sm">{activity.Allegati.length}</span>
+              </div>
             ) : (
               <div className="flex items-center gap-1 opacity-30">
                 <Paperclip className="w-3 h-3 text-gray-300 dark:text-gray-600 sm:w-4 sm:h-4" />

@@ -19,7 +19,29 @@ import {
   CreditCard,
   Truck,
 } from 'lucide-react';
-import { Order } from '@/types/orders';
+// Tipi per gli ordini - deve corrispondere alla struttura API
+interface OrderData {
+  id: string;
+  createdTime: string;
+  ID_Ordine: string;
+  Cliente_Nome?: string;
+  Data_Ordine?: string;
+  Data_Consegna_Richiesta?: string;
+  Stato_Ordine?: string;
+  Stato_Pagamento?: string;
+  Totale_Finale?: number;
+  Note_Cliente?: string;
+  Note_Interne?: string;
+  ID_Lead?: string[];
+  ID_Venditore?: string[];
+  Indirizzo_Consegna?: string;
+  Modalita_Pagamento?: string;
+  Totale_Lordo?: number;
+  Totale_Sconto?: number;
+  Totale_Netto?: number;
+  Totale_IVA?: number;
+  Allegati?: string[];
+}
 import { cn } from '@/lib/utils';
 
 interface OrdersStatsData {
@@ -41,7 +63,7 @@ interface OrdersStatsProps {
 }
 
 // Utility function to calculate stats from orders
-export function calculateOrdersStats(orders: Order[]): OrdersStatsData {
+export function calculateOrdersStats(orders: OrderData[]): OrdersStatsData {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   

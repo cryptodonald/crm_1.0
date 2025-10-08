@@ -1,8 +1,41 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Order, OrderFilters } from '@/types/orders';
 import { useFetchWithRetry } from './use-fetch-with-retry';
 import { toast } from 'sonner';
+
+// Definizione temporanea dei tipi
+interface Order {
+  id: string;
+  createdTime: string;
+  ID_Ordine: string;
+  Cliente_Nome?: string;
+  Data_Ordine?: string;
+  Data_Consegna_Richiesta?: string;
+  Stato_Ordine?: string;
+  Stato_Pagamento?: string;
+  Totale_Finale?: number;
+  Note_Cliente?: string;
+  Note_Interne?: string;
+  ID_Lead?: string[];
+  ID_Venditore?: string[];
+  Indirizzo_Consegna?: string;
+  Modalita_Pagamento?: string;
+  Totale_Lordo?: number;
+  Totale_Sconto?: number;
+  Totale_Netto?: number;
+  Totale_IVA?: number;
+  Allegati?: string[];
+}
+
+interface OrderFilters {
+  stato_ordine?: string[];
+  stato_pagamento?: string[];
+  venditore_id?: string;
+  data_da?: string;
+  data_a?: string;
+  importo_min?: number;
+  importo_max?: number;
+}
 
 interface UseOrdersListProps {
   filters?: OrderFilters;

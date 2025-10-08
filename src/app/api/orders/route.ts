@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAirtableKey, getAirtableBaseId } from '@/lib/api-keys-service';
+import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 
 // 💥 DISABLE ALL NEXT.JS CACHING FOR THIS ROUTE
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Orders table ID (from our created table)
+// Table IDs (from Airtable schema inspection)
 const ORDERS_TABLE_ID = 'tblkqfCMabBpVD1fP';
+const ORDER_ITEMS_TABLE_ID = 'tblxzhMCa5UJOMZqC';
+// LEADS_TABLE_ID will be fetched dynamically
 
 // Helper function to build Airtable filter for orders
 function buildAirtableFilter(searchParams: URLSearchParams): string {
@@ -39,6 +41,12 @@ function buildAirtableFilter(searchParams: URLSearchParams): string {
   const venditoreId = searchParams.get('venditore_id');
   if (venditoreId) {
     conditions.push(`SEARCH('${venditoreId}', ARRAYJOIN({ID_Venditore}, ','))`);
+  }
+
+  // Filtro per Lead ID
+  const leadId = searchParams.get('leadId');
+  if (leadId) {
+    conditions.push(`SEARCH('${leadId}', ARRAYJOIN({ID_Lead}, ','))`);
   }
 
   // Filtro per data ordine
@@ -158,6 +166,81 @@ async function fetchAllRecords(
   return allRecords;
 }
 
+// Helper function to fetch leads data for lookup
+async function fetchLeadsLookup(
+  apiKey: string,
+  baseId: string,
+  leadsTableId: string,
+  leadIds: string[]
+): Promise<Record<string, string>> {
+  if (leadIds.length === 0) return {};
+  
+  console.log('🔍 Loading leads data for lookup:', leadIds.length, 'leads');
+  
+  // Temporarily fetch all leads without filtering to debug
+  const filterFormula = '';
+  
+  // Original filter approach (commented for debugging):
+  // const filterFormula = leadIds.length === 1 
+  //   ? `RECORD_ID() = '${leadIds[0]}'`
+  //   : `OR(${leadIds.map(id => `RECORD_ID() = '${id}'`).join(',')})`;
+    
+  
+  const params = new URLSearchParams();
+  // Fetch only the Nome field for efficiency
+  params.set('fields[]', 'Nome');
+  
+  // Only add filter if it exists
+  if (filterFormula) {
+    params.set('filterByFormula', filterFormula);
+  }
+  
+  const leadsUrl = `https://api.airtable.com/v0/${baseId}/${leadsTableId}?${params.toString()}`;
+  
+  console.log('🔍 Leads lookup query:', {
+    leadIds: leadIds.length,
+    filterFormula,
+    leadsUrl
+  });
+  
+  const response = await fetch(leadsUrl, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Failed to fetch leads for lookup:', {
+      status: response.status,
+      statusText: response.statusText,
+      errorBody: errorText,
+      requestUrl: leadsUrl
+    });
+    return {};
+  }
+  
+  const json = await response.json();
+  const lookup: Record<string, string> = {};
+  
+  console.log('📊 Leads lookup response:', {
+    recordsCount: json.records?.length || 0,
+    records: json.records?.map((r: any) => ({ id: r.id, Nome: r.fields?.Nome })) || []
+  });
+  
+  // Filter records on the client side and build lookup
+  json.records?.forEach((record: any) => {
+    // Only include records that we actually requested
+    if (leadIds.includes(record.id) && record.fields?.Nome) {
+      lookup[record.id] = record.fields.Nome;
+    }
+  });
+  
+  console.log('✅ Loaded', Object.keys(lookup).length, 'lead names for lookup');
+  return lookup;
+}
+
 /**
  * GET /api/orders - Fetch orders with filters and pagination
  */
@@ -175,9 +258,10 @@ export async function GET(request: NextRequest) {
     });
 
     // Get Airtable credentials
-    const [apiKey, baseId] = await Promise.all([
+    const [apiKey, baseId, leadsTableId] = await Promise.all([
       getAirtableKey(),
       getAirtableBaseId(),
+      getAirtableLeadsTableId(),
     ]);
 
     if (!apiKey || !baseId) {
@@ -209,11 +293,133 @@ export async function GET(request: NextRequest) {
       // Fetch all records using pagination
       const allRecords = await fetchAllRecords(apiKey, baseId, ORDERS_TABLE_ID, airtableParams);
       
+      // Extract unique lead IDs for lookup
+      const leadIds = new Set<string>();
+      allRecords.forEach(record => {
+        const idLead = record.fields?.ID_Lead;
+        if (Array.isArray(idLead)) {
+          idLead.forEach(id => leadIds.add(id));
+        }
+      });
+      
+      // Fetch lead names for lookup
+      const leadsLookup = await fetchLeadsLookup(apiKey, baseId, leadsTableId, Array.from(leadIds));
+      
+      // Enrich records with client names
+      const enrichedRecords = allRecords.map(record => {
+        const idLead = record.fields?.ID_Lead;
+        let clientName = undefined;
+        
+        if (Array.isArray(idLead) && idLead.length > 0) {
+          // Get all lead names and join them
+          const leadNames = idLead
+            .map(leadId => leadsLookup[leadId])
+            .filter(name => name) // Remove undefined/null names
+            .join(', ');
+          
+          clientName = leadNames || undefined;
+        }
+        
+        // Prepara gli allegati esistenti per la tabella con parsing intelligente
+        const existingAttachments = [];
+        
+        // Contratti - parsing unificato per tutti i formati
+        if (record.fields?.URL_Contratto) {
+          if (Array.isArray(record.fields.URL_Contratto)) {
+            // Attachment array nativo di Airtable
+            existingAttachments.push(...record.fields.URL_Contratto.map(item => item.url));
+          } else if (typeof record.fields.URL_Contratto === 'object' && record.fields.URL_Contratto.url) {
+            // Singolo attachment object
+            existingAttachments.push(record.fields.URL_Contratto.url);
+          } else if (typeof record.fields.URL_Contratto === 'string') {
+            // Nuovo formato JSON o legacy
+            try {
+              const parsed = JSON.parse(record.fields.URL_Contratto);
+              if (Array.isArray(parsed)) {
+                // Nuovo formato: array di {url, filename}
+                existingAttachments.push(...parsed.map(item => item.url || item));
+              } else {
+                // Single object {url, filename}
+                existingAttachments.push(parsed.url || record.fields.URL_Contratto);
+              }
+            } catch {
+              // Legacy: stringa URL semplice
+              existingAttachments.push(record.fields.URL_Contratto);
+            }
+          }
+        }
+        
+        // Documenti Cliente - parsing unificato per tutti i formati
+        if (record.fields?.URL_Documenti_Cliente) {
+          if (Array.isArray(record.fields.URL_Documenti_Cliente)) {
+            // Attachment array nativo di Airtable
+            existingAttachments.push(...record.fields.URL_Documenti_Cliente.map(item => item.url));
+          } else if (typeof record.fields.URL_Documenti_Cliente === 'object' && record.fields.URL_Documenti_Cliente.url) {
+            // Singolo attachment object
+            existingAttachments.push(record.fields.URL_Documenti_Cliente.url);
+          } else if (typeof record.fields.URL_Documenti_Cliente === 'string') {
+            // Nuovo formato JSON o legacy multiline
+            try {
+              const parsed = JSON.parse(record.fields.URL_Documenti_Cliente);
+              if (Array.isArray(parsed)) {
+                // Nuovo formato: array di {url, filename}
+                existingAttachments.push(...parsed.map(item => item.url || item));
+              } else {
+                // Single object {url, filename}
+                existingAttachments.push(parsed.url || record.fields.URL_Documenti_Cliente);
+              }
+            } catch {
+              // Legacy: formato multiline (nome: URL)
+              const docs = record.fields.URL_Documenti_Cliente.split('\n')
+                .filter(line => line.trim())
+                .map(line => line.includes(': ') ? line.split(': ')[1] : line)
+                .filter(url => url && url.trim());
+              existingAttachments.push(...docs);
+            }
+          }
+        }
+        
+        // Schede Cliente - parsing unificato per tutti i formati
+        if (record.fields?.URL_Schede_Cliente) {
+          if (Array.isArray(record.fields.URL_Schede_Cliente)) {
+            // Attachment array nativo di Airtable
+            existingAttachments.push(...record.fields.URL_Schede_Cliente.map(item => item.url));
+          } else if (typeof record.fields.URL_Schede_Cliente === 'object' && record.fields.URL_Schede_Cliente.url) {
+            // Singolo attachment object
+            existingAttachments.push(record.fields.URL_Schede_Cliente.url);
+          } else if (typeof record.fields.URL_Schede_Cliente === 'string') {
+            // Nuovo formato JSON o legacy
+            try {
+              const parsed = JSON.parse(record.fields.URL_Schede_Cliente);
+              if (Array.isArray(parsed)) {
+                // Nuovo formato: array di {url, filename}
+                existingAttachments.push(...parsed.map(item => item.url || item));
+              } else {
+                // Single object {url, filename}
+                existingAttachments.push(parsed.url || record.fields.URL_Schede_Cliente);
+              }
+            } catch {
+              // Legacy: stringa URL semplice
+              existingAttachments.push(record.fields.URL_Schede_Cliente);
+            }
+          }
+        }
+        
+        return {
+          ...record,
+          fields: {
+            ...record.fields,
+            Cliente_Nome: clientName,
+            Allegati: existingAttachments,
+          }
+        };
+      });
+      
       recordApiLatency('orders', 'list_all', Date.now() - startTime);
       
       return NextResponse.json({
-        records: allRecords,
-        totalRecords: allRecords.length,
+        records: enrichedRecords,
+        totalRecords: enrichedRecords.length,
       });
     } else {
       // Standard pagination
@@ -245,12 +451,134 @@ export async function GET(request: NextRequest) {
 
       const json = await response.json();
       
+      // Extract unique lead IDs for lookup
+      const leadIds = new Set<string>();
+      json.records?.forEach((record: any) => {
+        const idLead = record.fields?.ID_Lead;
+        if (Array.isArray(idLead)) {
+          idLead.forEach((id: string) => leadIds.add(id));
+        }
+      });
+      
+      // Fetch lead names for lookup
+      const leadsLookup = await fetchLeadsLookup(apiKey, baseId, leadsTableId, Array.from(leadIds));
+      
+      // Enrich records with client names
+      const enrichedRecords = (json.records || []).map((record: any) => {
+        const idLead = record.fields?.ID_Lead;
+        let clientName = undefined;
+        
+        if (Array.isArray(idLead) && idLead.length > 0) {
+          // Get all lead names and join them
+          const leadNames = idLead
+            .map(leadId => leadsLookup[leadId])
+            .filter(name => name) // Remove undefined/null names
+            .join(', ');
+          
+          clientName = leadNames || undefined;
+        }
+        
+        // Prepara gli allegati esistenti per la tabella con parsing intelligente
+        const existingAttachments = [];
+        
+        // Contratti - parsing unificato per tutti i formati
+        if (record.fields?.URL_Contratto) {
+          if (Array.isArray(record.fields.URL_Contratto)) {
+            // Attachment array nativo di Airtable
+            existingAttachments.push(...record.fields.URL_Contratto.map(item => item.url));
+          } else if (typeof record.fields.URL_Contratto === 'object' && record.fields.URL_Contratto.url) {
+            // Singolo attachment object
+            existingAttachments.push(record.fields.URL_Contratto.url);
+          } else if (typeof record.fields.URL_Contratto === 'string') {
+            // Nuovo formato JSON o legacy
+            try {
+              const parsed = JSON.parse(record.fields.URL_Contratto);
+              if (Array.isArray(parsed)) {
+                // Nuovo formato: array di {url, filename}
+                existingAttachments.push(...parsed.map(item => item.url || item));
+              } else {
+                // Single object {url, filename}
+                existingAttachments.push(parsed.url || record.fields.URL_Contratto);
+              }
+            } catch {
+              // Legacy: stringa URL semplice
+              existingAttachments.push(record.fields.URL_Contratto);
+            }
+          }
+        }
+        
+        // Documenti Cliente - parsing unificato per tutti i formati
+        if (record.fields?.URL_Documenti_Cliente) {
+          if (Array.isArray(record.fields.URL_Documenti_Cliente)) {
+            // Attachment array nativo di Airtable
+            existingAttachments.push(...record.fields.URL_Documenti_Cliente.map(item => item.url));
+          } else if (typeof record.fields.URL_Documenti_Cliente === 'object' && record.fields.URL_Documenti_Cliente.url) {
+            // Singolo attachment object
+            existingAttachments.push(record.fields.URL_Documenti_Cliente.url);
+          } else if (typeof record.fields.URL_Documenti_Cliente === 'string') {
+            // Nuovo formato JSON o legacy multiline
+            try {
+              const parsed = JSON.parse(record.fields.URL_Documenti_Cliente);
+              if (Array.isArray(parsed)) {
+                // Nuovo formato: array di {url, filename}
+                existingAttachments.push(...parsed.map(item => item.url || item));
+              } else {
+                // Single object {url, filename}
+                existingAttachments.push(parsed.url || record.fields.URL_Documenti_Cliente);
+              }
+            } catch {
+              // Legacy: formato multiline (nome: URL)
+              const docs = record.fields.URL_Documenti_Cliente.split('\n')
+                .filter(line => line.trim())
+                .map(line => line.includes(': ') ? line.split(': ')[1] : line)
+                .filter(url => url && url.trim());
+              existingAttachments.push(...docs);
+            }
+          }
+        }
+        
+        // Schede Cliente - parsing unificato per tutti i formati
+        if (record.fields?.URL_Schede_Cliente) {
+          if (Array.isArray(record.fields.URL_Schede_Cliente)) {
+            // Attachment array nativo di Airtable
+            existingAttachments.push(...record.fields.URL_Schede_Cliente.map(item => item.url));
+          } else if (typeof record.fields.URL_Schede_Cliente === 'object' && record.fields.URL_Schede_Cliente.url) {
+            // Singolo attachment object
+            existingAttachments.push(record.fields.URL_Schede_Cliente.url);
+          } else if (typeof record.fields.URL_Schede_Cliente === 'string') {
+            // Nuovo formato JSON o legacy
+            try {
+              const parsed = JSON.parse(record.fields.URL_Schede_Cliente);
+              if (Array.isArray(parsed)) {
+                // Nuovo formato: array di {url, filename}
+                existingAttachments.push(...parsed.map(item => item.url || item));
+              } else {
+                // Single object {url, filename}
+                existingAttachments.push(parsed.url || record.fields.URL_Schede_Cliente);
+              }
+            } catch {
+              // Legacy: stringa URL semplice
+              existingAttachments.push(record.fields.URL_Schede_Cliente);
+            }
+          }
+        }
+        
+        return {
+          ...record,
+          fields: {
+            ...record.fields,
+            Cliente_Nome: clientName,
+            Allegati: existingAttachments,
+          }
+        };
+      });
+      
       recordApiLatency('orders', 'list', Date.now() - startTime);
       
       return NextResponse.json({
-        records: json.records || [],
+        records: enrichedRecords,
         offset: json.offset,
-        totalRecords: json.records?.length || 0,
+        totalRecords: enrichedRecords.length,
       });
     }
 
@@ -276,6 +604,12 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
+    const { orderData, orderItemsData } = body;
+    
+    console.log('📦 [CREATE ORDER] Received data:', { 
+      orderFields: Object.keys(orderData || {}),
+      itemsCount: orderItemsData?.length || 0
+    });
     
     // Get Airtable credentials
     const [apiKey, baseId] = await Promise.all([
@@ -290,30 +624,95 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${ORDERS_TABLE_ID}`;
+    // Step 1: Create the main order
+    console.log('🏁 [CREATE ORDER] Step 1: Creating main order...');
+    const orderUrl = `https://api.airtable.com/v0/${baseId}/${ORDERS_TABLE_ID}`;
     
-    const response = await fetch(airtableUrl, {
+    const orderResponse = await fetch(orderUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        fields: body,
+        fields: orderData,
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Airtable API error:', response.status, errorText);
-      throw new Error(`Airtable error ${response.status}: ${errorText}`);
+    if (!orderResponse.ok) {
+      const errorText = await orderResponse.text();
+      console.error('❌ [CREATE ORDER] Order creation error:', orderResponse.status, errorText);
+      throw new Error(`Failed to create order: ${orderResponse.status} ${errorText}`);
     }
 
-    const json = await response.json();
+    const orderResult = await orderResponse.json();
+    const orderId = orderResult.id;
+    console.log('✅ [CREATE ORDER] Order created with ID:', orderId);
     
-    recordApiLatency('orders', 'create', Date.now() - startTime);
+    // Step 2: Create order items (if any)
+    let orderItemsResult = [];
+    if (orderItemsData && orderItemsData.length > 0) {
+      console.log(`📦 [CREATE ORDER] Step 2: Creating ${orderItemsData.length} order items...`);
+      
+      // Add order ID to each item
+      const itemsWithOrderId = orderItemsData.map(item => ({
+        ...item,
+        'ID_Ordine': [orderId] // Link to the created order
+      }));
+      
+      // Create items in batch (Airtable supports up to 10 records at once)
+      const BATCH_SIZE = 10;
+      const batches = [];
+      for (let i = 0; i < itemsWithOrderId.length; i += BATCH_SIZE) {
+        batches.push(itemsWithOrderId.slice(i, i + BATCH_SIZE));
+      }
+      
+      for (const [batchIndex, batch] of batches.entries()) {
+        console.log(`📦 [CREATE ORDER] Creating batch ${batchIndex + 1}/${batches.length} (${batch.length} items)`);
+        
+        const itemsUrl = `https://api.airtable.com/v0/${baseId}/${ORDER_ITEMS_TABLE_ID}`;
+        const itemsResponse = await fetch(itemsUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            records: batch.map(item => ({ fields: item }))
+          }),
+        });
+        
+        if (!itemsResponse.ok) {
+          const errorText = await itemsResponse.text();
+          console.error(`❌ [CREATE ORDER] Items batch ${batchIndex + 1} error:`, itemsResponse.status, errorText);
+          // Don't fail the whole operation, but log the error
+          console.warn(`⚠️ [CREATE ORDER] Failed to create items batch ${batchIndex + 1}, continuing...`);
+          continue;
+        }
+        
+        const batchResult = await itemsResponse.json();
+        orderItemsResult.push(...(batchResult.records || []));
+        console.log(`✅ [CREATE ORDER] Batch ${batchIndex + 1} created: ${batchResult.records?.length || 0} items`);
+      }
+      
+      console.log(`✅ [CREATE ORDER] All items created: ${orderItemsResult.length}/${orderItemsData.length}`);
+    }
     
-    return NextResponse.json(json);
+    const totalTime = Date.now() - startTime;
+    recordApiLatency('orders', 'create', totalTime);
+    
+    console.log(`✅ [CREATE ORDER] Complete! Order: ${orderId}, Items: ${orderItemsResult.length} (${totalTime}ms)`);
+    
+    return NextResponse.json({
+      success: true,
+      order: orderResult,
+      orderItems: orderItemsResult,
+      summary: {
+        orderId,
+        itemsCreated: orderItemsResult.length,
+        totalTime
+      }
+    });
 
   } catch (error) {
     console.error('❌ Create Order API Error:', error);

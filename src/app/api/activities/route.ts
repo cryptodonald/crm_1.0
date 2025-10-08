@@ -174,14 +174,28 @@ export async function GET(request: NextRequest) {
       console.log(`🚀 [TIMING] Activities fetch: ${fetchTime.toFixed(2)}ms`);
 
       // 🔄 Transform Airtable records to ActivityData format
-      const transformedRecords = (data.records || []).map((record: any) => ({
-        // Airtable metadata
-        id: record.id,
-        createdTime: record.createdTime,
+      const transformedRecords = (data.records || []).map((record: any) => {
+        const fields = { ...record.fields };
         
-        // Flatten fields to top level
-        ...record.fields,
-      }));
+        // Parse Allegati field if it's a JSON string
+        if (fields.Allegati && typeof fields.Allegati === 'string') {
+          try {
+            fields.Allegati = JSON.parse(fields.Allegati);
+          } catch (e) {
+            console.warn(`⚠️ Failed to parse attachments for activity ${record.id}:`, e);
+            fields.Allegati = [];
+          }
+        }
+        
+        return {
+          // Airtable metadata
+          id: record.id,
+          createdTime: record.createdTime,
+          
+          // Flatten fields to top level
+          ...fields,
+        };
+      });
       
       console.log('🔄 [Activities API] Transformed records:', transformedRecords.length);
       
@@ -201,14 +215,13 @@ export async function GET(request: NextRequest) {
     
     console.log(`✅ [Activities API] Completed: ${result.count} activities in ${totalTime.toFixed(2)}ms (cached: ${wasCached})`);
     
-    // Add compression header for large responses
+    // Add headers for response
     const headers = new Headers({
       'Content-Type': 'application/json',
     });
     
-    if (result.count > 50) {
-      headers.set('Content-Encoding', 'gzip');
-    }
+    // Note: Removed Content-Encoding gzip as it causes ERR_CONTENT_DECODING_FAILED in development
+    // Next.js handles compression automatically in production
     
     return new NextResponse(JSON.stringify({
       ...result,
@@ -318,12 +331,12 @@ export async function POST(request: NextRequest) {
         ...(activityData['Prossima azione'] && { 'Prossima azione': activityData['Prossima azione'] }),
         ...(activityData['Data prossima azione'] && { 'Data prossima azione': activityData['Data prossima azione'] }),
         
-        // Attachments - convert to Airtable format
+        // Attachments - convert to JSON string format
         ...(activityData.allegati && activityData.allegati.length > 0 && {
-          Allegati: activityData.allegati.map(allegato => ({
+          Allegati: JSON.stringify(activityData.allegati.map(allegato => ({
             url: allegato.url,
             filename: allegato.filename
-          }))
+          })))
         }),
       },
     };
