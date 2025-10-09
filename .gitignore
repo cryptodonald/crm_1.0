@@ -64,6 +64,7 @@ src/components/test/
 *-test.tsx
 *-ab-test.tsx
 page-test.tsx
+test-upload-delete.js
 
 # User uploads and temporary files
 public/uploads/

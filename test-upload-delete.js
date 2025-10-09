@@ -3,7 +3,11 @@ const { put, del } = require('@vercel/blob');
 async function testUploadAndDelete() {
   console.log('🧪 Testing upload + immediate delete...');
   
-  const token = process.env.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_rWuYZ7SoHYSfo8FR_yKRIMCYhfB9trZoQE3kMDr4dcWFWvv';
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  
+  if (!token) {
+    throw new Error('❌ BLOB_READ_WRITE_TOKEN environment variable is required!');
+  }
   
   try {
     // Step 1: Upload a file
