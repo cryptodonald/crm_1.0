@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { ActivityFormData, ActivityEsito, ActivityProssimaAzione, ACTIVITY_ESITO_COLORS } from '@/types/activities';
+import { ActivityFormData, ActivityEsito, ActivityProssimaAzione, ActivityObiettivo, ACTIVITY_ESITO_COLORS, ACTIVITY_OBIETTIVO_COLORS } from '@/types/activities';
 import {
   FormControl,
   FormField,
@@ -68,6 +68,25 @@ const NEXT_ACTIONS: ActivityProssimaAzione[] = [
   'Consulenza',
   'Follow-up',
   'Nessuna',
+];
+
+// Obiettivi disponibili per la prossima azione
+const ACTIVITY_OBJECTIVES: ActivityObiettivo[] = [
+  'Primo contatto',
+  'Qualificazione lead',
+  'Presentazione prodotto',
+  'Invio preventivo',
+  'Follow-up preventivo',
+  'Negoziazione',
+  'Chiusura ordine',
+  'Fissare appuntamento',
+  'Confermare appuntamento',
+  'Promemoria appuntamento',
+  'Consegna prodotto',
+  'Assistenza tecnica',
+  'Controllo soddisfazione',
+  'Upsell Cross-sell',
+  'Richiesta recensione',
 ];
 
 export function RisultatiStep({ form }: RisultatiStepProps) {
@@ -194,6 +213,52 @@ export function RisultatiStep({ form }: RisultatiStepProps) {
           />
         </div>
 
+        {/* Obiettivo Prossima Azione - Solo se prossima azione è selezionata e diversa da "Nessuna" */}
+        {(() => {
+          const prossimaAzione = watch('Prossima azione');
+          if (prossimaAzione && prossimaAzione !== 'Nessuna') {
+            return (
+              <FormField
+                control={control}
+                name="Obiettivo prossima azione"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Obiettivo Prossima Azione</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seleziona obiettivo per la prossima azione">
+                            {field.value && (
+                              <div className="flex items-center gap-2">
+                                <Badge className={cn("text-xs px-2 py-0.5", ACTIVITY_OBIETTIVO_COLORS[field.value as ActivityObiettivo])}>
+                                  {field.value}
+                                </Badge>
+                              </div>
+                            )}
+                          </SelectValue>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="max-h-[200px]">
+                        {ACTIVITY_OBJECTIVES.map((obiettivo) => (
+                          <SelectItem key={obiettivo} value={obiettivo}>
+                            <div className="flex items-center gap-2">
+                              <Badge className={cn("text-xs px-2 py-0.5", ACTIVITY_OBIETTIVO_COLORS[obiettivo])}>
+                                {obiettivo}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessageSubtle />
+                  </FormItem>
+                )}
+              />
+            );
+          }
+          return null;
+        })()} 
+
         {/* Data e Ora Prossima Azione */}
         <div className="grid gap-4 md:grid-cols-2">
           {/* Data Prossima Azione */}
@@ -229,9 +294,6 @@ export function RisultatiStep({ form }: RisultatiStepProps) {
                         handleNextDateTimeChange(date, selectedNextTime);
                         setNextDatePopoverOpen(false);
                       }}
-                      disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0))
-                      }
                       locale={it}
                     />
                   </PopoverContent>

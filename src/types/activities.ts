@@ -119,6 +119,31 @@ export interface AirtableAttachment {
   };
 }
 
+// Tipi per eventi ottimistici
+export interface OptimisticActivityEvent {
+  // Per attività create ottimisticamente
+  id?: string;
+  _isOptimistic?: boolean;
+  _isLoading?: boolean;
+  _tempId?: string;
+  _shouldRemove?: boolean;
+  _isMainActivity?: boolean;     // Flag per attività principale (creata dall'utente)
+  _isNextActivity?: boolean;     // Flag per prossima attività (creata automaticamente)
+}
+
+export interface OptimisticLeadStateEvent {
+  type: 'lead-state-change' | 'lead-state-confirmed' | 'lead-state-rollback';
+  leadId: string;
+  newState?: string;
+  oldState?: string;
+  _isOptimistic?: boolean;
+  _isLoading?: boolean;
+  _shouldRollback?: boolean;
+  error?: any;
+}
+
+export type OptimisticEvent = OptimisticActivityEvent | OptimisticLeadStateEvent;
+
 // Form data per creare/aggiornare attività
 export interface ActivityFormData {
   // === INFORMAZIONI BASE ===
@@ -142,6 +167,7 @@ export interface ActivityFormData {
   Esito?: ActivityEsito;
   'Prossima azione'?: ActivityProssimaAzione;
   'Data prossima azione'?: string;
+  'Obiettivo prossima azione'?: ActivityObiettivo; // Obiettivo per la prossima attività
   
   // === ALLEGATI ===
   allegati?: AirtableAttachment[];
@@ -282,6 +308,7 @@ export const DEFAULT_ACTIVITY_DATA: ActivityFormData = {
   Esito: undefined,
   'Prossima azione': undefined,
   'Data prossima azione': undefined,
+  'Obiettivo prossima azione': undefined,
   allegati: undefined,
 };
 
@@ -415,6 +442,24 @@ export const ActivityFormSchema = z.object({
     'Consulenza',
     'Follow-up',
     'Nessuna',
+  ]).optional(),
+
+  'Obiettivo prossima azione': z.enum([
+    'Primo contatto',
+    'Qualificazione lead',
+    'Presentazione prodotto',
+    'Invio preventivo',
+    'Follow-up preventivo',
+    'Negoziazione',
+    'Chiusura ordine',
+    'Fissare appuntamento',
+    'Confermare appuntamento',
+    'Promemoria appuntamento',
+    'Consegna prodotto',
+    'Assistenza tecnica',
+    'Controllo soddisfazione',
+    'Upsell Cross-sell',
+    'Richiesta recensione',
   ]).optional(),
 
   // Allegati

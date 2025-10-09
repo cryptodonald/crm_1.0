@@ -224,6 +224,312 @@ export function NewActivityModal({
     formChangedRef.current = false;
   };
 
+  // 🤖 Funzione per gestire le automazioni post-creazione attività
+  const handleActivityAutomations = async (activityData: ActivityFormData, createdActivity?: any) => {
+    try {
+      console.log('🎆 [AUTOMATIONS] Avvio automazioni post-attività:', { activityData, createdActivity });
+      
+      const leadIds = activityData['ID Lead'];
+      if (!leadIds || leadIds.length === 0) {
+        console.log('⚠️ [AUTOMATIONS] Nessun lead collegato, skip automazioni');
+        return;
+      }
+      
+      // Per ogni lead collegato all'attività
+      for (const leadId of leadIds) {
+        console.log(`🔄 [AUTOMATIONS] Processando lead: ${leadId}`);
+        
+        // 🚀 AUTOMAZIONE 1: Cambio stato lead basato su obiettivo + esito + stato
+        await handleLeadStateAutomation(leadId, activityData);
+        
+        // 🚀 AUTOMAZIONE 2: Creazione prossima attività
+        await handleNextActivityCreation(leadId, activityData);
+      }
+      
+      console.log('✅ [AUTOMATIONS] Automazioni completate con successo');
+    } catch (error) {
+      console.error('❌ [AUTOMATIONS] Errore durante automazioni:', error);
+      // Non bloccare il flusso principale per errori di automazione
+    }
+  };
+  
+  // 🎯 Automazione cambio stato lead
+  const handleLeadStateAutomation = async (leadId: string, activityData: ActivityFormData) => {
+    try {
+      const { Obiettivo, Esito, Stato } = activityData;
+      
+      // Solo per attività completate
+      if (Stato !== 'Completata') {
+        console.log(`🔄 [LEAD STATE] Attività non completata (${Stato}), skip cambio stato`);
+        return;
+      }
+      
+      let newLeadState: string | null = null;
+      
+      // Regola 1: Primo contatto riuscito: Nuovo → Attivo
+      if (Obiettivo === 'Primo contatto' && Esito === 'Contatto riuscito') {
+        newLeadState = 'Attivo';
+        console.log('🟢 [LEAD STATE] Primo contatto riuscito → Attivo');
+      }
+      // Regola 2: Qualificazione con informazioni raccolte: (≤ Qualificato) → Qualificato
+      else if (Obiettivo === 'Qualificazione lead' && Esito === 'Informazioni raccolte') {
+        newLeadState = 'Qualificato';
+        console.log('🟡 [LEAD STATE] Qualificazione completata → Qualificato');
+      }
+      // Regola 3: Ordine confermato: → Cliente
+      else if (Esito === 'Ordine confermato') {
+        newLeadState = 'Cliente';
+        console.log('🟢 [LEAD STATE] Ordine confermato → Cliente');
+      }
+      
+      if (newLeadState) {
+        console.log(`🔄 [LEAD STATE] Aggiornamento lead ${leadId} a stato: ${newLeadState}`);
+        
+        // 🚀 SALVATAGGIO OTTIMISTICO: Aggiorna immediatamente l'UI
+        if (onSuccess) {
+          const optimisticLeadUpdate = {
+            type: 'lead-state-change',
+            leadId: leadId,
+            newState: newLeadState,
+            oldState: null, // Non abbiamo lo stato precedente qui, verrà gestito dall'UI
+            _isOptimistic: true,
+            _isLoading: true
+          };
+          
+          console.log(`🚀 [OPTIMISTIC LEAD] Notificando cambio stato ottimistico:`, optimisticLeadUpdate);
+          onSuccess(optimisticLeadUpdate);
+        }
+        
+        // Toast immediato per feedback UX
+        const toastId = `lead-state-${leadId}-${Date.now()}`;
+        toast.loading(`Aggiornamento stato lead a "${newLeadState}"...`, {
+          id: toastId,
+          description: 'Aggiornamento automatico in base al risultato dell\'attività.',
+        });
+        
+        // Chiamata API per aggiornamento reale
+        const response = await fetch(`/api/leads/${leadId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ Stato: newLeadState }),
+        });
+        
+        if (response.ok) {
+          console.log(`✅ [LEAD STATE] Lead ${leadId} aggiornato a ${newLeadState}`);
+          
+          // 🔄 CONFERMA DELL'AGGIORNAMENTO OTTIMISTICO
+          if (onSuccess) {
+            const confirmedLeadUpdate = {
+              type: 'lead-state-confirmed',
+              leadId: leadId,
+              newState: newLeadState,
+              _isOptimistic: false,
+              _isLoading: false
+            };
+            
+            console.log(`✅ [OPTIMISTIC LEAD CONFIRMED] Confermando cambio stato:`, confirmedLeadUpdate);
+            onSuccess(confirmedLeadUpdate);
+          }
+          
+          // Toast di successo finale
+          toast.success(`Stato lead aggiornato automaticamente`, {
+            id: toastId, // Sostituisce il toast di loading
+            description: `Il lead è stato spostato in stato \"${newLeadState}\" in base al risultato dell'attività.`,
+          });
+          
+        } else {
+          console.error(`❌ [LEAD STATE] Errore aggiornamento lead ${leadId}:`, await response.text());
+          
+          // ❌ ROLLBACK DELL'AGGIORNAMENTO OTTIMISTICO
+          if (onSuccess) {
+            const rollbackLeadUpdate = {
+              type: 'lead-state-rollback',
+              leadId: leadId,
+              newState: newLeadState,
+              _shouldRollback: true
+            };
+            
+            console.log(`❌ [OPTIMISTIC LEAD ROLLBACK] Rollback cambio stato:`, rollbackLeadUpdate);
+            onSuccess(rollbackLeadUpdate);
+          }
+          
+          // Toast di errore
+          toast.error('Errore nell\'aggiornamento dello stato lead', {
+            id: toastId, // Sostituisce il toast di loading
+            description: 'Lo stato del lead non è stato aggiornato automaticamente. Puoi modificarlo manualmente.',
+          });
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ [LEAD STATE] Errore cambio stato lead:', error);
+      
+      // In caso di errore nella try/catch, effettua rollback se possibile
+      if (onSuccess) {
+        const errorRollback = {
+          type: 'lead-state-rollback',
+          leadId: leadId,
+          _shouldRollback: true,
+          error: error
+        };
+        
+        console.log(`❌ [OPTIMISTIC LEAD ERROR] Rollback per errore:`, errorRollback);
+        onSuccess(errorRollback);
+      }
+    }
+  };
+  
+  // 📅 Automazione creazione prossima attività
+  const handleNextActivityCreation = async (leadId: string, activityData: ActivityFormData) => {
+    try {
+      const { 
+        'Prossima azione': prossimaAzione, 
+        'Data prossima azione': dataProssimaAzione,
+        'Obiettivo prossima azione': obiettivoProssimaAzione 
+      } = activityData;
+      
+      if (!prossimaAzione || prossimaAzione.trim() === '') {
+        console.log('📅 [NEXT ACTIVITY] Nessuna prossima azione specificata, skip');
+        return;
+      }
+      
+      console.log(`📅 [NEXT ACTIVITY] Creazione prossima attività: ${prossimaAzione}`);
+      
+      // Determina lo stato della prossima attività in base alla presenza di data/ora
+      let statoNuovaAttivita = 'Da Pianificare';
+      let dataNuovaAttivita = undefined;
+      
+      if (dataProssimaAzione) {
+        statoNuovaAttivita = 'Pianificata';
+        dataNuovaAttivita = new Date(dataProssimaAzione).toISOString();
+        console.log(`📅 [NEXT ACTIVITY] Con data specifica → Stato: ${statoNuovaAttivita}`);
+      } else {
+        console.log(`📅 [NEXT ACTIVITY] Senza data specifica → Stato: ${statoNuovaAttivita}`);
+      }
+      
+      // Mappa la prossima azione al tipo di attività corretto
+      const mappazioneProxAttivita = {
+        'Chiamata': 'Chiamata',
+        'WhatsApp': 'WhatsApp', 
+        'Email': 'Email',
+        'SMS': 'SMS',
+        'Consulenza': 'Consulenza',
+        'Follow-up': 'Follow-up',
+        'Nessuna': 'Chiamata', // Default per \"Nessuna\"
+      } as const;
+      
+      // Tipo di attività basato sulla prossima azione
+      const tipoAttivita = mappazioneProxAttivita[prossimaAzione as keyof typeof mappazioneProxAttivita] || 'Chiamata';
+      
+      // 🚀 SALVATAGGIO OTTIMISTICO: Crea subito l'attività nell'UI
+      const tempActivityId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const tempActivity: any = {
+        id: tempActivityId,
+        ID: tempActivityId,
+        createdTime: new Date().toISOString(),
+        Titolo: `${tipoAttivita}${obiettivoProssimaAzione ? ` - ${obiettivoProssimaAzione}` : ''}`,
+        Tipo: tipoAttivita,
+        Stato: statoNuovaAttivita,
+        Obiettivo: obiettivoProssimaAzione,
+        Priorità: 'Media',
+        'ID Lead': [leadId],
+        Assegnatario: activityData.Assegnatario,
+        Note: obiettivoProssimaAzione 
+          ? `Follow-up: ${prossimaAzione} - ${obiettivoProssimaAzione}` 
+          : `Follow-up: ${prossimaAzione}`,
+        Data: dataNuovaAttivita,
+        // Flag per indicare che è temporanea
+        _isOptimistic: true,
+        _isLoading: true,
+        _isNextActivity: true // Flag per identificare che è una prossima attività
+      };
+      
+      // Notifica immediatamente l'UI dell'attività creata ottimisticamente
+      if (onSuccess) {
+        console.log(`🚀 [OPTIMISTIC] Notificando UI dell'attività temporanea:`, tempActivity);
+        onSuccess(tempActivity);
+      }
+      
+      // Toast immediato per feedback UX
+      toast.loading('Creazione prossima attività in corso...', {
+        id: `creating-${tempActivityId}`,
+        description: `Sto creando l'attività \"${tipoAttivita}\" per il follow-up.`,
+      });
+      
+      // Crea la nuova attività
+      const newActivityData: Partial<ActivityFormData> = {
+        Tipo: tipoAttivita,
+        Stato: statoNuovaAttivita as any,
+        // Usa l'obiettivo specifico se fornito, altrimenti nessun obiettivo
+        ...(obiettivoProssimaAzione && { Obiettivo: obiettivoProssimaAzione }),
+        Priorità: 'Media',
+        'ID Lead': [leadId],
+        Assegnatario: activityData.Assegnatario, // Stesso assegnatario
+        Note: obiettivoProssimaAzione 
+          ? `Follow-up: ${prossimaAzione} - ${obiettivoProssimaAzione}` 
+          : `Follow-up: ${prossimaAzione}`,
+        ...(dataNuovaAttivita && { Data: dataNuovaAttivita }),
+      };
+      
+      const response = await fetch('/api/activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newActivityData),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`✅ [NEXT ACTIVITY] Prossima attività creata:`, result.data?.id);
+        
+        // 🔄 AGGIORNA L'ATTIVITÀ OTTIMISTICA CON DATI REALI
+        if (result.data && onSuccess) {
+          const realActivity: any = {
+            id: result.data.id,
+            ID: result.data.id,
+            createdTime: result.data.createdTime,
+            // Copia tutti i fields dal result.data.fields
+            ...result.data.fields,
+            // Rimuovi flag ottimistici
+            _isOptimistic: false,
+            _isLoading: false,
+            _tempId: tempActivityId, // Per permettere il replace nell'UI
+            _isNextActivity: true // Mantiene il flag che identifica come prossima attività
+          };
+          
+          console.log(`🔄 [OPTIMISTIC UPDATE] Aggiornando attività temporanea con dati reali:`, realActivity);
+          onSuccess(realActivity);
+        }
+        
+        // Toast di successo finale
+        toast.success('Prossima attività creata automaticamente', {
+          id: `creating-${tempActivityId}`, // Sostituisce il toast di loading
+          description: `È stata creata l'attività \"${tipoAttivita}\" per il follow-up \"${prossimaAzione}\" in stato ${statoNuovaAttivita.toLowerCase()}.`,
+        });
+      } else {
+        console.error(`❌ [NEXT ACTIVITY] Errore creazione:`, await response.text());
+        
+        // ❌ RIMUOVI L'ATTIVITÀ OTTIMISTICA IN CASO DI ERRORE
+        if (onSuccess) {
+          const errorActivity: any = {
+            id: tempActivityId,
+            _shouldRemove: true // Flag per rimuovere dall'UI
+          };
+          console.log(`❌ [OPTIMISTIC ERROR] Rimuovendo attività temporanea fallita:`, errorActivity);
+          onSuccess(errorActivity);
+        }
+        
+        // Toast di errore
+        toast.error('Errore nella creazione della prossima attività', {
+          id: `creating-${tempActivityId}`, // Sostituisce il toast di loading
+          description: 'La prossima attività non è stata creata automaticamente. Puoi crearla manualmente.',
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ [NEXT ACTIVITY] Errore creazione prossima attività:', error);
+    }
+  };
+
   const onSubmit = async (data: ActivityFormData) => {
     console.log('🔵 [ONSUBMIT START] onSubmit function called');
     console.log('🔵 [ONSUBMIT START] isEditMode:', isEditMode);
@@ -280,8 +586,9 @@ export function NewActivityModal({
         const activityTitle = `${data.Tipo}${data.Obiettivo ? ` - ${data.Obiettivo}` : ''}`;
         console.log(`✅ [Activity Modal] ${isEditMode ? 'Updated' : 'Created'} activity: ${result.data?.id}`);
         
+        // Toast di successo per l'attività principale
         toast.success(`Attività ${isEditMode ? 'aggiornata' : 'creata'} con successo!`, {
-          description: `L'attività "${activityTitle}" è stata ${isEditMode ? 'aggiornata' : 'aggiunta al CRM'}.`,
+          description: `L'attività \"${activityTitle}\" è stata ${isEditMode ? 'aggiornata' : 'aggiunta al CRM'}.`,
         });
         
         // Clear draft after successful submission
@@ -290,37 +597,34 @@ export function NewActivityModal({
           console.log(`🗑️ [Activity Modal] Draft cleared`);
         }
         
-        // Close modal first (like EditLeadModal)
-        console.log(`🚪 [Activity Modal] Calling onOpenChange(false)`);
-        onOpenChange(false);
-        
-        // Then call success callback to update parent page
-        if (onSuccess) {
-          console.log(`🔄 [Activity Modal] Calling onSuccess callback`);
-          console.log(`🔄 [Activity Modal] result.data:`, result.data);
+        // 🚀 Prima notifica l'attività principale all'UI
+        if (onSuccess && result.data) {
+          console.log(`🔄 [MAIN ACTIVITY] Notificando attività principale creata/aggiornata`);
+          console.log(`🔄 [MAIN ACTIVITY] Dati ricevuti da API:`, result.data);
           
-          // 🚀 Passa sempre i dati dell'attività (sia per create che edit)
-          if (result.data) {
-            // Trasforma i dati Airtable nel formato ActivityData
-            const activityData: ActivityData = {
-              id: result.data.id,
-              ID: result.data.id, // Fallback se non presente
-              createdTime: result.data.createdTime,
-              // Copia tutti i fields dal result.data.fields
-              ...result.data.fields,
-              // Aggiungi titolo calcolato se non presente
-              Titolo: result.data.fields?.Titolo || `${data.Tipo}${data.Obiettivo ? ` - ${data.Obiettivo}` : ''}`
-            };
-            
-            console.log(`✅ [Activity Modal] Sending transformed activity data:`, activityData);
-            onSuccess(activityData);
-          } else {
-            console.log(`⚠️ [Activity Modal] No result.data found, calling onSuccess without data`);
-            onSuccess();
-          }
-        } else {
-          console.log(`⚠️ [Activity Modal] No onSuccess callback provided`);
+          // Trasforma i dati Airtable nel formato ActivityData
+          const activityData: ActivityData = {
+            id: result.data.id,
+            ID: result.data.id,
+            createdTime: result.data.createdTime,
+            // Copia tutti i fields dal result.data.fields
+            ...result.data.fields,
+            // Aggiungi titolo calcolato se non presente
+            Titolo: result.data.fields?.Titolo || `${data.Tipo}${data.Obiettivo ? ` - ${data.Obiettivo}` : ''}`,
+            // Flag per identificare che questa è l'attività principale (non ottimistica)
+            _isMainActivity: true
+          };
+          
+          console.log(`✅ [MAIN ACTIVITY] Inviando dati attività principale trasformati:`, activityData);
+          onSuccess(activityData);
         }
+        
+        // 🎆 POI esegui le automazioni (che useranno lo stesso callback onSuccess)
+        await handleActivityAutomations(data, result.data);
+        
+        // Close modal alla fine
+        console.log(`🚐 [Activity Modal] Calling onOpenChange(false)`);
+        onOpenChange(false);
         
       } catch (error: any) {
         clearTimeout(timeoutId);

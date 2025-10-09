@@ -61,6 +61,7 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
   const [usersPopoverOpen, setUsersPopoverOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const { control, setValue, watch } = form;
   const { users, loading: usersLoading } = useUsers();
@@ -82,6 +83,21 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
       setSelectedTime(timeString || '09:00');
     }
   }, [watch]);
+  
+  // Auto-popolamento data e ora corrente quando il form viene aperto per la prima volta
+  useEffect(() => {
+    const dataValue = watch('Data');
+    // Se non c'è già una data impostata e non abbiamo ancora inizializzato
+    if (!dataValue && !isInitialized) {
+      const now = new Date();
+      const currentTime = format(now, 'HH:mm');
+      
+      setSelectedDate(now);
+      setSelectedTime(currentTime);
+      setValue('Data', now.toISOString());
+      setIsInitialized(true);
+    }
+  }, [watch, setValue, isInitialized]);
 
   const handleDateTimeChange = (date: Date | undefined, time?: string) => {
     if (date) {
@@ -161,9 +177,6 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
                           handleDateTimeChange(date, selectedTime);
                           setDatePopoverOpen(false);
                         }}
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
                         locale={it}
                       />
                     </PopoverContent>
