@@ -50,7 +50,6 @@ import Link from 'next/link';
 import { IntegratedConfigurator } from '@/components/products/integrated-configurator';
 import { PricingCalculatorSimple } from '@/components/products/pricing-calculator';
 import { SmartFileUpload } from '@/components/products/smart-file-upload';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
