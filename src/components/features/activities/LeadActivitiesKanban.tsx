@@ -39,7 +39,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search, Play, Pause, RotateCcw, XCircle, AlertCircle, AlertTriangle, ExternalLink, Download, FileText, FileImage, File } from 'lucide-react';
+import { Plus, Calendar, Clock, User, Target, GripVertical, MoreHorizontal, Paperclip, ClipboardList, Zap, CheckCircle2, Edit, Trash2, Search, Play, Pause, RotateCcw, XCircle, AlertCircle, AlertTriangle, ExternalLink, Download, FileText, FileImage, File, LayoutGrid, List } from 'lucide-react';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { ActivityProgress } from '@/components/ui/activity-progress';
 import { formatDistanceToNow } from 'date-fns';
@@ -52,6 +52,7 @@ import type { Option } from '@/types/data-table';
 import { NewActivityModal } from '@/components/activities';
 import { useActivitiesClean } from '@/hooks/use-activities-clean';
 import { useUsers } from '@/hooks/use-users';
+import { ActivityTimeline } from './ActivityTimeline';
 // Removed old complex system imports
 
 import {
@@ -805,6 +806,7 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
   className = '',
   onLeadStateChange,
 }) => {
+  const [viewMode, setViewMode] = useState<'kanban' | 'timeline'>('kanban');
   const [statoFilter, setStatoFilter] = useState<ActivityStato[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showNewActivityModal, setShowNewActivityModal] = useState(false);
@@ -1303,8 +1305,29 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
           />
         </div>
         
-        {/* Filtro Stato e pulsante nuova attività a destra */}
+        {/* Filtro Stato, toggle vista e pulsante nuova attività a destra */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          {/* Toggle vista Kanban/Timeline */}
+          <div className="flex items-center gap-1 rounded-lg border p-1">
+            <Button
+              size="sm"
+              variant={viewMode === 'kanban' ? 'secondary' : 'ghost'}
+              onClick={() => setViewMode('kanban')}
+              className="h-7 px-2"
+            >
+              <LayoutGrid className="h-4 w-4 mr-1" />
+              Kanban
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'timeline' ? 'secondary' : 'ghost'}
+              onClick={() => setViewMode('timeline')}
+              className="h-7 px-2"
+            >
+              <List className="h-4 w-4 mr-1" />
+              Timeline
+            </Button>
+          </div>
           <DataTablePersistentFilter
             title="Stato"
             options={STATI_DISPONIBILI.map(stato => ({
@@ -1329,7 +1352,16 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
         </div>
       </div>
 
-      {/* Kanban Board con Drag & Drop */}
+      {/* Vista condizionale: Kanban o Timeline */}
+      {viewMode === 'timeline' ? (
+        <ActivityTimeline
+          activities={filteredActivities}
+          onEdit={handleEditActivity}
+          onDelete={handleDeleteActivity}
+          usersData={users}
+        />
+      ) : (
+      /* Kanban Board con Drag & Drop */
       <Kanban
         value={kanbanData}
         onValueChange={handleKanbanChange}
@@ -1412,6 +1444,7 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
           }}
         </KanbanOverlay>
       </Kanban>
+      )}
 
       {/* Dialog per scegliere stato completate */}
       <Dialog open={showStateDialog} onOpenChange={(open) => {
