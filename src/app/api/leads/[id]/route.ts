@@ -198,7 +198,8 @@ export async function PUT(
     if (body.Città !== undefined) fieldsToUpdate.Città = body.Città.trim();
     if (body.Esigenza !== undefined) fieldsToUpdate.Esigenza = body.Esigenza.trim();
     if (body.Stato !== undefined) fieldsToUpdate.Stato = body.Stato;
-    if (body.Provenienza !== undefined) fieldsToUpdate.Provenienza = body.Provenienza;
+    // ⚠️ Provenienza è un campo linked (lookup/rollup) in Airtable e non può essere modificato direttamente
+    // if (body.Provenienza !== undefined) fieldsToUpdate.Provenienza = body.Provenienza;
     if (body.Note !== undefined) fieldsToUpdate.Note = body.Note.trim();
     if (body.Assegnatario !== undefined) fieldsToUpdate.Assegnatario = body.Assegnatario;
     if (body.Referenza !== undefined) fieldsToUpdate.Referenza = body.Referenza;
@@ -284,18 +285,23 @@ export async function PUT(
     
     console.log('✅ [UPDATE LEAD] Successfully updated:', updatedRecord.id);
 
-    // Invalida la cache in background (non-blocking)
+    // Invalida TUTTE le cache dei lead (sia singolo che lista completa)
     const cacheStart = performance.now();
     
     leadsCache.clear(); // Cache in-memory, veloce
     
-    // Cache KV invalidation in background
-    invalidateLeadCache(leadId)
-      .catch(err => {
-        console.warn('⚠️ [UPDATE LEAD] Cache invalidation failed (non-critical):', err.message);
-      });
+    // 🚨 IMPORTANTE: Invalida TUTTA la cache dei lead (non solo il singolo)
+    // Questo garantisce che la lista /leads mostri subito le modifiche
+    Promise.all([
+      invalidateLeadCache(leadId),  // Singolo lead
+      invalidateLeadCache(),         // 🔥 TUTTA la cache dei lead
+    ]).catch(err => {
+      console.warn('⚠️ [UPDATE LEAD] Cache invalidation failed (non-critical):', err.message);
+    });
     
     const cacheTime = performance.now() - cacheStart; // Solo parte sincrona
+    
+    console.log('🧹 [UPDATE LEAD] Cache cleared: in-memory + KV (single + all leads)');
 
     // Transform per risposta coerente
     const transformedRecord = {

@@ -15,6 +15,7 @@ import {
   IconActivity,
   IconCommand,
   IconPackage,
+  IconBrandCampaignmonitor,
 } from '@tabler/icons-react';
 
 import { NavDocumentsSimpleFixed } from '../nav-documents-simple-fixed';
@@ -58,9 +59,19 @@ const data = {
       icon: IconPackage,
     },
     {
-      title: 'Reports',
+      title: 'Analytics',
       url: '/reports',
       icon: IconChartBar,
+    },
+    {
+      title: 'Campagne',
+      url: '/marketing/campaigns',
+      icon: IconBrandCampaignmonitor,
+    },
+    {
+      title: 'Fonti',
+      url: '/marketing/sources',
+      icon: IconActivity,
     },
     {
       title: 'Calendario',

@@ -384,13 +384,47 @@ export const useActivitiesClean = (
 
   // 🚀 Funzione per aggiungere attività create esternamente (es. da NewActivityModal)
   const addActivity = useCallback((activity: Activity): void => {
-    console.log(`➕ [ActivitiesClean] Adding external activity: ${activity.id}`);
+    console.log(`➥ [ActivitiesClean] Adding external activity: ${activity.id}`, {
+      Titolo: activity.Titolo || activity.Tipo,
+      Stato: activity.Stato,
+      _tempId: activity._tempId,
+      _isOptimistic: activity._isOptimistic,
+      _isNextActivity: activity._isNextActivity,
+      _isMainActivity: activity._isMainActivity,
+      _shouldRemove: activity._shouldRemove,
+      type: activity.type,
+    });
     
     setActivities(prev => {
-      // Verifica duplicati
-      const exists = prev.find(a => a.id === activity.id);
-      if (exists) {
-        console.log(`🛡️ [ActivitiesClean] Activity already exists, skipping: ${activity.id}`);
+      // 🔴 CASO 1: Rimuovi attività ottimistica fallita
+      if (activity._shouldRemove) {
+        console.log(`🗑️ [ActivitiesClean] Removing failed optimistic activity: ${activity.id}`);
+        return prev.filter(a => a.id !== activity.id);
+      }
+      
+      // 🔴 CASO 2: Replace di attività ottimistica con quella reale
+      if (activity._tempId && !activity._isOptimistic) {
+        const tempIndex = prev.findIndex(a => a.id === activity._tempId);
+        if (tempIndex !== -1) {
+          console.log(`🔄 [ActivitiesClean] Replacing temp activity ${activity._tempId} with real ${activity.id}`);
+          const updated = [...prev];
+          updated[tempIndex] = activity;
+          return updated;
+        } else {
+          console.warn(`⚠️ [ActivitiesClean] Temp activity ${activity._tempId} not found, adding as new`);
+        }
+      }
+      
+      // 🔴 CASO 3: Verifica duplicati per ID
+      const existsById = prev.find(a => a.id === activity.id);
+      if (existsById) {
+        // SEMPRE aggiorna se arriva una versione non ottimistica (conferma)
+        if (!activity._isOptimistic) {
+          console.log(`🔄 [ActivitiesClean] Updating existing activity with confirmed data: ${activity.id}`);
+          return prev.map(a => a.id === activity.id ? activity : a);
+        }
+        // Se invece arriva un'attività ottimistica ma esiste già, skippala
+        console.log(`🛡️ [ActivitiesClean] Optimistic activity already exists, skipping: ${activity.id}`);
         return prev;
       }
       

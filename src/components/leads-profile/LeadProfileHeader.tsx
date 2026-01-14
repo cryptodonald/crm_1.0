@@ -34,16 +34,18 @@ import { uiUpdates } from '@/lib/ui-updates-professional';
 
 interface LeadProfileHeaderProps {
   lead: LeadData;
-  onRefresh?: () => Promise<void>;
+  onRefresh?: (data?: any) => Promise<void>;
 }
 
+// 🚀 Funnel Ottimizzato V3 - Colori per 7 Stati (aggiornato 2025-01-13)
 const STATO_COLORS: Record<LeadStato, string> = {
   Nuovo: 'bg-gray-200 text-gray-800',
-  Attivo: 'bg-blue-200 text-blue-800',
+  Contattato: 'bg-blue-200 text-blue-800',          // Rinominato da 'Attivo'
   Qualificato: 'bg-orange-600 text-white',
+  'In Negoziazione': 'bg-purple-600 text-white',     // 🆕 Viola - fase calda
   Cliente: 'bg-green-600 text-white',
-  Chiuso: 'bg-red-600 text-white',
-  Sospeso: 'bg-purple-600 text-white',
+  Sospeso: 'bg-yellow-500 text-white',               // Giallo per distinguerlo
+  Perso: 'bg-red-600 text-white',                    // Rinominato da 'Chiuso'
 };
 const PROV_COLORS: Record<LeadProvenienza, string> = {
   Meta: 'bg-blue-200 text-blue-800',
@@ -107,16 +109,48 @@ export function LeadProfileHeader({ lead, onRefresh }: LeadProfileHeaderProps) {
     }
   };
 
-  const handleActivitySuccess = async () => {
+  const handleActivitySuccess = async (data?: any) => {
     // Attività creata con successo - aggiorna i dati della pagina
-    console.log(`✅ Nuova attività creata per il lead ${lead.Nome || lead.ID}`);
+    console.log(`✅ [handleActivitySuccess] Called for lead ${lead.Nome || lead.ID}`);
+    console.log(`🔍 [handleActivitySuccess] Received data:`, JSON.stringify(data, null, 2));
+    console.log(`🔍 [handleActivitySuccess] Current lead.ID:`, lead.ID);
+    console.log(`🔍 [handleActivitySuccess] data.leadId:`, data?.leadId);
+    console.log(`🔍 [handleActivitySuccess] Match:`, data?.leadId === lead.ID);
+    console.log(`🔍 [handleActivitySuccess] onRefresh available:`, !!onRefresh);
+    
+    // 🚀 Gestisci aggiornamento ottimistico/confermato dello stato lead
+    if (data && data.leadId === lead.ID && onRefresh) {
+      // Pass data to parent to handle optimistic updates
+      if (data.type === 'lead-state-change') {
+        console.log('🚀 [LeadProfileHeader] Notificando cambio stato ottimistico:', data.newState);
+        await onRefresh(data);
+        return;
+      }
+      
+      if (data.type === 'lead-state-confirmed') {
+        console.log('✅ [LeadProfileHeader] Notificando conferma stato:', data.newState);
+        await onRefresh(data);
+        return;
+      }
+      
+      if (data.type === 'lead-state-rollback') {
+        console.log('❌ [LeadProfileHeader] Notificando rollback stato');
+        await onRefresh(data);
+        return;
+      }
+      
+      // 🔄 Attività principale creata/modificata per questo lead - refresh
+      if (!data.type) {
+        console.log('🔄 [LeadProfileHeader] Attività principale per questo lead - refresh');
+        await onRefresh();
+        return;
+      }
+    }
+    
+    // Per attività normali senza leadId specifico, refresh standard
     if (onRefresh) {
       try {
-        // Wait a bit for cache invalidation to complete
-        console.log('🔄 [LeadProfileHeader] Waiting for cache invalidation...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        console.log('🔄 [LeadProfileHeader] Calling onRefresh...');
+        console.log('🔄 [LeadProfileHeader] Calling onRefresh for activity...');
         await onRefresh();
       } catch (error) {
         console.error('❌ Error refreshing after activity creation:', error);

@@ -8,12 +8,28 @@ interface Props {
   stato?: LeadStato;
 }
 
-const STAGES: LeadStato[] = ['Nuovo', 'Attivo', 'Qualificato', 'Cliente'];
+// 🚀 Funnel Ottimizzato V3 - 7 Stati (aggiornato 2025-01-13)
+const STAGES: LeadStato[] = [
+  'Nuovo',
+  'Contattato',        // Rinominato da 'Attivo'
+  'Qualificato',
+  'In Negoziazione',   // 🆕 Fase calda: appuntamenti, preventivi, trattative
+  'Cliente',
+  'Sospeso',
+  'Perso'              // Rinominato da 'Chiuso'
+];
 
 export function LeadStageProgressSVG({ stato }: Props) {
   const idx = stato ? STAGES.indexOf(stato as LeadStato) : -1;
   const isDone = (i: number) => (idx >= 0 ? i < idx : false);
   const isCurrent = (i: number) => i === idx;
+  
+  // Debug logging
+  console.log('📊 [LeadStageProgressSVG] Rendering with:', {
+    stato,
+    idx,
+    stages: STAGES,
+  });
 
 
 

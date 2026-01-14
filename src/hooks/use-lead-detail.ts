@@ -177,7 +177,9 @@ export function useLeadDetail({ leadId, refreshKey }: UseLeadDetailProps): UseLe
 
   // Funzioni wrapper
   const refresh = useCallback(async () => {
-    await fetchLeadWithRetry.retry();
+    console.log('🔄 [useLeadDetail] Manual refresh triggered with aggressive cache busting');
+    // 💥 Force re-execution con nuovo timestamp per bypassare TUTTE le cache
+    await fetchLeadWithRetry.execute();
     // Toast rimosso: gestito dal componente EditLeadModal
   }, [fetchLeadWithRetry]);
 

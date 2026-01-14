@@ -10,11 +10,12 @@ export type LeadProvenienza =
 
 export type LeadStato =
   | 'Nuovo'
-  | 'Attivo'
+  | 'Contattato'        // Rinominato da 'Attivo' per chiarezza
   | 'Qualificato'
+  | 'In Negoziazione'   // 🆕 NUOVO: appuntamenti, preventivi, trattative attive
   | 'Cliente'
-  | 'Chiuso'
-  | 'Sospeso';
+  | 'Sospeso'
+  | 'Perso';            // Rinominato da 'Chiuso' per chiarezza (stato negativo)
 
 export interface LeadData {
   id: string;
@@ -115,11 +116,12 @@ export interface LeadsTableColumn {
 // Configurazione colori per stati e provenienze
 export const LEAD_STATO_COLORS: Record<LeadStato, string> = {
   Nuovo: 'bg-slate-100 text-slate-800',
-  Attivo: 'bg-blue-100 text-blue-800',
+  Contattato: 'bg-blue-100 text-blue-800',           // Rinominato da 'Attivo'
   Qualificato: 'bg-amber-100 text-amber-800',
+  'In Negoziazione': 'bg-purple-100 text-purple-800', // 🆕 NUOVO: Viola per fase calda
   Cliente: 'bg-green-100 text-green-800',
-  Chiuso: 'bg-red-100 text-red-800',
-  Sospeso: 'bg-purple-100 text-purple-800',
+  Sospeso: 'bg-gray-100 text-gray-800',
+  Perso: 'bg-red-100 text-red-800',                  // Rinominato da 'Chiuso'
 };
 
 export const LEAD_PROVENIENZA_COLORS: Record<LeadProvenienza, string> = {
@@ -176,7 +178,7 @@ export const DEFAULT_LEAD_DATA: LeadFormData = {
   CAP: undefined,
   Città: '',
   Esigenza: '',
-  Stato: 'Nuovo',
+  Stato: 'Nuovo', // Default rimane 'Nuovo'
   Provenienza: 'Sito',
   Note: '',
   Referenza: [],

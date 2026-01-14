@@ -76,6 +76,7 @@ import {
 interface LeadActivitiesKanbanProps {
   leadId?: string;
   className?: string;
+  onLeadStateChange?: (data: any) => void | Promise<void>;
 }
 
 // Tipo per la struttura dati del Kanban
@@ -802,6 +803,7 @@ const KANBAN_COLUMNS_ARRAY = [
 export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
   leadId,
   className = '',
+  onLeadStateChange,
 }) => {
   const [statoFilter, setStatoFilter] = useState<ActivityStato[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -1008,12 +1010,28 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
 
   const handleActivitySuccess = async (updatedActivity?: ActivityData) => {
     console.log('🚀 [CREATE CLEAN] Activity created successfully');
-    setShowNewActivityModal(false);
     
     if (updatedActivity) {
       console.log('🚀 [CREATE CLEAN] New activity data:', updatedActivity);
       console.log('🚀 [CREATE CLEAN] Activity ID:', updatedActivity.id);
       console.log('🚀 [CREATE CLEAN] Activity Stato:', updatedActivity.Stato);
+      console.log('🚀 [CREATE CLEAN] Flags:', {
+        _isOptimistic: updatedActivity._isOptimistic,
+        _isNextActivity: updatedActivity._isNextActivity,
+        _isMainActivity: updatedActivity._isMainActivity,
+        _shouldRemove: updatedActivity._shouldRemove,
+        _tempId: updatedActivity._tempId,
+      });
+      
+      // 🔄 PROPAGAZIONE EVENTI LEAD STATE CHANGE
+      // Se l'evento è un cambio di stato lead, propagalo al parent
+      if (updatedActivity.type && updatedActivity.type.includes('lead-state')) {
+        console.log('🔄 [Kanban] Propagating lead state event to parent:', updatedActivity.type);
+        if (onLeadStateChange) {
+          await onLeadStateChange(updatedActivity);
+        }
+        return; // Non processare come attività normale
+      }
       
       // 🚀 Verifica che l'attività appartenga al lead corretto (se abbiamo leadId)
       if (leadId && updatedActivity['ID Lead']) {
@@ -1024,14 +1042,36 @@ export const LeadActivitiesKanban: React.FC<LeadActivitiesKanbanProps> = ({
         }
       }
       
-      // 🚀 AGGIUNGE L'ATTIVITÀ USANDO IL NOSTRO HOOK (include controlli duplicati)
+      // 🚀 AGGIUNGE L'ATTIVITÀ USANDO IL NOSTRO HOOK (gestisce automaticamente replace ottimistici)
       console.log('✅ [CREATE CLEAN] Adding activity via hook:', updatedActivity.Titolo || updatedActivity.Tipo);
       addActivity(updatedActivity);
       
-      toast.success(`Attività "${updatedActivity.Titolo || updatedActivity.Tipo}" creata con successo!`);
+      // 🔴 Chiudi il modal SOLO per l'attività principale (non per quelle ottimistiche next-activity)
+      if (updatedActivity._isMainActivity && !updatedActivity._isOptimistic) {
+        console.log('🚪 [CREATE CLEAN] Closing modal after main activity creation');
+        setShowNewActivityModal(false);
+      }
+      
+      // 🔴 Toast SOLO per attività principali (non ottimistiche intermedie)
+      // Le ottimistiche hanno già i loro toast nel NewActivityModal
+      if (!updatedActivity._isOptimistic || updatedActivity._isMainActivity) {
+        const activityName = updatedActivity.Titolo || updatedActivity.Tipo;
+        const isNext = updatedActivity._isNextActivity;
+        const message = isNext 
+          ? `Follow-up "${activityName}" aggiunto` 
+          : `Attività "${activityName}" creata`;
+        
+        // Non mostrare toast se è la conferma di un'attività ottimistica (già gestita nel modal)
+        if (updatedActivity._tempId) {
+          console.log('🔕 [CREATE CLEAN] Skipping toast for optimistic confirmation (already shown)');
+        } else {
+          toast.success(message);
+        }
+      }
     } else {
       // Se non abbiamo i dati dell'attività, usa refresh
       console.log('🔄 [CREATE CLEAN] No activity data provided, refreshing...');
+      setShowNewActivityModal(false);
       await simpleRefresh('CreateSuccess');
       toast.success('Attività creata con successo!');
     }

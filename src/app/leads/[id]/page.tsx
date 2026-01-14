@@ -30,6 +30,7 @@ export default function LeadDetailPage() {
   // Stati locali
   // Rimosso: dialog eliminazione/indietro. La modifica lead avviene dal pulsante nell'header.
   const [refreshKey, setRefreshKey] = useState(0);
+  const [optimisticLeadState, setOptimisticLeadState] = useState<string | null>(null);
   
   // Funzione per forzare il refresh della pagina
   const forceRefresh = useCallback(() => {
@@ -39,7 +40,7 @@ export default function LeadDetailPage() {
 
   // Hook personalizzati
   const {
-    lead,
+    lead: leadFromHook,
     loading,
     error,
     updating,
@@ -48,6 +49,19 @@ export default function LeadDetailPage() {
     updateLead,
     deleteLead,
   } = useLeadDetail({ leadId: id, refreshKey });
+  
+  // 🚀 Lead con stato ottimistico applicato
+  const lead = leadFromHook ? {
+    ...leadFromHook,
+    Stato: optimisticLeadState || leadFromHook.Stato
+  } : null;
+  
+  // Debug logging
+  console.log('🔍 [LeadDetailPage] Lead state:', JSON.stringify({
+    leadFromHook: leadFromHook?.Stato,
+    optimisticLeadState,
+    finalState: lead?.Stato,
+  }, null, 2));
 
   // Attività disattivate temporaneamente (feature Activities rimossa)
   const activities: any[] = [];
@@ -126,17 +140,71 @@ export default function LeadDetailPage() {
 
         {/* Header profilo lead */}
         <LeadProfileHeader 
-          key={`${lead.ID}-${lead.Stato}-${lead.Nome}-${lead.Email}-${lead.Telefono}-${lead.Esigenza}-${refreshKey}`} 
+          key={`lead-header-${lead.ID}-${refreshKey}`} 
           lead={lead}
-          onRefresh={async () => {
+          onRefresh={async (data?: any) => {
+            console.log('🎯 [LeadDetailPage onRefresh] Called with data:', JSON.stringify(data, null, 2));
+            console.log('🎯 [LeadDetailPage onRefresh] Current lead.ID:', lead.ID);
+            
+            // 🚀 Gestisci update ottimistico dello stato
+            if (data?.type === 'lead-state-change' && data.leadId === lead.ID) {
+              console.log('🚀 [LeadDetailPage] Applicando stato ottimistico:', data.newState);
+              setOptimisticLeadState(data.newState);
+              return; // Non fare refresh ancora, aspetta la conferma
+            }
+            
+            if (data?.type === 'lead-state-confirmed' && data.leadId === lead.ID) {
+              console.log('✅ [LeadDetailPage] Stato confermato, facendo refresh:', data.newState);
+              setOptimisticLeadState(null); // Rimuovi lo stato ottimistico
+              await refresh();
+              // NON fare forceRefresh() - mantieni le attività già caricate
+              return;
+            }
+            
+            if (data?.type === 'lead-state-rollback' && data.leadId === lead.ID) {
+              console.log('❌ [LeadDetailPage] Rollback stato ottimistico');
+              setOptimisticLeadState(null); // Rimuovi lo stato ottimistico
+              return;
+            }
+            
+            // Refresh normale per altri casi
+            console.log('🔄 [LeadDetailPage] Doing normal refresh');
             await refresh();
             forceRefresh();
-          }} 
+          }}
         />
 
 
         {/* Contenuto profilo lead (Tabs) */}
-        <LeadProfileContent lead={lead} refreshKey={refreshKey} />
+        <LeadProfileContent 
+          lead={lead} 
+          refreshKey={refreshKey}
+          onLeadStateChange={async (data?: any) => {
+            console.log('🎯 [LeadDetailPage onLeadStateChange] Called from Kanban with data:', JSON.stringify(data, null, 2));
+            
+            // Gestisci update ottimistico dello stato usando lo stesso handler di onRefresh
+            if (data?.type === 'lead-state-change' && data.leadId === lead.ID) {
+              console.log('🚀 [LeadDetailPage] Applicando stato ottimistico da Kanban:', data.newState);
+              setOptimisticLeadState(data.newState);
+              return;
+            }
+            
+            if (data?.type === 'lead-state-confirmed' && data.leadId === lead.ID) {
+              console.log('✅ [LeadDetailPage] Stato confermato da Kanban, facendo refresh:', data.newState);
+              setOptimisticLeadState(null);
+              await refresh();
+              // NON fare forceRefresh() qui - causerebbe remount di LeadActivitiesKanban
+              // e un fetch che potrebbe tornare dati non sincronizzati da Airtable
+              return;
+            }
+            
+            if (data?.type === 'lead-state-rollback' && data.leadId === lead.ID) {
+              console.log('❌ [LeadDetailPage] Rollback stato ottimistico da Kanban');
+              setOptimisticLeadState(null);
+              return;
+            }
+          }}
+        />
       </div>
 
 

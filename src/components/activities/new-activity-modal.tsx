@@ -266,20 +266,69 @@ export function NewActivityModal({
       
       let newLeadState: string | null = null;
       
-      // Regola 1: Primo contatto riuscito: Nuovo → Attivo
-      if (Obiettivo === 'Primo contatto' && Esito === 'Contatto riuscito') {
-        newLeadState = 'Attivo';
-        console.log('🟢 [LEAD STATE] Primo contatto riuscito → Attivo');
+      // 🚀 Regola 1: Primo contatto riuscito: Nuovo → Contattato
+      // Esiti accettabili: contatto stabilito o interesse dimostrato
+      if (Obiettivo === 'Primo contatto' && [
+        'Contatto riuscito',
+        'Molto interessato',
+        'Interessato',
+        'Appuntamento fissato',
+      ].includes(Esito || '')) {
+        newLeadState = 'Contattato';
+        console.log(`🟢 [LEAD STATE] Primo contatto (${Esito}) → Contattato`);
       }
-      // Regola 2: Qualificazione con informazioni raccolte: (≤ Qualificato) → Qualificato
-      else if (Obiettivo === 'Qualificazione lead' && Esito === 'Informazioni raccolte') {
+      // 🚀 Regola 2: Qualificazione lead: Contattato → Qualificato
+      // Esiti accettabili: qualsiasi feedback positivo o raccolta info
+      else if (Obiettivo === 'Qualificazione lead' && [
+        'Informazioni raccolte',
+        'Contatto riuscito',
+        'Molto interessato',
+        'Interessato',
+        'Preventivo richiesto',
+      ].includes(Esito || '')) {
         newLeadState = 'Qualificato';
-        console.log('🟡 [LEAD STATE] Qualificazione completata → Qualificato');
+        console.log(`🟡 [LEAD STATE] Qualificazione (${Esito}) → Qualificato`);
       }
-      // Regola 3: Ordine confermato: → Cliente
+      // 🚀 Regola 3: Presentazione prodotto con interesse: Contattato → Qualificato
+      // Se presenti il prodotto e mostrano interesse, qualifica
+      else if (Obiettivo === 'Presentazione prodotto' && [
+        'Molto interessato',
+        'Interessato',
+        'Preventivo richiesto',
+      ].includes(Esito || '')) {
+        newLeadState = 'Qualificato';
+        console.log(`🟡 [LEAD STATE] Presentazione prodotto (${Esito}) → Qualificato`);
+      }
+      // 🆕 Regola 4: Preventivo inviato/richiesto → In Negoziazione (PRIORITÀ ALTA)
+      // Qualsiasi attività con "Preventivo inviato" o "Preventivo richiesto" porta a In Negoziazione
+      // INDIPENDENTEMENTE dall'obiettivo (può essere Consulenza, Follow-up, ecc.)
+      else if ([
+        'Preventivo inviato',
+        'Preventivo richiesto',
+      ].includes(Esito || '')) {
+        newLeadState = 'In Negoziazione';
+        console.log(`🟣 [LEAD STATE] ${Obiettivo || 'Qualsiasi'} (${Esito}) → In Negoziazione`);
+      }
+      // 🆕 Regola 5: Appuntamento fissato → In Negoziazione
+      // Qualsiasi attività con "Appuntamento fissato" porta a In Negoziazione
+      else if (Esito === 'Appuntamento fissato') {
+        newLeadState = 'In Negoziazione';
+        console.log(`🟣 [LEAD STATE] ${Obiettivo || 'Qualsiasi'} (Appuntamento fissato) → In Negoziazione`);
+      }
+      // 🚀 Regola 6: Ordine confermato: (qualsiasi) → Cliente
+      // Qualsiasi attività con ordine confermato converte in cliente
       else if (Esito === 'Ordine confermato') {
         newLeadState = 'Cliente';
         console.log('🟢 [LEAD STATE] Ordine confermato → Cliente');
+      }
+      // 🚀 Regola 7: Follow-up negativo: (qualsiasi) → Perso
+      // Se definitivamente non interessato, marca come perso
+      else if ([
+        'Non interessato',
+        'Opportunità persa',
+      ].includes(Esito || '')) {
+        newLeadState = 'Perso';
+        console.log(`🔴 [LEAD STATE] Esito negativo (${Esito}) → Perso`);
       }
       
       if (newLeadState) {
@@ -611,11 +660,15 @@ export function NewActivityModal({
             ...result.data.fields,
             // Aggiungi titolo calcolato se non presente
             Titolo: result.data.fields?.Titolo || `${data.Tipo}${data.Obiettivo ? ` - ${data.Obiettivo}` : ''}`,
+            // 🔑 Estrai leadId dal primo elemento di ID Lead per trigger refresh
+            leadId: (result.data.fields?.['ID Lead'] && result.data.fields['ID Lead'][0]) || 
+                    (data['ID Lead'] && data['ID Lead'][0]),
             // Flag per identificare che questa è l'attività principale (non ottimistica)
             _isMainActivity: true
           };
           
           console.log(`✅ [MAIN ACTIVITY] Inviando dati attività principale trasformati:`, activityData);
+          console.log(`🔑 [MAIN ACTIVITY] leadId estratto:`, activityData.leadId);
           onSuccess(activityData);
         }
         

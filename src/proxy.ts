@@ -36,7 +36,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/',
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   console.log(`🔒 [MIDDLEWARE] Processing request for: ${pathname}`);

@@ -14,9 +14,10 @@ interface LeadProfileContentProps {
   lead: LeadData;
   onLeadUpdated?: () => void;
   refreshKey?: number;
+  onLeadStateChange?: (data: any) => void | Promise<void>;
 }
 
-export function LeadProfileContent({ lead, onLeadUpdated, refreshKey }: LeadProfileContentProps) {
+export function LeadProfileContent({ lead, onLeadUpdated, refreshKey, onLeadStateChange }: LeadProfileContentProps) {
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Funzione di aggiornamento lead identica al dialog EditLeadModal
@@ -212,6 +213,7 @@ export function LeadProfileContent({ lead, onLeadUpdated, refreshKey }: LeadProf
         <LeadActivitiesKanban 
           leadId={lead.ID} 
           key={`activities-${lead.ID}-${refreshKey || 0}`}
+          onLeadStateChange={onLeadStateChange}
         />
       </TabsContent>
 

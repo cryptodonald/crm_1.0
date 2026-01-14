@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { LeadFormData, LeadStato, LeadProvenienza, LEAD_VALIDATION_RULES, LEAD_STATO_COLORS, LEAD_PROVENIENZA_COLORS } from '@/types/leads';
 import {
@@ -45,8 +45,23 @@ interface QualificazioneStepProps {
   form: UseFormReturn<LeadFormData>;
 }
 
-const LEAD_STATI: LeadStato[] = ['Nuovo', 'Attivo', 'Qualificato', 'Cliente', 'Chiuso', 'Sospeso'];
-const LEAD_PROVENIENZE: LeadProvenienza[] = ['Meta', 'Instagram', 'Google', 'Sito', 'Referral', 'Organico'];
+// 🚀 Funnel Ottimizzato V3 - 7 Stati (aggiornato 2025-01-13)
+const LEAD_STATI: LeadStato[] = [
+  'Nuovo',
+  'Contattato',        // Rinominato da 'Attivo'
+  'Qualificato',
+  'In Negoziazione',   // 🆕 Fase calda: appuntamenti, preventivi, trattative
+  'Cliente',
+  'Sospeso',
+  'Perso'              // Rinominato da 'Chiuso'
+];
+
+interface MarketingSource {
+  id: string;
+  name: string;
+  color?: string;
+  active: boolean;
+}
 
 // Colori per badge Provenienza usando shadcn/ui - same as leads-table-columns.tsx
 const LEAD_PROVENIENZA_BADGE_COLORS: Record<LeadProvenienza, string> = {
@@ -61,10 +76,31 @@ const LEAD_PROVENIENZA_BADGE_COLORS: Record<LeadProvenienza, string> = {
 export function QualificazioneStep({ form }: QualificazioneStepProps) {
   const [assegnatarioOpen, setAssegnatarioOpen] = useState(false);
   const [referenzeOpen, setReferenzeOpen] = useState(false);
+  const [sources, setSources] = useState<MarketingSource[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(true);
 
   const { control, setValue, watch } = form;
   const { users, loading: usersLoading } = useUsers();
   const { leads, loading: leadsLoading } = useLeadsData({ loadAll: true });
+
+  // Carica fonti dal database
+  useEffect(() => {
+    const fetchSources = async () => {
+      try {
+        const response = await fetch('/api/marketing/sources');
+        const result = await response.json();
+        if (result.success) {
+          // Filtra solo fonti attive
+          setSources(result.data.filter((s: MarketingSource) => s.active));
+        }
+      } catch (error) {
+        console.error('Error loading sources:', error);
+      } finally {
+        setSourcesLoading(false);
+      }
+    };
+    fetchSources();
+  }, []);
 
   // Watch per valori selezionati
   const selectedAssegnatario = watch('Assegnatario');
@@ -107,7 +143,7 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
       <div className="space-y-1 pb-2">
         <h3 className="text-lg font-semibold">Qualificazione Lead</h3>
         <p className="text-sm text-muted-foreground">
-          Definisci lo stato, la provenienza e le informazioni di qualificazione del lead.
+          Definisci lo stato, la fonte e le informazioni di qualificazione del lead.
         </p>
       </div>
       
@@ -156,46 +192,53 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
           )}
         />
 
-        {/* Provenienza */}
+        {/* Fonte (ex Provenienza) */}
         <FormField
           control={control}
           name="Provenienza"
-          rules={{ required: "La provenienza è obbligatoria" }}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-1">
-                Provenienza
-                <span className="text-red-500">*</span>
-              </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona provenienza">
-                      {field.value && (
+          rules={{ required: "La fonte è obbligatoria" }}
+          render={({ field }) => {
+            const selectedSource = sources.find(s => s.name === field.value);
+            return (
+              <FormItem>
+                <FormLabel className="flex items-center gap-1">
+                  Fonte
+                  <span className="text-red-500">*</span>
+                </FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} disabled={sourcesLoading}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={sourcesLoading ? "Caricamento fonti..." : "Seleziona fonte"}>
+                        {field.value && selectedSource && (
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-sm" 
+                              style={{ backgroundColor: selectedSource.color || '#3B82F6' }}
+                            />
+                            <span>{field.value}</span>
+                          </div>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {sources.map((source) => (
+                      <SelectItem key={source.id} value={source.name}>
                         <div className="flex items-center gap-2">
-                          <Badge className={cn("text-xs px-2 py-0.5", LEAD_PROVENIENZA_BADGE_COLORS[field.value as LeadProvenienza])}>
-                            {field.value}
-                          </Badge>
+                          <div 
+                            className="w-3 h-3 rounded-sm" 
+                            style={{ backgroundColor: source.color || '#3B82F6' }}
+                          />
+                          <span>{source.name}</span>
                         </div>
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {LEAD_PROVENIENZE.map((provenienza) => (
-                    <SelectItem key={provenienza} value={provenienza}>
-                      <div className="flex items-center gap-2">
-                        <Badge className={cn("text-xs px-2 py-0.5", LEAD_PROVENIENZA_BADGE_COLORS[provenienza])}>
-                          {provenienza}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessageSubtle />
-            </FormItem>
-          )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessageSubtle />
+              </FormItem>
+            );
+          }}
         />
 
         {/* Esigenza - Campo spostato dal step 3 */}

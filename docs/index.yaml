@@ -23,6 +23,9 @@ priority:
 - domain/leads.md
 - domain/avatar-system.md
 
+# Automations
+- automations/lead-state-rules.md
+
 # Operations
 - runbooks/local-dev.md
 - runbooks/migrations.md

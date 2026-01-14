@@ -105,6 +105,14 @@ export interface ActivityData {
   
   // === ALLEGATI ===
   Allegati?: AirtableAttachment[];    // File allegati
+  
+  // === FLAG OTTIMISTICI (runtime only, non persistiti) ===
+  _isOptimistic?: boolean;            // Attività creata ottimisticamente (in attesa conferma server)
+  _isLoading?: boolean;               // Operazione in corso
+  _tempId?: string;                   // ID temporaneo per replace con ID reale
+  _shouldRemove?: boolean;            // Rimuovi attività (operazione fallita)
+  _isMainActivity?: boolean;          // Flag per attività principale (creata dall'utente)
+  _isNextActivity?: boolean;          // Flag per prossima attività (creata automaticamente)
 }
 
 export interface AirtableAttachment {
