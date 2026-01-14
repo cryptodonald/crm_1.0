@@ -94,27 +94,38 @@ export function ActivityTimeline({ activities, onEdit, onDelete, usersData }: Ac
     const total = activities.length;
     const completate = activities.filter(a => a.Stato === 'Completata').length;
     const inCorso = activities.filter(a => a.Stato === 'In corso').length;
-    const ultimaAttivita = activities.length > 0 
-      ? Math.floor((new Date().getTime() - new Date(activities[0].DataCreazione).getTime()) / (1000 * 60 * 60 * 24))
-      : 0;
+    
+    // Calcola ultima attività con validazione data
+    let ultimaAttivita = 0;
+    if (activities.length > 0 && activities[0].createdTime) {
+      const firstDate = new Date(activities[0].createdTime);
+      if (!isNaN(firstDate.getTime())) {
+        ultimaAttivita = Math.floor((new Date().getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+      }
+    }
 
     // Calcola tempo medio risposta (giorni tra attività)
     let tempoMedioRisposta = 0;
     if (activities.length > 1) {
-      const sortedActivities = [...activities].sort((a, b) => 
-        new Date(b.DataCreazione).getTime() - new Date(a.DataCreazione).getTime()
-      );
+      // Filtra solo attività con date valide
+      const sortedActivities = [...activities]
+        .filter(a => a.createdTime && !isNaN(new Date(a.createdTime).getTime()))
+        .sort((a, b) => 
+          new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime()
+        );
       
       let totalDays = 0;
+      if (sortedActivities.length > 1) {
       for (let i = 0; i < sortedActivities.length - 1; i++) {
         const days = Math.floor(
-          (new Date(sortedActivities[i].DataCreazione).getTime() - 
-           new Date(sortedActivities[i + 1].DataCreazione).getTime()) / 
+          (new Date(sortedActivities[i].createdTime).getTime() - 
+           new Date(sortedActivities[i + 1].createdTime).getTime()) / 
           (1000 * 60 * 60 * 24)
         );
         totalDays += days;
       }
       tempoMedioRisposta = Math.round(totalDays / (sortedActivities.length - 1));
+      }
     }
 
     return {
@@ -129,9 +140,12 @@ export function ActivityTimeline({ activities, onEdit, onDelete, usersData }: Ac
 
   // Raggruppa attività per periodo temporale
   const groupedActivities = useMemo<GroupedActivities[]>(() => {
-    const sorted = [...activities].sort((a, b) => 
-      new Date(b.DataCreazione).getTime() - new Date(a.DataCreazione).getTime()
-    );
+    // Filtra attività con date valide prima di ordinare
+    const sorted = [...activities]
+      .filter(a => a.createdTime && !isNaN(new Date(a.createdTime).getTime()))
+      .sort((a, b) => 
+        new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime()
+      );
 
     const groups: Record<TimeGroup, ActivityData[]> = {
       'Oggi': [],
@@ -142,7 +156,7 @@ export function ActivityTimeline({ activities, onEdit, onDelete, usersData }: Ac
     };
 
     sorted.forEach(activity => {
-      const group = getTimeGroup(new Date(activity.DataCreazione));
+      const group = getTimeGroup(new Date(activity.createdTime));
       groups[group].push(activity);
     });
 
@@ -326,10 +340,17 @@ export function ActivityTimeline({ activities, onEdit, onDelete, usersData }: Ac
 
                               {/* Metadata */}
                               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {format(new Date(activity.DataCreazione), 'dd/MM/yyyy HH:mm', { locale: it })}
-                                </div>
+                                {activity.createdTime && (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {(() => {
+                                      const date = new Date(activity.createdTime);
+                                      return !isNaN(date.getTime()) 
+                                        ? format(date, 'dd/MM/yyyy HH:mm', { locale: it })
+                                        : 'Data non disponibile';
+                                    })()}
+                                  </div>
+                                )}
                                 
                                 {userData && (
                                   <div className="flex items-center gap-1">
