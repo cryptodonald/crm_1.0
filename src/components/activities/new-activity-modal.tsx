@@ -239,10 +239,13 @@ export function NewActivityModal({
       for (const leadId of leadIds) {
         console.log(`🔄 [AUTOMATIONS] Processando lead: ${leadId}`);
         
-        // 🚀 AUTOMAZIONE 1: Cambio stato lead basato su obiettivo + esito + stato
+        // 🚀 AUTOMAZIONE 1: Assegnazione automatica assegnatario
+        await handleLeadAssigneeAutomation(leadId, activityData);
+        
+        // 🚀 AUTOMAZIONE 2: Cambio stato lead basato su obiettivo + esito + stato
         await handleLeadStateAutomation(leadId, activityData);
         
-        // 🚀 AUTOMAZIONE 2: Creazione prossima attività
+        // 🚀 AUTOMAZIONE 3: Creazione prossima attività
         await handleNextActivityCreation(leadId, activityData);
       }
       
@@ -250,6 +253,101 @@ export function NewActivityModal({
     } catch (error) {
       console.error('❌ [AUTOMATIONS] Errore durante automazioni:', error);
       // Non bloccare il flusso principale per errori di automazione
+    }
+  };
+  
+  // 👤 Automazione assegnazione assegnatario lead
+  const handleLeadAssigneeAutomation = async (leadId: string, activityData: ActivityFormData) => {
+    try {
+      const activityAssignee = activityData.Assegnatario?.[0]; // Primo assegnatario dell'attività
+      
+      if (!activityAssignee) {
+        console.log('👤 [LEAD ASSIGNEE] Nessun assegnatario nell\'attività, skip');
+        return;
+      }
+      
+      // Recupera i dati del lead per verificare l'assegnatario attuale
+      const leadResponse = await fetch(`/api/leads/${leadId}`);
+      if (!leadResponse.ok) {
+        console.error('❌ [LEAD ASSIGNEE] Impossibile recuperare dati lead');
+        return;
+      }
+      
+      const leadData = await leadResponse.json();
+      const lead = leadData.lead;
+      const currentAssignee = lead.Assegnatario?.[0]; // Primo assegnatario del lead
+      
+      console.log('👤 [LEAD ASSIGNEE] Lead:', leadId, '- Attuale:', currentAssignee, '- Attività:', activityAssignee);
+      
+      // SCENARIO 1: Lead senza assegnatario → assegna automaticamente
+      if (!currentAssignee) {
+        console.log('✅ [LEAD ASSIGNEE] Lead senza assegnatario, assegnazione automatica a:', activityAssignee);
+        
+        const updateResponse = await fetch(`/api/leads/${leadId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ Assegnatario: [activityAssignee] }),
+        });
+        
+        if (updateResponse.ok) {
+          toast.success('Assegnatario aggiornato', {
+            description: `Il lead è stato assegnato automaticamente a ${activityAssignee}.`,
+          });
+        } else {
+          console.error('❌ [LEAD ASSIGNEE] Errore aggiornamento assegnatario');
+        }
+        return;
+      }
+      
+      // SCENARIO 2: Lead con assegnatario diverso → chiedi conferma
+      if (currentAssignee !== activityAssignee) {
+        console.log('⚠️ [LEAD ASSIGNEE] Assegnatario diverso, richiesta conferma cambio');
+        
+        // Mostra dialog di conferma
+        const confirmed = await new Promise<boolean>((resolve) => {
+          toast(
+            `Cambiare assegnatario del lead?`,
+            {
+              description: `Il lead è assegnato a ${currentAssignee}. Vuoi cambiarlo a ${activityAssignee}?`,
+              action: {
+                label: 'Sì, cambia',
+                onClick: () => resolve(true),
+              },
+              cancel: {
+                label: 'No, mantieni',
+                onClick: () => resolve(false),
+              },
+              duration: 10000, // 10 secondi per decidere
+            }
+          );
+        });
+        
+        if (confirmed) {
+          const updateResponse = await fetch(`/api/leads/${leadId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Assegnatario: [activityAssignee] }),
+          });
+          
+          if (updateResponse.ok) {
+            toast.success('Assegnatario cambiato', {
+              description: `Il lead è stato riassegnato da ${currentAssignee} a ${activityAssignee}.`,
+            });
+          } else {
+            console.error('❌ [LEAD ASSIGNEE] Errore cambio assegnatario');
+          }
+        } else {
+          console.log('❌ [LEAD ASSIGNEE] Utente ha scelto di mantenere l\'assegnatario esistente');
+        }
+        return;
+      }
+      
+      // SCENARIO 3: Stesso assegnatario → nessuna azione
+      console.log('✅ [LEAD ASSIGNEE] Assegnatario già corretto, nessuna azione necessaria');
+      
+    } catch (error) {
+      console.error('❌ [LEAD ASSIGNEE] Errore durante automazione assegnatario:', error);
+      // Non bloccare il flusso per errori di automazione
     }
   };
   
