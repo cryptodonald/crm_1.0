@@ -48,6 +48,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, addHours } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ActivityAttachments } from './activity-attachments';
+import { AINotesField } from './ai-notes-field';
 
 interface ActivityStepProps {
   form: UseFormReturn<ActivityFormData>;
@@ -681,7 +682,7 @@ export function ActivityStep({ form, prefilledLeadId, activityId }: ActivityStep
         />
       </div>
 
-      {/* Riga 7: Note */}
+      {/* Riga 7: Note con AI */}
       <div className="grid grid-cols-1">
         <FormField
           control={control}
@@ -690,19 +691,14 @@ export function ActivityStep({ form, prefilledLeadId, activityId }: ActivityStep
             <FormItem>
               <FormLabel>Note</FormLabel>
               <FormControl>
-                <Textarea
-                  {...field}
+                <AINotesField
+                  value={field.value || ''}
+                  onChange={field.onChange}
                   placeholder="Inserisci note o dettagli sull'attività..."
-                  className="min-h-[100px]"
                   maxLength={1000}
                 />
               </FormControl>
-              <div className="flex justify-between">
-                <FormMessage />
-                <span className="text-xs text-muted-foreground">
-                  {field.value?.length || 0}/1000
-                </span>
-              </div>
+              <FormMessage />
             </FormItem>
           )}
         />

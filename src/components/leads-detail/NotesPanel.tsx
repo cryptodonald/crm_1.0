@@ -1,11 +1,11 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { LeadData, LeadFormData } from '@/types/leads';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { AINotesField } from '@/components/activities/ai-notes-field';
 
 interface NotesPanelProps {
   lead: LeadData;
@@ -32,14 +32,24 @@ export function NotesPanel({ lead, onUpdate }: NotesPanelProps) {
   }
 
   return (
-    <Card className="p-4 space-y-3">
+    <Card className="p-4 space-y-4">
       <div>
-        <div className="text-sm font-medium mb-1">Esigenza</div>
-        <Textarea value={esigenza} onChange={(e) => setEsigenza(e.target.value)} placeholder="Descrivi l'esigenza del lead" />
+        <div className="text-sm font-medium mb-2">Esigenza</div>
+        <AINotesField 
+          value={esigenza} 
+          onChange={setEsigenza} 
+          placeholder="Descrivi l'esigenza del lead"
+          maxLength={500}
+        />
       </div>
       <div>
-        <div className="text-sm font-medium mb-1">Note</div>
-        <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Aggiungi note interne" rows={6} />
+        <div className="text-sm font-medium mb-2">Note</div>
+        <AINotesField 
+          value={note} 
+          onChange={setNote} 
+          placeholder="Aggiungi note interne"
+          maxLength={1000}
+        />
       </div>
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva'}</Button>

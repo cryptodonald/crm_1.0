@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { AINotesField } from '../ai-notes-field';
 
 interface RisultatiStepProps {
   form: UseFormReturn<ActivityFormData>;
@@ -258,6 +259,26 @@ export function RisultatiStep({ form }: RisultatiStepProps) {
           }
           return null;
         })()} 
+
+        {/* Note con AI */}
+        <FormField
+          control={control}
+          name="Note"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Note</FormLabel>
+              <FormControl>
+                <AINotesField
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="Inserisci note o dettagli sull'attività..."
+                  maxLength={1000}
+                />
+              </FormControl>
+              <FormMessageSubtle />
+            </FormItem>
+          )}
+        />
 
         {/* Data e Ora Prossima Azione */}
         <div className="grid gap-4 md:grid-cols-2">

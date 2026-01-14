@@ -11,8 +11,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { FormMessageSubtle } from '@/components/ui/form-message-subtle';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { AINotesField } from '@/components/activities/ai-notes-field';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { 
@@ -234,7 +234,7 @@ export function DocumentiStep({ form }: DocumentiStepProps) {
       </div>
       
       <div className="border-t border-border/50 pt-4 space-y-6">
-        {/* Note - Campo spostato dal step 2 */}
+        {/* Note - Campo con AI */}
         <FormField
           control={form.control}
           name="Note"
@@ -248,11 +248,11 @@ export function DocumentiStep({ form }: DocumentiStepProps) {
             <FormItem>
               <FormLabel>Note</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Note aggiuntive sul lead..."
-                  className="min-h-[80px] resize-none"
+                <AINotesField
                   value={field.value || ''}
                   onChange={field.onChange}
+                  placeholder="Note aggiuntive sul lead..."
+                  maxLength={LEAD_VALIDATION_RULES.Note.maxLength}
                 />
               </FormControl>
               <FormMessageSubtle />
