@@ -5,12 +5,92 @@ import {
   getAirtableLeadsTableId,
 } from '@/lib/api-keys-service';
 
-export async function PATCH(
+export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const { id } = await params;
+    // Handle both Promise and non-Promise params
+    const resolvedParams = await Promise.resolve(params);
+    const recordId = resolvedParams.id;
+
+    if (!recordId) {
+      return NextResponse.json(
+        { error: 'Record ID is required' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`🔍 [API] Fetching Marketing Source record: ${recordId}`);
+
+    // Get Airtable credentials
+    const [apiKey, baseId] = await Promise.all([
+      getAirtableKey(),
+      getAirtableBaseId(),
+    ]);
+
+    if (!apiKey || !baseId) {
+      return NextResponse.json(
+        { error: 'Airtable credentials not available' },
+        { status: 500 }
+      );
+    }
+
+    // Fetch the record directly from Airtable
+    const url = `https://api.airtable.com/v0/${baseId}/Marketing%20Sources/${recordId}`;
+
+    console.log(`📡 [API] Fetching from Airtable: ${url}`);
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        `❌ [API] Airtable error: ${response.status} - ${errorText}`
+      );
+      return NextResponse.json(
+        { error: `Failed to fetch source: ${response.status}` },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+
+    console.log(
+      `✅ [API] Successfully fetched source: ${data.fields?.Name || 'Unknown'}`
+    );
+
+    // Return the name and other useful fields
+    return NextResponse.json({
+      id: data.id,
+      name: data.fields?.Name || 'Unknown',
+      Name: data.fields?.Name || 'Unknown', // Include both cases
+      fields: data.fields,
+    });
+  } catch (error) {
+    console.error('❌ [API] Error:', error);
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  try {
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     const body = await request.json();
     const { name, description, active, color } = body;
 
@@ -95,10 +175,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     const { searchParams } = new URL(request.url);
     const migrateToId = searchParams.get('migrateTo'); // ID della fonte alternativa
 

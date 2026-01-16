@@ -378,12 +378,18 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
         controller.abort();
       }, 15000); // 15 secondi timeout per creation
       
+      // ✅ Converti Provenienza (nome) a record ID per Airtable
+      const dataToSend = {
+        ...formattedData,
+        _fonteName: formattedData.Provenienza, // Salva il nome per il lookup nel backend
+      };
+      
       const response = await fetch('/api/leads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formattedData),
+        body: JSON.stringify(dataToSend),
         signal: controller.signal,
       });
       
@@ -414,7 +420,16 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       console.log('✅ [NewLeadModal] Lead creato con successo:', result.lead?.id || 'ID non disponibile');
       
       // 🚀 STEP 3: Aggiorna con il lead reale da Airtable (replace temp with real)
-      // Questo viene gestito dal hook useLeadsList che farà il refresh
+      // Chiama il callback con il lead REALE per fare il replacement
+      if (onSuccess && result.lead) {
+        console.log('🔄 [NewLeadModal] Calling onSuccess with real lead for replacement:', result.lead.id);
+        // Aggiungi il tempLeadId al lead reale per il tracking
+        const realLeadWithTracking = {
+          ...result.lead,
+          _tempId: tempLeadId, // Segna quale temp ID rimpiazzare
+        };
+        onSuccess(realLeadWithTracking);
+      }
       
     } catch (error) {
       console.error('❌ [NewLeadModal] Error creating lead:', error);

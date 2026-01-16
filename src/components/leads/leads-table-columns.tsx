@@ -21,6 +21,7 @@ import {
   Building,
   Clock,
   Lightbulb,
+  Loader2,
 } from 'lucide-react';
 import {
   LeadData,
@@ -39,6 +40,7 @@ import {
   getAvatarFallbackColor,
 } from '@/lib/avatar-utils';
 import { AvatarLead } from '@/components/ui/avatar-lead';
+import { useFonteLookup } from '@/hooks/use-fonte-lookup';
 
 // Componente per colonna CLIENTE
 interface ClienteColumnProps {
@@ -47,6 +49,11 @@ interface ClienteColumnProps {
 }
 
 export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
+  // Lookup dei nomi delle fonti dai record IDs
+  const { names: fonteNames, loading: fonteLookupLoading } = useFonteLookup(
+    lead.Fonte as string[] | undefined
+  );
+
   // Genera colore avatar dalla provenienza
   const getAvatarColor = (provenienza: LeadProvenienza): string => {
     const colors: Record<LeadProvenienza, string> = {
@@ -113,16 +120,53 @@ export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
             <Badge className={cn('text-xs', getStatoBadgeColor(lead.Stato))}>
               {lead.Stato}
             </Badge>
-            {/* Badge Provenienza */}
-            <Badge
-              variant="secondary"
-              className={cn(
-                'text-xs',
-                getProvenenzaBadgeColor(lead.Provenienza)
-              )}
-            >
-              {lead.Provenienza}
-            </Badge>
+            {/* Badge Fonte - Lookup from Marketing Sources with proper colors */}
+            {fonteLookupLoading ? (
+              <Badge variant="outline" className="text-xs">
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              </Badge>
+            ) : fonteNames.length > 0 ? (
+              fonteNames.map((fonteName, idx) => {
+                // Get color for this fonte name
+                const fonteAsProvenienza = fonteName as LeadProvenienza;
+                const colorClass = LEAD_PROVENIENZA_COLORS[fonteAsProvenienza as LeadProvenienza]
+                  ? 'bg-blue-200 text-blue-800 hover:bg-blue-300 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700' // Meta
+                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600';
+
+                // Map fonte names to color schemes
+                let badgeClass = 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600';
+                switch (fonteName) {
+                  case 'Meta':
+                    badgeClass = 'bg-blue-200 text-blue-800 hover:bg-blue-300 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700';
+                    break;
+                  case 'Instagram':
+                    badgeClass = 'bg-purple-200 text-purple-800 hover:bg-purple-300 dark:bg-purple-800 dark:text-purple-200 dark:hover:bg-purple-700';
+                    break;
+                  case 'Google':
+                    badgeClass = 'bg-red-200 text-red-800 hover:bg-red-300 dark:bg-red-800 dark:text-red-200 dark:hover:bg-red-700';
+                    break;
+                  case 'Sito':
+                    badgeClass = 'bg-teal-100 text-teal-800 hover:bg-teal-200 dark:bg-teal-800 dark:text-teal-200 dark:hover:bg-teal-700';
+                    break;
+                  case 'Referral':
+                    badgeClass = 'bg-orange-200 text-orange-800 hover:bg-orange-300 dark:bg-orange-800 dark:text-orange-200 dark:hover:bg-orange-700';
+                    break;
+                  case 'Organico':
+                    badgeClass = 'bg-green-200 text-green-800 hover:bg-green-300 dark:bg-green-800 dark:text-green-200 dark:hover:bg-green-700';
+                    break;
+                }
+
+                return (
+                  <Badge
+                    key={`${lead.id}-fonte-${idx}`}
+                    variant="secondary"
+                    className={cn('text-xs', badgeClass)}
+                  >
+                    {fonteName}
+                  </Badge>
+                );
+              })
+            ) : null}
           </div>
         </div>
 

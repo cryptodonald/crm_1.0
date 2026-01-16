@@ -519,12 +519,23 @@ export async function POST(request: NextRequest) {
     console.log(`✅ [LOOKUP] Trovato record ID: ${sourceRecordId}`);
 
     // Prepara i dati per Airtable - gestione corretta dei campi opzionali
+    // Crea datetime con data e ora in formato 24h: YYYY-MM-DD HH:MM
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const dataConOra = `${year}-${month}-${day} ${hours}:${minutes}`;
+    
     const airtableFields: Record<string, any> = {
       Nome: body.Nome.trim(),
-      Data: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+      Data: dataConOra, // YYYY-MM-DD HH:MM format (con orario 24h)
       Stato: body.Stato || 'Nuovo',
       Fonte: [sourceRecordId], // Link record a Marketing Sources
     };
+    
+    console.log(`⏰ [CREATE LEAD] Datetime created: ${dataConOra}`);
 
     // Aggiungi solo i campi che hanno valori validi (non vuoti, null o undefined)
     if (body.Telefono && typeof body.Telefono === 'string' && body.Telefono.trim() !== '') {
@@ -627,11 +638,32 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ [CREATE LEAD] Cache invalidation failed (non-critical):', error);
     });
 
+    // 🔄 Trasformazione: Includi il campo Fonte (array di record IDs)
+    // Quando creiamo un lead, salviamo Fonte come array di IDs link record
+    // Questo viene ritornato da Airtable e usato dal frontend per il lookup
+    let finalFields = { ...createdRecord.fields };
+    
+    console.log('🔍 [TRANSFORM] Final fields from Airtable:', JSON.stringify(finalFields, null, 2));
+    console.log('🔍 [TRANSFORM] Fonte field:', finalFields.Fonte);
+    
+    // Assicurati che il campo Fonte sia presente nella risposta
+    if (!finalFields.Fonte) {
+      console.warn('⚠️ [TRANSFORM] Fonte field missing from Airtable response');
+      // Prova a ricostruirlo dal body se disponibile
+      if (body._fonteName) {
+        const sourceRecordIdAgain = await getMarketingSourceRecordId(apiKey, baseId, body._fonteName);
+        if (sourceRecordIdAgain) {
+          finalFields.Fonte = [sourceRecordIdAgain];
+          console.log(`✅ [TRANSFORM] Reconstructed Fonte from body: ${sourceRecordIdAgain}`);
+        }
+      }
+    }
+    
     // Transform per risposta coerente
     const transformedRecord = {
       id: createdRecord.id,
       createdTime: createdRecord.createdTime,
-      ...createdRecord.fields,
+      ...finalFields,
     };
     
     const totalTime = performance.now() - requestStart;

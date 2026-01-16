@@ -165,7 +165,18 @@ export function useLeadsList({
   // Sincronizza stato dei leads con il fetch result
   useEffect(() => {
     if (fetchLeadsWithRetry.data) {
-      setLeads(fetchLeadsWithRetry.data.records);
+      // 🚫 PROTEZIONE: Se ci sono lead ottimistici (temp_*), preservali
+      setLeads(prevLeads => {
+        const optimisticLeads = prevLeads.filter(l => l.id && l.id.startsWith('temp_'));
+        
+        if (optimisticLeads.length > 0) {
+          console.log(`⚠️ [useLeadsList] Found ${optimisticLeads.length} optimistic leads, merging with fresh data`);
+          // Merge: lead ottimistici + nuovi dati da server
+          return [...optimisticLeads, ...fetchLeadsWithRetry.data.records];
+        }
+        
+        return fetchLeadsWithRetry.data.records;
+      });
       setTotalCount(fetchLeadsWithRetry.data.totalCount);
       
       if (fetchLeadsWithRetry.data.fromCache) {
@@ -203,21 +214,24 @@ export function useLeadsList({
     }
   }, [isDisabled, enabled, subscribe, fetchLeadsWithRetry]);
 
-  // Auto-refresh quando l'utente torna sulla pagina (per catturare modifiche esterne)
-  useEffect(() => {
-    if (isDisabled || !enabled) return;
-    
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        setTimeout(() => {
-          fetchLeadsWithRetry.execute();
-        }, 1000);
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isDisabled, enabled, fetchLeadsWithRetry]);
+  // 🚫 DISABILITATO: Auto-refresh quando l'utente torna sulla pagina
+  // Motivo: Causa scomparsa dei lead ottimistici durante la creazione
+  // Soluzione: Usa il tasto "Aggiorna" manuale per fare il refresh
+  // useEffect(() => {
+  //   if (isDisabled || !enabled) return;
+  //   const handleVisibilityChange = () => {
+  //     if (!document.hidden) {
+  //       setTimeout(() => {
+  //         fetchLeadsWithRetry.execute();
+  //       }, 1000);
+  //     }
+  //   };
+  //   document.addEventListener('visibilitychange', handleVisibilityChange);
+  //   return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  // }, [isDisabled, enabled, fetchLeadsWithRetry]);
+  
+  // Placeholder per mantenere la struttura
+  // Non c'è auto-refresh su visibility change
 
   // Auto-fetch quando cambiano filtri o refreshKey (solo se non disabilitato)
   useEffect(() => {
@@ -278,68 +292,63 @@ export function useLeadsList({
 
   const createLead = useCallback(async (leadData: any): Promise<boolean> => {
     try {
-      // 🚀 Se è un lead ottimistico (has temp ID), significa che è già stato aggiunto alla lista
-      // Attendi che l'API completi e rimpiazza il temporaneo con il reale
+      // 🚀 CASO 1: Lead ottimistico (temp ID) - già stato aggiunto
       const isOptimisticLead = leadData.id && leadData.id.startsWith('temp_');
       const tempLeadId = leadData.id;
       
       if (isOptimisticLead) {
-        console.log('⚡ [useLeadsList] Handling optimistic lead:', tempLeadId);
-        console.log('📝 [useLeadsList] Sending to API to get real record...');
-        
-        // Estrai i dati necessari dal lead temporaneo (escludi il tempID)
-        const { id, createdTime, ...dataToSend } = leadData;
-        
-        // Invia al server
-        const response = await fetch('/api/leads', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(dataToSend),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (!data.success || !data.lead) {
-          throw new Error('Creazione fallita');
-        }
-
-        console.log('✅ [useLeadsList] Real lead created on server:', data.lead.id);
-        console.log('🔄 [useLeadsList] Replacing temp lead:', tempLeadId, 'with real:', data.lead.id);
-        
-        // 🚀 RIMPIAZZA il lead temporaneo con quello reale
-        console.log('🔄 [useLeadsList] Replacing temp lead:', tempLeadId, 'with real:', data.lead.id);
-        
-        // Aggiorna state - move logging outside callback
+        console.log('⚡ [useLeadsList] Received optimistic lead (already posted):', tempLeadId);
+        // Aggiungi il lead ottimistico alla lista locale (se non è già lì)
         setLeads(prevLeads => {
-          console.log('🔍 [useLeadsList] Replacing lead - Debug Info:');
-          console.log('  - Temp ID to find:', tempLeadId);
-          console.log('  - Real lead ID:', data.lead.id);
-          console.log('  - Current leads count:', prevLeads.length);
-          console.log('  - Leads in state:', prevLeads.map(l => ({ id: l.id, nome: l.Nome })));
-          
+          const alreadyExists = prevLeads.some(l => l.id === tempLeadId);
+          if (alreadyExists) {
+            console.log('✅ [useLeadsList] Optimistic lead already in state, keeping it');
+            return prevLeads;
+          }
+          console.log('➕ [useLeadsList] Adding optimistic lead to state');
+          return [leadData, ...prevLeads];
+        });
+        return true;
+      }
+      
+      // 🚀 CASO 2: Lead REALE con _tempId (replacement)
+      // Questo arriva dal modal DOPO che il POST è completato
+      // Il lead reale avrà _tempId come stringa contenente l'ID temp da rimpiazzare
+      if (leadData._tempId) {
+        const realLeadId = leadData.id;
+        const tempIdToReplace = leadData._tempId;
+        
+        console.log('🔄 [useLeadsList] REPLACEMENT: Replacing temp lead:', tempIdToReplace, 'with real:', realLeadId);
+        console.log('🔍 [useLeadsList] Lead data being set:', { id: realLeadId, Provenienza: leadData.Provenienza, Stato: leadData.Stato });
+        
+        setLeads(prevLeads => {
           const newLeads = prevLeads.map(lead => {
-            if (lead.id === tempLeadId) {
-              console.log('✅ [useLeadsList] Found temp lead, replacing:', tempLeadId);
-              return data.lead;
+            if (lead.id === tempIdToReplace) {
+              console.log('✅ [useLeadsList] Found temp lead, replacing:', tempIdToReplace);
+              // Assicurati che Provenienza sia presente nel lead reale
+              if (!leadData.Provenienza) {
+                console.warn('⚠️ [useLeadsList] Real lead missing Provenienza, checking for Fonte...');
+              }
+              return leadData; // Rimpiazza con il lead reale completo
             }
             return lead;
           });
           
-          console.log('📊 [useLeadsList] Leads after replacement:', newLeads.map(l => ({ id: l.id, nome: l.Nome })));
+          // Verifica se è stato rimpiazzato
+          const wasReplaced = newLeads.some(l => l.id === realLeadId);
+          if (wasReplaced) {
+            console.log('✅ [useLeadsList] Lead replacement successful');
+          } else {
+            console.warn('⚠️ [useLeadsList] Lead replacement - real lead not found in result');
+          }
+          
           return newLeads;
         });
         
-        console.log('✅ [useLeadsList] Temporary lead replaced with real data');
         return true;
       }
       
+      // 🚀 CASO 3: Lead completamente nuovo (non ottimistico)
       console.log('➡️ [useLeadsList] Creating lead:', leadData.Nome);
 
       const response = await fetch('/api/leads', {
