@@ -22,6 +22,8 @@ import { toast } from 'sonner';
 import { AnagraficaStep } from './new-lead-steps/anagrafica-step';
 import { QualificazioneStep } from './new-lead-steps/qualificazione-step';
 import { DocumentiStep } from './new-lead-steps/documenti-step';
+import { ImportLeadDialog } from './import-lead-dialog';
+import { FileUp, Upload } from 'lucide-react';
 
 // Schema di validazione per il form
 const leadFormSchema = z.object({
@@ -192,6 +194,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
   const [hasDraftData, setHasDraftData] = useState(false);
   const [showLoadDraftDialog, setShowLoadDraftDialog] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const formChangedRef = useRef(false);
   const lastSavedDataRef = useRef<string>('');
   // Flag per chiusura forzata senza mostrare dialog bozza
@@ -602,6 +605,17 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
           </Button>
 
           <div className="flex space-x-2">
+            {currentStep === 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowImportDialog(true)}
+                disabled={isSubmitting}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Importa da email
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -690,6 +704,13 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Dialog per importare da email */}
+      <ImportLeadDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        form={form}
+      />
     </Dialog>
   );
 }
