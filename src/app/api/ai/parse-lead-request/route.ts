@@ -160,29 +160,17 @@ Ritorna SOLO il JSON, niente altro.`;
         phoneNumber = cleaned;
       }
       
-      // Formato finale: +39 XXX XXXXXXX (ex: +39 331 2288768)
+      // Formato finale: +39XXXXXXXXXX (senza spazi)
       if (phoneNumber.startsWith('39')) {
-        // +39 + 3 digit area code + 7 digits
-        const areaCode = phoneNumber.substring(2, 5);
-        const number = phoneNumber.substring(5, 12);
-        if (areaCode.length === 3 && number.length === 7) {
-          return `+39 ${areaCode} ${number}`;
-        }
+        // Già ha il prefisso
+        return `+${phoneNumber}`;
       } else if (phoneNumber.length >= 10) {
-        // Numero italiano senza prefisso
-        const areaCode = phoneNumber.substring(0, 3);
-        const number = phoneNumber.substring(3, 10);
-        if (areaCode.length === 3 && number.length === 7) {
-          return `+39 ${areaCode} ${number}`;
-        }
+        // Numero italiano senza prefisso, aggiungi 39
+        return `+39${phoneNumber}`;
       }
       
       // Fallback: ritorna il numero con prefisso
-      if (!phoneNumber.startsWith('39')) {
-        return `+39 ${phoneNumber}`;
-      }
-      
-      return `+${phoneNumber}`;
+      return `+39${phoneNumber}`;
     };
 
     const standardizeCity = (city?: string): string | undefined => {
