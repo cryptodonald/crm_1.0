@@ -44,15 +44,18 @@ Il tuo compito è estrarre intelligentemente i seguenti dati dalla richiesta ric
 - Email
 - Telefono (numero di telefono)
 - Città
-- Esigenza (descrizione COMPLETA del problema/necessità - conserva TUTTI i dettagli)
+- Esigenza (descrizione narrativa completa che racchiuda TUTTI i dettagli)
 
 ISTRUZIONI:
 1. Estrai SOLO le informazioni presenti nel testo
 2. Non inventare dati non presenti
 3. Pulisci e formatta i dati (trim spazi, standardizza formato telefono/email)
 4. Se mancano informazioni, omettile dalla risposta
-5. Per l'Esigenza, ESTRAI IL TESTO COMPLETO - NON sintetizzare - conserva TUTTI i dettagli, specifiche, misure, materiali menzionati
-6. Se la richiesta è lunga, mantienila intera senza abbreviare
+5. Per l'Esigenza: TRASFORMA i dettagli strutturati (etichette: valore) in una frase NARRATIVA che includa TUTTI i dettagli
+   - Esempio input: "Tipo Prodotto: materasso\nOpzione: Sostituzione materasso\nMateriale: Lattice"
+   - Esempio output: "Richiesta di sostituzione di un materasso in lattice"
+   - Conserva TUTTI gli attributi menzionati (misure, materiali, specifiche, tempi, prezzi, garanzie)
+6. La frase deve essere fluida, completa e senza perdere nessuna informazione
 
 Ritorna SEMPRE un JSON valido con la seguente struttura (SOLO i campi trovati):
 {
@@ -61,7 +64,7 @@ Ritorna SEMPRE un JSON valido con la seguente struttura (SOLO i campi trovati):
   "Email": "string or null",
   "Telefono": "string or null",
   "Città": "string or null",
-  "Esigenza": "string or null (TESTO COMPLETO, non sintetizzato)",
+  "Esigenza": "string or null (frase narrativa completa con TUTTI i dettagli)",
   "confidence": 0.0-1.0
 }
 
