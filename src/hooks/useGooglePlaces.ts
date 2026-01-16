@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { debounce } from 'lodash';
 
 export interface PlaceResult {
@@ -179,14 +179,24 @@ export function useGooglePlaces() {
   const [isSearching, setIsSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<PlaceResult[]>([]);
 
-  // Supporta entrambe le varianti del nome della env
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  // Usa correttamente il nome della variabile d'ambiente
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  // Debug logging
+  useEffect(() => {
+    if (!apiKey) {
+      console.warn('⚠️ [useGooglePlaces] Google Maps API key not configured (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)');
+    } else {
+      console.log('✅ [useGooglePlaces] Google Maps API key loaded successfully');
+    }
+  }, [apiKey]);
 
   // Se manca la chiave, degrada in modo elegante: nessun autocomplete, nessun throw
   const service = useMemo(() => (apiKey ? new GooglePlacesService(apiKey) : null), [apiKey]);
 
-  const searchPlaces = useCallback(
-    debounce(async (query: string) => {
+  // Crea il debounced search function
+  const debouncedSearch = useMemo(
+    () => debounce(async (query: string) => {
       if (!query.trim() || query.length < 3 || !service) {
         setSuggestions([]);
         setIsSearching(false);
@@ -207,6 +217,12 @@ export function useGooglePlaces() {
     [service]
   );
 
+  // Wrapped per esporre il debounced function
+  const searchPlaces = useCallback(
+    (query: string) => debouncedSearch(query),
+    [debouncedSearch]
+  );
+
   const getPlaceDetails = useCallback(
     async (placeId: string): Promise<PlaceDetails> => {
       if (!service) {
@@ -218,6 +234,15 @@ export function useGooglePlaces() {
   );
 
   const parseAddressComponents = GooglePlacesService.parseAddressComponents;
+
+  // Cleanup per il debounce quando il componente si smonta
+  useEffect(() => {
+    return () => {
+      if (debouncedSearch && typeof debouncedSearch.cancel === 'function') {
+        debouncedSearch.cancel();
+      }
+    };
+  }, [debouncedSearch]);
 
   return {
     searchPlaces,
