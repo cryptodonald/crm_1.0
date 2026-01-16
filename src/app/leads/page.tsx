@@ -253,7 +253,7 @@ export default function LeadsPage() {
       <NewLeadModal
         open={newLeadModalOpen}
         onOpenChange={setNewLeadModalOpen}
-        onLeadCreated={handleLeadCreated}
+        onSuccess={handleLeadCreated}
       />
     </AppLayoutCustom>
   );

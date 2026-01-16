@@ -314,11 +314,22 @@ export function useLeadsList({
         console.log('🔄 [useLeadsList] Replacing temp lead:', tempLeadId, 'with real:', data.lead.id);
         
         // 🚀 RIMPIAZZA il lead temporaneo con quello reale
-        setLeads(prevLeads => 
-          prevLeads.map(lead => 
-            lead.id === tempLeadId ? data.lead : lead
-          )
-        );
+        console.log('🔍 [useLeadsList] Replacing lead - Debug Info:');
+        console.log('  - Temp ID to find:', tempLeadId);
+        console.log('  - Real lead ID:', data.lead.id);
+        console.log('  - Current leads count:', prevLeads.length);
+        console.log('  - Leads in state:', prevLeads.map(l => ({ id: l.id, nome: l.Nome })));
+        
+        const newLeads = prevLeads.map(lead => {
+          if (lead.id === tempLeadId) {
+            console.log('✅ [useLeadsList] Found temp lead, replacing:', tempLeadId);
+            return data.lead;
+          }
+          return lead;
+        });
+        
+        console.log('📊 [useLeadsList] Leads after replacement:', newLeads.map(l => ({ id: l.id, nome: l.Nome })));
+        setLeads(newLeads);
         
         console.log('✅ [useLeadsList] Temporary lead replaced with real data');
         return true;
