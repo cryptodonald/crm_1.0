@@ -159,13 +159,7 @@ export function ImportLeadDialog({ open, onOpenChange, form }: ImportLeadDialogP
                   {parseResult.Nome && (
                     <div className="flex gap-4 p-3">
                       <span className="font-medium w-24 text-sm">Nome:</span>
-                      <span className="text-foreground">{parseResult.Nome}</span>
-                    </div>
-                  )}
-                  {parseResult.Cognome && (
-                    <div className="flex gap-4 p-3">
-                      <span className="font-medium w-24 text-sm">Cognome:</span>
-                      <span className="text-foreground">{parseResult.Cognome}</span>
+                      <span className="text-foreground font-medium">{parseResult.Nome}</span>
                     </div>
                   )}
                   {parseResult.Email && (
@@ -177,7 +171,7 @@ export function ImportLeadDialog({ open, onOpenChange, form }: ImportLeadDialogP
                   {parseResult.Telefono && (
                     <div className="flex gap-4 p-3">
                       <span className="font-medium w-24 text-sm">Telefono:</span>
-                      <span className="text-foreground">{parseResult.Telefono}</span>
+                      <span className="text-foreground font-mono">{parseResult.Telefono}</span>
                     </div>
                   )}
                   {parseResult.Città && (

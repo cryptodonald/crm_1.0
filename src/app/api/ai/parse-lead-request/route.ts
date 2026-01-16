@@ -126,26 +126,123 @@ Ritorna SOLO il JSON, niente altro.`;
       throw new Error('Errore nel parsing dei dati estratti');
     }
 
+    // Funzioni di formatting
+    const formatFullName = (nome?: string, cognome?: string): string | undefined => {
+      const parts = [];
+      if (nome && typeof nome === 'string') {
+        parts.push(nome.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '));
+      }
+      if (cognome && typeof cognome === 'string') {
+        parts.push(cognome.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '));
+      }
+      return parts.length > 0 ? parts.join(' ') : undefined;
+    };
+
+    const formatPhoneNumber = (phone?: string): string | undefined => {
+      if (!phone || typeof phone !== 'string') return undefined;
+      
+      // Rimuovi tutti i caratteri non-digit
+      const cleaned = phone.replace(/[^\d]/g, '');
+      if (cleaned.length === 0) return undefined;
+      
+      let phoneNumber = cleaned;
+      
+      // Se inizia con 0, rimuovi lo 0
+      if (cleaned.startsWith('0')) {
+        phoneNumber = cleaned.substring(1);
+      }
+      // Se inizia con 39, tienilo cosi
+      else if (cleaned.startsWith('39')) {
+        phoneNumber = cleaned;
+      }
+      // Altrimenti, assume sia senza prefisso
+      else {
+        phoneNumber = cleaned;
+      }
+      
+      // Formato finale: +39 XXX XXXXXXX (ex: +39 331 2288768)
+      if (phoneNumber.startsWith('39')) {
+        // +39 + 3 digit area code + 7 digits
+        const areaCode = phoneNumber.substring(2, 5);
+        const number = phoneNumber.substring(5, 12);
+        if (areaCode.length === 3 && number.length === 7) {
+          return `+39 ${areaCode} ${number}`;
+        }
+      } else if (phoneNumber.length >= 10) {
+        // Numero italiano senza prefisso
+        const areaCode = phoneNumber.substring(0, 3);
+        const number = phoneNumber.substring(3, 10);
+        if (areaCode.length === 3 && number.length === 7) {
+          return `+39 ${areaCode} ${number}`;
+        }
+      }
+      
+      // Fallback: ritorna il numero con prefisso
+      if (!phoneNumber.startsWith('39')) {
+        return `+39 ${phoneNumber}`;
+      }
+      
+      return `+${phoneNumber}`;
+    };
+
+    const standardizeCity = (city?: string): string | undefined => {
+      if (!city || typeof city !== 'string') return undefined;
+      
+      const normalized = city.trim().toLowerCase().replace(/\s+/g, '');
+      
+      // Mapping di città comuni con errori di digitazione
+      const cityMap: Record<string, string> = {
+        'sanmarino': 'San Marino',
+        'rimini': 'Rimini',
+        'bologna': 'Bologna',
+        'ravenna': 'Ravenna',
+        'faenza': 'Faenza',
+        'lugo': 'Lugo',
+        'forli': 'Forlì',
+        'cesena': 'Cesena',
+        'florence': 'Firenze',
+        'roma': 'Roma',
+        'milano': 'Milano',
+        'torino': 'Torino',
+        'venezia': 'Venezia',
+        'padova': 'Padova',
+        'verona': 'Verona',
+        'modena': 'Modena',
+        'parma': 'Parma',
+        'piacenza': 'Piacenza',
+        'ancona': 'Ancona',
+        'perugia': 'Perugia',
+        'teramo': 'Teramo',
+      };
+      
+      return cityMap[normalized] || city.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    };
+
     // Valida e normalizza i dati
     const resultado: ParsedLeadData = {
       confidence: parsedData.confidence || 0.7,
     };
 
-    if (parsedData.Nome && typeof parsedData.Nome === 'string') {
-      resultado.Nome = parsedData.Nome.trim();
+    // Unisci Nome e Cognome
+    const fullName = formatFullName(parsedData.Nome, parsedData.Cognome);
+    if (fullName) {
+      resultado.Nome = fullName;
     }
-    if (parsedData.Cognome && typeof parsedData.Cognome === 'string') {
-      resultado.Cognome = parsedData.Cognome.trim();
-    }
+
     if (parsedData.Email && typeof parsedData.Email === 'string') {
       resultado.Email = parsedData.Email.trim().toLowerCase();
     }
-    if (parsedData.Telefono && typeof parsedData.Telefono === 'string') {
-      resultado.Telefono = parsedData.Telefono.trim();
+
+    const formattedPhone = formatPhoneNumber(parsedData.Telefono);
+    if (formattedPhone) {
+      resultado.Telefono = formattedPhone;
     }
-    if (parsedData.Città && typeof parsedData.Città === 'string') {
-      resultado.Città = parsedData.Città.trim();
+
+    const standardizedCity = standardizeCity(parsedData.Città);
+    if (standardizedCity) {
+      resultado.Città = standardizedCity;
     }
+
     if (parsedData.Esigenza && typeof parsedData.Esigenza === 'string') {
       resultado.Esigenza = parsedData.Esigenza.trim();
     }
