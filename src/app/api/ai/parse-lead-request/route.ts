@@ -145,32 +145,26 @@ Ritorna SOLO il JSON, niente altro.`;
       const cleaned = phone.replace(/[^\d]/g, '');
       if (cleaned.length === 0) return undefined;
       
-      let phoneNumber = cleaned;
-      
-      // Se inizia con 0, rimuovi lo 0
-      if (cleaned.startsWith('0')) {
-        phoneNumber = cleaned.substring(1);
-      }
-      // Se inizia con 39, tienilo cosi
-      else if (cleaned.startsWith('39')) {
-        phoneNumber = cleaned;
-      }
-      // Altrimenti, assume sia senza prefisso
-      else {
-        phoneNumber = cleaned;
+      // Identifica se ha già il prefisso internazionale
+      if (cleaned.startsWith('39') && cleaned.length >= 12) {
+        // Già ha il prefisso completo: 39XXXXXXXXXX
+        // Formato: +39 XXXXXXXXXX
+        return `+39 ${cleaned.substring(2)}`;
       }
       
-      // Formato finale: +39 XXXXXXXXXX (con spazio dopo +39)
-      if (phoneNumber.startsWith('39')) {
-        // Già ha il prefisso: +39 3391234567
-        return `+39 ${phoneNumber.substring(2)}`;
-      } else if (phoneNumber.length >= 10) {
-        // Numero italiano senza prefisso: +39 3391234567
-        return `+39 ${phoneNumber}`;
+      // Se inizia con 0, è formato italiano nazionale (0XX...)
+      if (cleaned.startsWith('0') && cleaned.length >= 9) {
+        // 0XXX XXXXXXX -> +39 XXX XXXXXXX
+        return `+39 ${cleaned.substring(1)}`;
       }
       
-      // Fallback: ritorna il numero con prefisso
-      return `+39 ${phoneNumber}`;
+      // Se ha almeno 9-10 cifre e non inizia con 0 o 39, è probabilmente senza prefisso
+      if (cleaned.length >= 9) {
+        return `+39 ${cleaned}`;
+      }
+      
+      // Fallback per numeri corti
+      return `+39 ${cleaned}`;
     };
 
     const standardizeCity = (city?: string): string | undefined => {
