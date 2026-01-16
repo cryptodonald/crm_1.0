@@ -342,10 +342,35 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
     try {
       // Format data before sending to Airtable
       const formattedData = formatLeadData(data);
-      console.log('Submitting formatted lead data:', formattedData);
+      console.log('📝 [NewLeadModal] Submitting formatted lead data:', formattedData);
+      
+      // 🚀 STEP 1: Optimistic update - aggiungi il lead IMMEDIATAMENTE alla lista locale
+      // Crea un lead temporaneo con un ID provvisorio
+      const tempLeadId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const optimisticLead = {
+        id: tempLeadId,
+        createdTime: new Date().toISOString(),
+        Data: new Date().toISOString().split('T')[0],
+        ...formattedData,
+      };
+      
+      console.log('⚡ [NewLeadModal] Optimistic update: adding lead to local state');
+      // Chiama il callback SUBITO con il lead ottimistico
+      if (onSuccess) {
+        onSuccess(optimisticLead);
+      }
+      
+      toast.success('Lead in corso di creazione...', {
+        description: `Il lead "${formattedData.Nome}" è stato aggiunto.`,
+      });
+      
+      // Chiudi il modal SUBITO (UX fluida)
+      clearDraft();
+      onOpenChange(false);
       
       console.log('🚀 [NewLeadModal] Sending POST request to /api/leads');
       
+      // 🚀 STEP 2: Invia la richiesta in background
       // Crea AbortController per gestire timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
@@ -388,20 +413,9 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
 
       console.log('✅ [NewLeadModal] Lead creato con successo:', result.lead?.id || 'ID non disponibile');
       
-      toast.success('Lead creato con successo!', {
-        description: `Il lead "${formattedData.Nome}" è stato aggiunto al CRM.`,
-      });
+      // 🚀 STEP 3: Aggiorna con il lead reale da Airtable (replace temp with real)
+      // Questo viene gestito dal hook useLeadsList che farà il refresh
       
-      // Clear draft after successful submission
-      clearDraft();
-      
-      // Close modal first (like EditLeadModal)
-      onOpenChange(false);
-      
-      // Then call success callback with the created lead data to update parent page
-      if (onSuccess && result.lead) {
-        onSuccess(result.lead);
-      }
     } catch (error) {
       console.error('❌ [NewLeadModal] Error creating lead:', error);
       

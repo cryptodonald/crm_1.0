@@ -13,6 +13,7 @@ import {
 import { FormMessageSubtle } from '@/components/ui/form-message-subtle';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AINotesField } from '@/components/activities/ai-notes-field';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -73,6 +74,16 @@ const LEAD_PROVENIENZA_BADGE_COLORS: Record<LeadProvenienza, string> = {
   Organico: 'bg-green-200 text-green-800 hover:bg-green-300 dark:bg-green-800 dark:text-green-200 dark:hover:bg-green-700',
 };
 
+// 🔄 Default fonti di fallback se il database non le fornisce
+const DEFAULT_FALLBACK_SOURCES: MarketingSource[] = [
+  { id: 'fb_meta', name: 'Meta', color: '#3B82F6', active: true },
+  { id: 'fb_instagram', name: 'Instagram', color: '#A855F7', active: true },
+  { id: 'fb_google', name: 'Google', color: '#EF4444', active: true },
+  { id: 'fb_sito', name: 'Sito', color: '#14B8A6', active: true },
+  { id: 'fb_referral', name: 'Referral', color: '#F97316', active: true },
+  { id: 'fb_organico', name: 'Organico', color: '#22C55E', active: true },
+];
+
 export function QualificazioneStep({ form }: QualificazioneStepProps) {
   const [assegnatarioOpen, setAssegnatarioOpen] = useState(false);
   const [referenzeOpen, setReferenzeOpen] = useState(false);
@@ -89,12 +100,27 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
       try {
         const response = await fetch('/api/marketing/sources');
         const result = await response.json();
-        if (result.success) {
-          // Filtra solo fonti attive
-          setSources(result.data.filter((s: MarketingSource) => s.active));
+        if (result.success && result.data && result.data.length > 0) {
+          // Filtra solo fonti attive dal database
+          const activeSources = result.data.filter((s: MarketingSource) => s.active);
+          if (activeSources.length > 0) {
+            console.log(`✅ Loaded ${activeSources.length} sources from database`);
+            setSources(activeSources);
+          } else {
+            // Se nessuna fonte attiva nel database, usa fallback
+            console.warn('⚠️ No active sources in database, using fallback sources');
+            setSources(DEFAULT_FALLBACK_SOURCES);
+          }
+        } else {
+          // Se nessuna fonte dal database, usa fallback
+          console.warn('⚠️ No sources found in database, using fallback sources');
+          setSources(DEFAULT_FALLBACK_SOURCES);
         }
       } catch (error) {
-        console.error('Error loading sources:', error);
+        console.error('❌ Error loading sources from API:', error);
+        // In caso di errore, usa fallback
+        console.log('🔄 Using fallback sources due to API error');
+        setSources(DEFAULT_FALLBACK_SOURCES);
       } finally {
         setSourcesLoading(false);
       }
@@ -256,11 +282,11 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
               <FormItem>
                 <FormLabel>Esigenza</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Descrivi brevemente l'esigenza del lead..."
-                    className="min-h-[60px] resize-none"
+                  <AINotesField
                     value={field.value || ''}
                     onChange={field.onChange}
+                    placeholder="Descrivi brevemente l'esigenza del lead..."
+                    maxLength={LEAD_VALIDATION_RULES.Esigenza.maxLength}
                   />
                 </FormControl>
                 <FormMessageSubtle />

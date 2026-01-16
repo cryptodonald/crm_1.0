@@ -9,6 +9,49 @@ import { LeadFormData } from '@/types/leads';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+// Helper function to lookup Marketing Source record ID by name
+async function getMarketingSourceRecordId(
+  apiKey: string,
+  baseId: string,
+  sourceName: string
+): Promise<string | null> {
+  try {
+    const encodedName = encodeURIComponent(sourceName);
+    const filterFormula = `{Name} = '${sourceName}'`;
+    const url = `https://api.airtable.com/v0/${baseId}/Marketing%20Sources?filterByFormula=${encodeURIComponent(filterFormula)}`;
+    
+    console.log(`📡 [LOOKUP] Fetching Marketing Sources with filter: ${filterFormula}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [LOOKUP] Error: ${response.status} - ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`📦 [LOOKUP] Response records:`, data.records?.length || 0);
+    
+    if (data.records && data.records.length > 0) {
+      const recordId = data.records[0].id;
+      console.log(`✅ [LOOKUP] Found record ID: ${recordId}`);
+      return recordId;
+    }
+    
+    console.warn(`⚠️ [LOOKUP] No record found for source: ${sourceName}`);
+    return null;
+  } catch (error) {
+    console.error(`❌ [LOOKUP] Exception:`, error);
+    return null;
+  }
+}
+
 // Helper function to build Airtable filter
 function buildAirtableFilter(searchParams: URLSearchParams): string {
   const conditions: string[] = [];
@@ -423,6 +466,7 @@ export async function POST(request: NextRequest) {
       CAP: typeof body.CAP,
       Telefono: typeof body.Telefono,
       Email: typeof body.Email,
+      Provenienza: typeof body.Provenienza,
       Assegnatario: Array.isArray(body.Assegnatario) ? 'array' : typeof body.Assegnatario,
       Referenza: Array.isArray(body.Referenza) ? 'array' : typeof body.Referenza,
       Allegati: Array.isArray(body.Allegati) ? 'array' : typeof body.Allegati,
@@ -432,6 +476,13 @@ export async function POST(request: NextRequest) {
     if (!body.Nome?.trim()) {
       return NextResponse.json(
         { error: 'Nome è obbligatorio' },
+        { status: 400 }
+      );
+    }
+    
+    if (!body.Provenienza?.trim()) {
+      return NextResponse.json(
+        { error: 'Provenienza è obbligatoria' },
         { status: 400 }
       );
     }
@@ -453,12 +504,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🔑 Lookup del record ID della fonte da Marketing Sources
+    console.log(`🔍 [LOOKUP] Cercando record ID per provenienza: "${body.Provenienza}"`);
+    const sourceRecordId = await getMarketingSourceRecordId(apiKey, baseId, body.Provenienza);
+    
+    if (!sourceRecordId) {
+      console.error(`❌ Fonte non trovata: "${body.Provenienza}"`);
+      return NextResponse.json(
+        { error: `Fonte "${body.Provenienza}" non trovata nel database` },
+        { status: 400 }
+      );
+    }
+    
+    console.log(`✅ [LOOKUP] Trovato record ID: ${sourceRecordId}`);
+
     // Prepara i dati per Airtable - gestione corretta dei campi opzionali
     const airtableFields: Record<string, any> = {
       Nome: body.Nome.trim(),
       Data: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
       Stato: body.Stato || 'Nuovo',
-      Provenienza: body.Provenienza || 'Sito',
+      Fonte: [sourceRecordId], // Link record a Marketing Sources
     };
 
     // Aggiungi solo i campi che hanno valori validi (non vuoti, null o undefined)

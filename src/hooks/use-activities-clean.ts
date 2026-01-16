@@ -13,6 +13,12 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { OptimisticManager, UISystemUtils } from '@/lib/ui-system-clean';
 import type { Activity } from '@/types/activity';
+import {
+  shouldAutoUpdateLeadState,
+  getNewLeadState,
+  logLeadStateUpdate,
+} from '@/lib/activity-lead-state-helper';
+import type { LeadStato } from '@/types/leads';
 
 // ===== TYPES =====
 interface UseActivitiesCleanReturn {
@@ -31,6 +37,10 @@ interface UseActivitiesCleanReturn {
   refresh: () => Promise<void>;
   getActivityById: (id: string) => Activity | undefined;
   addActivity: (activity: Activity) => void; // Per aggiungere attività create esternamente
+  
+  // Lead state update utilities
+  shouldUpdateLeadState: (activityState: string) => { shouldUpdate: boolean; newLeadState?: LeadStato; askUser: boolean };
+  updateLeadState: (leadId: string, currentLeadState: LeadStato, newLeadState: LeadStato) => Promise<void>;
 }
 
 interface UseActivitiesCleanOptions {
@@ -382,6 +392,38 @@ export const useActivitiesClean = (
     return activities.find(a => a.id === id);
   }, [activities]);
 
+  // 🎯 LEAD STATE UPDATE UTILITIES
+  const shouldUpdateLeadState = useCallback((activityState: string) => {
+    return shouldAutoUpdateLeadState(activityState);
+  }, []);
+
+  const updateLeadState = useCallback(async (
+    leadId: string,
+    currentLeadState: LeadStato,
+    newLeadState: LeadStato
+  ): Promise<void> => {
+    console.log(`🔄 [ActivitiesClean] Updating lead state: ${leadId}`);
+    logLeadStateUpdate(leadId, currentLeadState, newLeadState, 'Activity completion');
+    
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Stato: newLeadState }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update lead state: ${response.statusText}`);
+      }
+      
+      console.log(`✅ [ActivitiesClean] Lead state updated successfully: ${leadId} -> ${newLeadState}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ [ActivitiesClean] Failed to update lead state:`, errorMsg);
+      throw error;
+    }
+  }, []);
+
   // 🚀 Funzione per aggiungere attività create esternamente (es. da NewActivityModal)
   const addActivity = useCallback((activity: Activity): void => {
     console.log(`➥ [ActivitiesClean] Adding external activity: ${activity.id}`, {
@@ -520,6 +562,10 @@ export const useActivitiesClean = (
     refresh,
     getActivityById,
     addActivity, // 🚀 Per aggiungere attività create esternamente
+    
+    // Lead state update utilities
+    shouldUpdateLeadState,
+    updateLeadState,
   };
 };
 

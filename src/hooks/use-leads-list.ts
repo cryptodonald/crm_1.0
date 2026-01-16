@@ -278,7 +278,53 @@ export function useLeadsList({
 
   const createLead = useCallback(async (leadData: any): Promise<boolean> => {
     try {
-      console.log('➕ [useLeadsList] Creating lead:', leadData.Nome);
+      // 🚀 Se è un lead ottimistico (has temp ID), significa che è già stato aggiunto alla lista
+      // Attendi che l'API completi e rimpiazza il temporaneo con il reale
+      const isOptimisticLead = leadData.id && leadData.id.startsWith('temp_');
+      const tempLeadId = leadData.id;
+      
+      if (isOptimisticLead) {
+        console.log('⚡ [useLeadsList] Handling optimistic lead:', tempLeadId);
+        console.log('📝 [useLeadsList] Sending to API to get real record...');
+        
+        // Estrai i dati necessari dal lead temporaneo (escludi il tempID)
+        const { id, createdTime, ...dataToSend } = leadData;
+        
+        // Invia al server
+        const response = await fetch('/api/leads', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(dataToSend),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.success || !data.lead) {
+          throw new Error('Creazione fallita');
+        }
+
+        console.log('✅ [useLeadsList] Real lead created on server:', data.lead.id);
+        console.log('🔄 [useLeadsList] Replacing temp lead:', tempLeadId, 'with real:', data.lead.id);
+        
+        // 🚀 RIMPIAZZA il lead temporaneo con quello reale
+        setLeads(prevLeads => 
+          prevLeads.map(lead => 
+            lead.id === tempLeadId ? data.lead : lead
+          )
+        );
+        
+        console.log('✅ [useLeadsList] Temporary lead replaced with real data');
+        return true;
+      }
+      
+      console.log('➡️ [useLeadsList] Creating lead:', leadData.Nome);
 
       const response = await fetch('/api/leads', {
         method: 'POST',
@@ -302,8 +348,8 @@ export function useLeadsList({
       console.log('✅ [useLeadsList] Lead created successfully:', data.lead.ID);
       console.log('🔍 [useLeadsList] New lead data received from API:', data.lead);
       
-      // 💡 SOLUZIONE: Aggiungi direttamente il nuovo lead allo stato locale
-      setLeads(prevLeads => [data.lead, ...prevLeads]); // Aggiungi in cima alla lista
+      // Aggiungi alla lista se non è un optimistic update
+      setLeads(prevLeads => [data.lead, ...prevLeads]);
       setTotalCount(prevCount => prevCount + 1);
       
       console.log('✅ [useLeadsList] New lead added to local state');
@@ -312,6 +358,12 @@ export function useLeadsList({
 
     } catch (err) {
       console.error('❌ [useLeadsList] Error creating lead:', err);
+      // Se è un lead ottimistico e l'API fallisce, rimuovilo dalla lista
+      if (leadData.id && leadData.id.startsWith('temp_')) {
+        console.log('🗑️ [useLeadsList] Removing failed temporary lead:', leadData.id);
+        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadData.id));
+        setTotalCount(prevCount => Math.max(0, prevCount - 1));
+      }
       toast.error(err instanceof Error ? err.message : 'Errore durante creazione');
       return false;
     }
