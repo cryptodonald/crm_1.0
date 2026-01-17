@@ -255,6 +255,17 @@ export default function EditOrderPage() {
         const totaleLordo = orderFields.Totale_Lordo || 0;
         const abbuonoCalcolato = totaleFinale < totaleLordo ? (totaleLordo - totaleFinale) : 0;
         
+        // Helper per pulire valori JSON stringificati doppiamente
+        const sanitizeJsonString = (value: any): string => {
+          if (typeof value !== 'string') return value || '';
+          // Se il valore è wrappato in virgolette JSON extra: "\"Completato\"" -> "Completato"
+          let cleaned = value.trim();
+          if (cleaned.startsWith('\"') && cleaned.endsWith('\"')) {
+            cleaned = cleaned.slice(1, -1);
+          }
+          return cleaned;
+        };
+        
         // Trasforma i dati dell'ordine nel formato del form
         const formData: OrderFormData = {
           customer_ids: orderFields.ID_Lead || [],
@@ -266,7 +277,7 @@ export default function EditOrderPage() {
           customer_notes: orderFields.Note_Cliente || '',
           internal_notes: orderFields.Note_Interne || '',
           order_date: orderFields.Data_Ordine || '',
-          order_status: orderFields.Stato_Ordine || 'Bozza',
+          order_status: sanitizeJsonString(orderFields.Stato_Ordine) || 'Bozza',
           attachments: {
             contracts: [],
             customer_documents: [],
@@ -348,12 +359,22 @@ export default function EditOrderPage() {
       // Calcola totali
       const totaleFinale = data.items.reduce((sum, item) => sum + (item.total || 0), 0);
       
+      // Helper per pulire valori JSON stringificati doppiamente
+      const sanitizeValue = (value: any): any => {
+        if (typeof value !== 'string') return value;
+        let cleaned = value.trim();
+        if (cleaned.startsWith('\"') && cleaned.endsWith('\"')) {
+          cleaned = cleaned.slice(1, -1);
+        }
+        return cleaned;
+      };
+      
       // Prepara i dati per l'API Airtable - aggiornamento ordine
       const updateData = {
         // Campi base - NOMI CORRETTI DA AIRTABLE SCHEMA
         'ID_Lead': data.customer_ids || [],
         'Data_Ordine': data.order_date || orderData.fields?.Data_Ordine,
-        'Stato_Ordine': data.order_status || 'Bozza',
+        'Stato_Ordine': sanitizeValue(data.order_status) || 'Bozza',
         'ID_Venditore': data.seller_id ? [data.seller_id] : undefined,
         
         // Dati consegna
