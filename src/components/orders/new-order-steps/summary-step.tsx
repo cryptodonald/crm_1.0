@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useLeadsData } from '@/hooks/use-leads-data';
 import { useUsers } from '@/hooks/use-users';
@@ -31,15 +31,15 @@ interface SummaryStepProps {
   onDeleteAttachment?: (category: string, index: number, url: string) => void;
 }
 
-// Stati ordine disponibili
-const ORDER_STATUSES = [
-  { value: 'Bozza', label: 'Bozza', color: 'bg-gray-100 text-gray-800' },
-  { value: 'Confermato', label: 'Confermato', color: 'bg-blue-100 text-blue-800' },
-  { value: 'In_Produzione', label: 'In Produzione', color: 'bg-orange-100 text-orange-800' },
-  { value: 'Spedito', label: 'Spedito', color: 'bg-purple-100 text-purple-800' },
-  { value: 'Completato', label: 'Completato', color: 'bg-green-100 text-green-800' },
-  { value: 'Annullato', label: 'Annullato', color: 'bg-red-100 text-red-800' },
-];
+// Mapping colori per gli stati
+const STATUS_COLORS: Record<string, string> = {
+  'Bozza': 'bg-gray-100 text-gray-800',
+  'Confermato': 'bg-blue-100 text-blue-800',
+  'In_Produzione': 'bg-orange-100 text-orange-800',
+  'Spedito': 'bg-purple-100 text-purple-800',
+  'Completato': 'bg-green-100 text-green-800',
+  'Annullato': 'bg-red-100 text-red-800',
+};
 
 export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: SummaryStepProps) {
   const [attachmentFiles, setAttachmentFiles] = useState({
@@ -47,6 +47,33 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
     customer_documents: [] as File[],
     customer_sheets: [] as File[],
   });
+  const [orderStatuses, setOrderStatuses] = useState<string[]>([]);
+  const [statusesLoading, setStatusesLoading] = useState(true);
+  
+  // Carica le opzioni di Stato_Ordine da API
+  useEffect(() => {
+    const loadStatuses = async () => {
+      try {
+        console.log('📋 [SummaryStep] Loading order statuses...');
+        const response = await fetch('/api/orders/statuses');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ [SummaryStep] Statuses loaded:', data.statuses);
+          setOrderStatuses(data.statuses);
+        } else {
+          console.error('❌ [SummaryStep] Failed to load statuses');
+          setOrderStatuses([]);
+        }
+      } catch (error) {
+        console.error('❌ [SummaryStep] Error loading statuses:', error);
+        setOrderStatuses([]);
+      } finally {
+        setStatusesLoading(false);
+      }
+    };
+    
+    loadStatuses();
+  }, []);
   
   const formData = form.watch();
   const items = formData.items || [];
@@ -275,7 +302,9 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
                 </FormLabel>
                 <FormControl>
                   <Input
-                    type="date"
+                    type="text"
+                    placeholder="YYYY-MM-DD"
+                    pattern="\d{4}-\d{2}-\d{2}"
                     {...field}
                   />
                 </FormControl>
@@ -300,15 +329,21 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {ORDER_STATUSES.map((status) => (
-                      <SelectItem key={status.value} value={status.value}>
-                        <div className="flex items-center gap-2">
-                          <div className={`px-2 py-0.5 rounded text-xs ${status.color}`}>
-                            {status.label}
+                    {statusesLoading ? (
+                      <div className="p-2 text-sm text-muted-foreground text-center">Caricamento...</div>
+                    ) : orderStatuses.length > 0 ? (
+                      orderStatuses.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          <div className="flex items-center gap-2">
+                            <div className={`px-2 py-0.5 rounded text-xs ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}>
+                              {status.replace('_', ' ')}
+                            </div>
                           </div>
-                        </div>
-                      </SelectItem>
-                    ))}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-sm text-muted-foreground text-center">Nessuno stato disponibile</div>
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessageSubtle />

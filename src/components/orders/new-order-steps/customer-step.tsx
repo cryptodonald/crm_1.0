@@ -467,9 +467,6 @@ export function CustomerStep({ form }: CustomerStepProps) {
                           field.onChange(date ? format(date, "yyyy-MM-dd") : '');
                           setDatePopoverOpen(false);
                         }}
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
                         initialFocus
                         locale={it}
                       />
