@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Package, Calendar, MapPin, FileText, Upload, X, File, FileCheck, Shield, ExternalLink, Trash2, CreditCard } from 'lucide-react';
+import { User, Package, Calendar, MapPin, FileText, Upload, X, File, FileCheck, Shield, ExternalLink, Trash2, CreditCard, Sparkles } from 'lucide-react';
 import { OrderFormData } from '../new-order-modal';
 
 interface SummaryStepProps {
@@ -39,6 +39,23 @@ const STATUS_COLORS: Record<string, string> = {
   'Spedito': 'bg-purple-100 text-purple-800',       // Viola - spedito
   'Consegnato': 'bg-green-100 text-green-800',      // Verde - consegnato/completato
   'Annullato': 'bg-red-100 text-red-800',           // Rosso - annullato
+};
+
+const PAYMENT_STATUS_COLORS: Record<string, string> = {
+  'Non Pagato': 'bg-orange-100 text-orange-800',    // Arancione - non pagato
+  'Parziale': 'bg-yellow-100 text-yellow-800',      // Giallo - pagamento parziale
+  'Pagato': 'bg-green-100 text-green-800',          // Verde - pagato
+  'Rifiutato': 'bg-red-100 text-red-800',           // Rosso - rifiutato
+  'Annullato': 'bg-gray-100 text-gray-800',         // Grigio - annullato
+};
+
+const PAYMENT_METHOD_COLORS: Record<string, string> = {
+  'Contanti': 'bg-emerald-100 text-emerald-800',    // Verde - contanti
+  'Bonifico': 'bg-blue-100 text-blue-800',          // Blu - bonifico
+  'Carta Credito': 'bg-purple-100 text-purple-800', // Viola - carta credito
+  'Finanziamento': 'bg-amber-100 text-amber-800',   // Ambra - finanziamento
+  'Assegno': 'bg-pink-100 text-pink-800',           // Rosa - assegno
+  'PayPal': 'bg-cyan-100 text-cyan-800',            // Azzurro - PayPal
 };
 
 export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: SummaryStepProps) {
@@ -335,17 +352,14 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
       </div>
       
       <div className="border-t border-border/50 pt-4">
-        {/* Dati Ordine */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
+        {/* Header Info Section - Same width as cards */}
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
           <FormField
             control={form.control}
             name="order_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Data Ordine
-                </FormLabel>
+                <FormLabel>Data Ordine</FormLabel>
                 <FormControl>
                   <Input
                     type="text"
@@ -364,14 +378,11 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
             name="order_status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Stato Ordine
-                </FormLabel>
+                <FormLabel>Stato Ordine</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona stato" />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleziona" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -381,14 +392,14 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
                       orderStatuses.map((status) => (
                         <SelectItem key={status} value={status}>
                           <div className="flex items-center gap-2">
-                            <div className={`px-2 py-0.5 rounded text-xs ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}>
+                            <div className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}>
                               {status.replace('_', ' ')}
                             </div>
                           </div>
                         </SelectItem>
                       ))
                     ) : (
-                      <div className="p-2 text-sm text-muted-foreground text-center">Nessuno stato disponibile</div>
+                      <div className="p-2 text-sm text-muted-foreground text-center">Nessuno</div>
                     )}
                   </SelectContent>
                 </Select>
@@ -397,48 +408,11 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
             )}
           />
           
-          <FormField
-            control={form.control}
-            name="payment_status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Stato Pagamento
-                </FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || ''}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona stato" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {paymentStatusesLoading ? (
-                      <div className="p-2 text-sm text-muted-foreground text-center">Caricamento...</div>
-                    ) : paymentStatuses.length > 0 ? (
-                      paymentStatuses.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="p-2 text-sm text-muted-foreground text-center">Nessuno stato disponibile</div>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessageSubtle />
-              </FormItem>
-            )}
-          />
-          
-          {/* Info Venditore */}
+          {/* Venditore */}
           {selectedSeller && (
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Venditore Assegnato
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+            <FormItem>
+              <FormLabel>Venditore</FormLabel>
+              <div className="flex items-center gap-2 p-2 border rounded-md mt-2 h-10">
                 <AvatarLead
                   nome={selectedSeller.nome}
                   customAvatar={selectedSeller.avatar}
@@ -446,120 +420,149 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
                   size="sm"
                   showTooltip={false}
                 />
-                <div>
-                  <div className="font-medium text-sm">{selectedSeller.nome}</div>
-                  <div className="text-xs text-muted-foreground">{selectedSeller.ruolo}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm truncate">{selectedSeller.nome}</div>
                 </div>
               </div>
-            </div>
+            </FormItem>
           )}
         </div>
         
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Dati Cliente */}
+          {/* Clienti */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <User className="h-5 w-5" />
-                Clienti ({selectedCustomers.length})
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center justify-between">
+                Clienti
+                <span className="text-sm font-normal text-muted-foreground">{selectedCustomers.length}</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               {selectedCustomers.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {selectedCustomers.map((customer) => (
                     <Link 
                       key={customer.id} 
                       href={`/leads/${customer.id}`}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer hover:border-border/80"
+                      className="flex items-center gap-2 p-2 rounded-md hover:bg-muted transition-colors"
                     >
                       <AvatarLead
                         nome={customer.Nome}
                         customAvatar={customer.Avatar}
-                        size="md"
+                        size="sm"
                         showTooltip={false}
                       />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 text-sm">
                         <div className="font-medium truncate">{customer.Nome}</div>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {customer.Telefono || customer.Email || 'Nessun contatto'}
+                        <div className="text-xs text-muted-foreground truncate">
+                          {customer.Telefono || customer.Email || 'N/A'}
                         </div>
                       </div>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  <User className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                  <p>Nessun cliente selezionato</p>
-                </div>
+                <p className="text-sm text-muted-foreground">Nessun cliente</p>
               )}
             </CardContent>
           </Card>
 
-          {/* Dettagli Consegna */}
+          {/* Consegna */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MapPin className="h-5 w-5" />
-                Consegna
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Consegna</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3 text-sm">
               {formData.delivery_date && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{formData.delivery_date}</span>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1">Data</div>
+                  <div className="font-medium">{formData.delivery_date}</div>
                 </div>
               )}
               {formData.delivery_address && (
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <span className="text-sm">{formData.delivery_address}</span>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1">Indirizzo</div>
+                  <div className="font-medium">{formData.delivery_address}</div>
                 </div>
               )}
               {!formData.delivery_date && !formData.delivery_address && (
-                <p className="text-sm text-muted-foreground">Nessun dettaglio specificato</p>
+                <p className="text-muted-foreground">Nessun dettaglio</p>
               )}
             </CardContent>
           </Card>
           
-          {/* Dettagli Pagamento */}
+          {/* Pagamento */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <CreditCard className="h-5 w-5" />
-                Pagamento
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Pagamento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Select Stato Pagamento */}
+              <FormField
+                control={form.control}
+                name="payment_status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium">Stato</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seleziona" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {paymentStatusesLoading ? (
+                          <div className="p-2 text-xs text-muted-foreground text-center">Caricamento...</div>
+                        ) : paymentStatuses.length > 0 ? (
+                          paymentStatuses.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              <div className="flex items-center gap-2">
+                                <div className={`px-2 py-0.5 rounded text-xs font-medium ${PAYMENT_STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}>
+                                  {status}
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-xs text-muted-foreground text-center">Nessuno</div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              {/* Select Modalità Pagamento */}
               <FormField
                 control={form.control}
                 name="payment_method"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm">Modalità Pagamento</FormLabel>
+                    <FormLabel className="text-xs font-medium">Modalità</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ''}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Seleziona" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {paymentMethodsLoading ? (
-                          <div className="p-2 text-sm text-muted-foreground text-center">Caricamento...</div>
+                          <div className="p-2 text-xs text-muted-foreground text-center">Caricamento...</div>
                         ) : paymentMethods.length > 0 ? (
                           paymentMethods.map((method) => (
                             <SelectItem key={method} value={method}>
-                              {method}
+                              <div className="flex items-center gap-2">
+                                <div className={`px-2 py-0.5 rounded text-xs font-medium ${PAYMENT_METHOD_COLORS[method] || 'bg-gray-100 text-gray-800'}`}>
+                                  {method}
+                                </div>
+                              </div>
                             </SelectItem>
                           ))
                         ) : (
-                          <div className="p-2 text-sm text-muted-foreground text-center">Nessuna modalità disponibile</div>
+                          <div className="p-2 text-xs text-muted-foreground text-center">Nessuno</div>
                         )}
                       </SelectContent>
                     </Select>
-                    <FormMessageSubtle />
                   </FormItem>
                 )}
               />
@@ -761,10 +764,25 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
             name="customer_notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Note Cliente
-                </FormLabel>
+                <div className="flex items-center justify-between gap-2">
+                  <FormLabel className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Note Cliente
+                  </FormLabel>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => {
+                      // TODO: Implement AI rewrite functionality
+                      console.log('🤖 Rewrite customer notes with AI');
+                    }}
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Riscrivi con AI
+                  </Button>
+                </div>
                 <FormControl>
                   <Textarea
                     placeholder="Note visibili al cliente..."
@@ -782,10 +800,25 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
             name="internal_notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Note Interne
-                </FormLabel>
+                <div className="flex items-center justify-between gap-2">
+                  <FormLabel className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Note Interne
+                  </FormLabel>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => {
+                      // TODO: Implement AI rewrite functionality
+                      console.log('🤖 Rewrite internal notes with AI');
+                    }}
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Riscrivi con AI
+                  </Button>
+                </div>
                 <FormControl>
                   <Textarea
                     placeholder="Note interne (non visibili al cliente)..."

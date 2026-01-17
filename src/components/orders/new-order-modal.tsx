@@ -311,7 +311,10 @@ export function NewOrderModal({ open, onOpenChange, onSuccess, prefilledCustomer
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify({
+          orderData,
+          orderItemsData: data.items // Includi gli items dell'ordine
+        }),
         signal: controller.signal,
       });
       

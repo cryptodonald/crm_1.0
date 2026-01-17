@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { invalidateOrderCache } from '@/app/orders/actions';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,7 +14,6 @@ import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { ArrowLeft, ArrowRight, Save, ShoppingCart, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Importa gli step (riusiamo quelli del nuovo ordine)
@@ -42,6 +42,8 @@ const orderFormSchema = z.object({
   internal_notes: z.string().optional(),
   order_date: z.string().optional(),
   order_status: z.string().optional(),
+  payment_status: z.string().optional(),
+  payment_method: z.string().optional(),
   attachments: z.object({
     contracts: z.array(z.any()).optional(),
     customer_documents: z.array(z.any()).optional(),
@@ -278,6 +280,8 @@ export default function EditOrderPage() {
           internal_notes: orderFields.Note_Interne || '',
           order_date: orderFields.Data_Ordine || '',
           order_status: sanitizeJsonString(orderFields.Stato_Ordine) || 'Bozza',
+          payment_status: orderFields.Stato_Pagamento || 'Non Pagato',
+          payment_method: orderFields.Modalita_Pagamento || '',
           attachments: {
             contracts: [],
             customer_documents: [],
@@ -393,8 +397,8 @@ export default function EditOrderPage() {
         'Totale_IVA': 0,
         
         // Stati
-        'Stato_Pagamento': orderData.fields?.Stato_Pagamento || 'Non Pagato',
-        'Modalita_Pagamento': orderData.fields?.Modalita_Pagamento,
+        'Stato_Pagamento': data.payment_status || 'Non Pagato',
+        'Modalita_Pagamento': data.payment_method || undefined,
         
         // Timestamp
         'Ultima_Modifica': new Date().toISOString(),
@@ -540,6 +544,10 @@ export default function EditOrderPage() {
       toast.success('Ordine aggiornato con successo!', {
         description: `Ordine #${orderData.fields?.ID_Ordine || orderId} modificato.`,
       });
+      
+      // Invalida il cache per forzare refresh ottimistico
+      console.log('🔄 [Edit] Invalidating cache for order:', orderId);
+      await invalidateOrderCache(orderId);
       
       // Reindirizza alla pagina ordini
       router.push('/orders');
