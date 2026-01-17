@@ -366,15 +366,21 @@ export async function PUT(
     // Update order in Airtable
     const updateUrl = `https://api.airtable.com/v0/${baseId}/${ORDERS_TABLE_ID}/${orderId}`;
     
+    const requestBody = {
+      fields: sanitizedOrderData
+    };
+    
+    const requestBodyString = JSON.stringify(requestBody);
+    console.log(`🔍 BODY BEING SENT TO AIRTABLE:`, requestBodyString);
+    console.log(`🔍 Stato_Ordine IN BODY:`, JSON.parse(requestBodyString).fields['Stato_Ordine']);
+    
     const updateResponse = await fetch(updateUrl, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        fields: sanitizedOrderData
-      }),
+      body: requestBodyString,
     });
 
     if (!updateResponse.ok) {
