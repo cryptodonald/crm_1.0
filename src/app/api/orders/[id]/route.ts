@@ -325,7 +325,15 @@ export async function PUT(
       );
     }
 
-    console.log(`🔄 Updating order: ${orderId}`, { orderData });
+    console.log(`🔄 Updating order: ${orderId}`);
+    console.log(`📨 RECEIVED orderData:`, JSON.stringify(orderData, null, 2));
+    console.log(`🔍 Stato_Ordine value:`, {
+      value: orderData['Stato_Ordine'],
+      type: typeof orderData['Stato_Ordine'],
+      length: orderData['Stato_Ordine']?.length,
+      charCodes: orderData['Stato_Ordine'] ? Array.from(orderData['Stato_Ordine']).map(c => c.charCodeAt(0)) : null,
+      raw: JSON.stringify(orderData['Stato_Ordine'])
+    });
 
     // Sanitizza i dati prima dell'invio - rimuovi quote JSON extra
     const sanitizedOrderData: any = {};
@@ -333,19 +341,27 @@ export async function PUT(
       if (typeof value === 'string') {
         // Rimuovi quote JSON doppie: "\"Completato\"" -> "Completato"
         let cleaned = value.trim();
+        console.log(`🔍 Processing field '${key}':`, {
+          original: value,
+          originalLength: value.length,
+          startsWithQuote: cleaned.startsWith('\"'),
+          endsWithQuote: cleaned.endsWith('\"'),
+          firstChar: value.charCodeAt(0),
+          lastChar: value.charCodeAt(value.length - 1)
+        });
+        
         if (cleaned.startsWith('\"') && cleaned.endsWith('\"')) {
           cleaned = cleaned.slice(1, -1);
+          console.log(`  ✂️ Removed quotes from '${key}': '${value}' -> '${cleaned}'`);
         }
         sanitizedOrderData[key] = cleaned;
-        if (cleaned !== value) {
-          console.log(`  🧹 Sanitized '${key}': '${value}' -> '${cleaned}'`);
-        }
       } else {
         sanitizedOrderData[key] = value;
       }
     }
 
-    console.log(`✅ Sanitized order data:`, { sanitizedOrderData });
+    console.log(`✅ Sanitized order data:`, JSON.stringify(sanitizedOrderData, null, 2));
+    console.log(`📤 SENDING TO AIRTABLE Stato_Ordine:`, sanitizedOrderData['Stato_Ordine']);
 
     // Update order in Airtable
     const updateUrl = `https://api.airtable.com/v0/${baseId}/${ORDERS_TABLE_ID}/${orderId}`;
