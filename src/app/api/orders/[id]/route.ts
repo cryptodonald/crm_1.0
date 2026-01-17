@@ -327,6 +327,26 @@ export async function PUT(
 
     console.log(`🔄 Updating order: ${orderId}`, { orderData });
 
+    // Sanitizza i dati prima dell'invio - rimuovi quote JSON extra
+    const sanitizedOrderData: any = {};
+    for (const [key, value] of Object.entries(orderData)) {
+      if (typeof value === 'string') {
+        // Rimuovi quote JSON doppie: "\"Completato\"" -> "Completato"
+        let cleaned = value.trim();
+        if (cleaned.startsWith('\"') && cleaned.endsWith('\"')) {
+          cleaned = cleaned.slice(1, -1);
+        }
+        sanitizedOrderData[key] = cleaned;
+        if (cleaned !== value) {
+          console.log(`  🧹 Sanitized '${key}': '${value}' -> '${cleaned}'`);
+        }
+      } else {
+        sanitizedOrderData[key] = value;
+      }
+    }
+
+    console.log(`✅ Sanitized order data:`, { sanitizedOrderData });
+
     // Update order in Airtable
     const updateUrl = `https://api.airtable.com/v0/${baseId}/${ORDERS_TABLE_ID}/${orderId}`;
     
@@ -337,7 +357,7 @@ export async function PUT(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        fields: orderData
+        fields: sanitizedOrderData
       }),
     });
 
