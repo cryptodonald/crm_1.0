@@ -1,1 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';\n\n// Opzioni valide di Stato_Ordine come sono in Airtable\nconst ORDER_STATUSES = [\n  'Bozza',\n  'Confermato',\n  'In_Produzione',\n  'Spedito',\n  'Completato',\n  'Annullato',\n];\n\n/**\n * GET /api/orders/statuses - Restituisce le opzioni valide di Stato_Ordine\n */\nexport async function GET(request: NextRequest) {\n  try {\n    console.log('📋 [API] Fetching order statuses');\n    \n    return NextResponse.json({\n      success: true,\n      statuses: ORDER_STATUSES,\n      message: 'Order statuses retrieved successfully'\n    });\n  } catch (error) {\n    console.error('❌ Error fetching order statuses:', error);\n    \n    return NextResponse.json(\n      {\n        error: 'Failed to fetch order statuses',\n        details: error instanceof Error ? error.message : 'Unknown error'\n      },\n      { status: 500 }\n    );\n  }\n}\n"
+import { NextRequest, NextResponse } from 'next/server';
+
+// Opzioni valide di Stato_Ordine come sono in Airtable
+const ORDER_STATUSES = [
+  'Bozza',
+  'Confermato',
+  'In_Produzione',
+  'Spedito',
+  'Completato',
+  'Annullato',
+];
+
+/**
+ * GET /api/orders/statuses - Restituisce le opzioni valide di Stato_Ordine
+ */
+export async function GET(request: NextRequest) {
+  try {
+    console.log('📋 [API] Fetching order statuses');
+    
+    return NextResponse.json({
+      success: true,
+      statuses: ORDER_STATUSES,
+      message: 'Order statuses retrieved successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error fetching order statuses:', error);
+    
+    return NextResponse.json(
+      {
+        error: 'Failed to fetch order statuses',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
