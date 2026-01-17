@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Package, Calendar, MapPin, FileText, Upload, X, File, FileCheck, Shield, ExternalLink, Trash2 } from 'lucide-react';
+import { User, Package, Calendar, MapPin, FileText, Upload, X, File, FileCheck, Shield, ExternalLink, Trash2, CreditCard } from 'lucide-react';
 import { OrderFormData } from '../new-order-modal';
 
 interface SummaryStepProps {
@@ -31,14 +31,14 @@ interface SummaryStepProps {
   onDeleteAttachment?: (category: string, index: number, url: string) => void;
 }
 
-// Mapping colori per gli stati
+// Mapping colori per gli stati - match colori Airtable
 const STATUS_COLORS: Record<string, string> = {
-  'Bozza': 'bg-gray-100 text-gray-800',
-  'Confermato': 'bg-blue-100 text-blue-800',
-  'In_Produzione': 'bg-orange-100 text-orange-800',
-  'Spedito': 'bg-purple-100 text-purple-800',
-  'Completato': 'bg-green-100 text-green-800',
-  'Annullato': 'bg-red-100 text-red-800',
+  'Bozza': 'bg-gray-100 text-gray-800',           // Grigio - bozza
+  'Confermato': 'bg-blue-100 text-blue-800',       // Blu - confermato
+  'In Produzione': 'bg-yellow-100 text-yellow-800', // Giallo - in produzione
+  'Spedito': 'bg-purple-100 text-purple-800',       // Viola - spedito
+  'Consegnato': 'bg-green-100 text-green-800',      // Verde - consegnato/completato
+  'Annullato': 'bg-red-100 text-red-800',           // Rosso - annullato
 };
 
 export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: SummaryStepProps) {
@@ -49,8 +49,12 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
   });
   const [orderStatuses, setOrderStatuses] = useState<string[]>([]);
   const [statusesLoading, setStatusesLoading] = useState(true);
+  const [paymentStatuses, setPaymentStatuses] = useState<string[]>([]);
+  const [paymentStatusesLoading, setPaymentStatusesLoading] = useState(true);
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
   
-  // Carica le opzioni di Stato_Ordine da API
+  // Carica le opzioni di Stato_Ordine, Stato_Pagamento e Modalita_Pagamento da API
   useEffect(() => {
     const loadStatuses = async () => {
       try {
@@ -72,7 +76,49 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
       }
     };
     
+    const loadPaymentStatuses = async () => {
+      try {
+        console.log('💳 [SummaryStep] Loading payment statuses...');
+        const response = await fetch('/api/orders/payment-statuses');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ [SummaryStep] Payment statuses loaded:', data.paymentStatuses);
+          setPaymentStatuses(data.paymentStatuses);
+        } else {
+          console.error('❌ [SummaryStep] Failed to load payment statuses');
+          setPaymentStatuses([]);
+        }
+      } catch (error) {
+        console.error('❌ [SummaryStep] Error loading payment statuses:', error);
+        setPaymentStatuses([]);
+      } finally {
+        setPaymentStatusesLoading(false);
+      }
+    };
+    
+    const loadPaymentMethods = async () => {
+      try {
+        console.log('💳 [SummaryStep] Loading payment methods...');
+        const response = await fetch('/api/orders/payment-methods');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ [SummaryStep] Payment methods loaded:', data.paymentMethods);
+          setPaymentMethods(data.paymentMethods);
+        } else {
+          console.error('❌ [SummaryStep] Failed to load payment methods');
+          setPaymentMethods([]);
+        }
+      } catch (error) {
+        console.error('❌ [SummaryStep] Error loading payment methods:', error);
+        setPaymentMethods([]);
+      } finally {
+        setPaymentMethodsLoading(false);
+      }
+    };
+    
     loadStatuses();
+    loadPaymentStatuses();
+    loadPaymentMethods();
   }, []);
   
   const formData = form.watch();
@@ -351,6 +397,40 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
             )}
           />
           
+          <FormField
+            control={form.control}
+            name="payment_status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Stato Pagamento
+                </FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona stato" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {paymentStatusesLoading ? (
+                      <div className="p-2 text-sm text-muted-foreground text-center">Caricamento...</div>
+                    ) : paymentStatuses.length > 0 ? (
+                      paymentStatuses.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-sm text-muted-foreground text-center">Nessuno stato disponibile</div>
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessageSubtle />
+              </FormItem>
+            )}
+          />
+          
           {/* Info Venditore */}
           {selectedSeller && (
             <div className="space-y-2">
@@ -375,7 +455,7 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
           )}
         </div>
         
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-3">
           {/* Dati Cliente */}
           <Card>
             <CardHeader>
@@ -441,6 +521,48 @@ export function SummaryStep({ form, existingAttachments, onDeleteAttachment }: S
               {!formData.delivery_date && !formData.delivery_address && (
                 <p className="text-sm text-muted-foreground">Nessun dettaglio specificato</p>
               )}
+            </CardContent>
+          </Card>
+          
+          {/* Dettagli Pagamento */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CreditCard className="h-5 w-5" />
+                Pagamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="payment_method"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Modalità Pagamento</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {paymentMethodsLoading ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">Caricamento...</div>
+                        ) : paymentMethods.length > 0 ? (
+                          paymentMethods.map((method) => (
+                            <SelectItem key={method} value={method}>
+                              {method}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-sm text-muted-foreground text-center">Nessuna modalità disponibile</div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessageSubtle />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
         </div>

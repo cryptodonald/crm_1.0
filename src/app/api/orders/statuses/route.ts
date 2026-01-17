@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Opzioni valide di Stato_Ordine come sono in Airtable
+// IMPORTANTE: Questi valori DEVONO matchare ESATTAMENTE le opzioni nel campo Airtable
 const ORDER_STATUSES = [
   'Bozza',
   'Confermato',
-  'In_Produzione',
+  'In Produzione',  // Con spazio, non underscore
   'Spedito',
-  'Completato',
+  'Consegnato',     // Non 'Completato' - Airtable ha 'Consegnato'
   'Annullato',
 ];
 

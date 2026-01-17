@@ -49,6 +49,10 @@ const orderFormSchema = z.object({
   order_date: z.string().optional(),
   order_status: z.string().optional(),
   
+  // Dati pagamento
+  payment_status: z.string().optional(),
+  payment_method: z.string().optional(),
+  
   // Allegati (validazione opzionale per File[])
   attachments: z.object({
     contracts: z.any().optional(),
@@ -78,6 +82,8 @@ export interface OrderFormData {
   seller_id?: string;
   order_date?: string;
   order_status?: string;
+  payment_status?: string;
+  payment_method?: string;
   attachments?: {
     contracts?: File[];
     customer_documents?: File[];
@@ -104,6 +110,8 @@ const DEFAULT_ORDER_DATA: OrderFormData = {
   seller_id: '',
   order_date: new Date().toISOString().split('T')[0], // Data odierna
   order_status: 'Bozza',
+  payment_status: 'Non Pagato',
+  payment_method: '',
   attachments: {
     contracts: [],
     customer_documents: [],
@@ -266,9 +274,9 @@ export function NewOrderModal({ open, onOpenChange, onSuccess, prefilledCustomer
       const orderData = {
         // Dati base ordine - segue struttura Airtable esistente
         Numero_Ordine: `ORD-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
-        Data_Ordine: new Date().toISOString().split('T')[0],
-        Stato_Ordine: 'Bozza',
-        Stato_Pagamento: 'Non_Pagato',
+        Data_Ordine: data.order_date || new Date().toISOString().split('T')[0],
+        Stato_Ordine: data.order_status || 'Bozza',
+        Stato_Pagamento: data.payment_status || 'Non Pagato',
         
         // Clienti multipli
         ID_Lead: data.customer_ids,
@@ -287,8 +295,8 @@ export function NewOrderModal({ open, onOpenChange, onSuccess, prefilledCustomer
         Totale_Sconto: 0,
         Totale_IVA: data.items.reduce((sum, item) => sum + (item.total * 0.22), 0), // IVA 22%
         
-        // Altri campi default
-        Modalita_Pagamento: 'Bonifico',
+        // Dati pagamento
+        Modalita_Pagamento: data.payment_method || undefined,
         Percentuale_Commissione: 5,
         Finanziamento_Richiesto: false,
         Stato_Finanziamento: 'Non_Richiesto'
