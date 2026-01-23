@@ -48,23 +48,6 @@ async function deleteLeadRecord(apiKey: string, baseId: string, tableId: string,
   return response.ok;
 }
 
-async function getRecordsByField(
-  apiKey: string,
-  baseId: string,
-  tableId: string,
-  field: string,
-  value: string
-) {
-  const encodedFormula = encodeURIComponent(`{${field}} = "${value}"`);
-  const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${encodedFormula}`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-  if (!response.ok) return [];
-  const data = await response.json();
-  return data.records || [];
-}
-
 async function batchUpdateRecords(
   apiKey: string,
   baseId: string,
@@ -88,18 +71,31 @@ async function batchUpdateRecords(
   return true;
 }
 
+/**
+ * Campi che NON devono essere aggiornati (calcolati o di sistema)
+ */
+const FORBIDDEN_FIELDS = new Set([
+  'ID', // Campo calcolato
+  'createdTime', // Di sistema
+  'id', // Interno
+]);
+
 function consolidateFields(masterRecord: any, duplicateRecords: any[]) {
   const masterFields = masterRecord.fields || {};
   const consolidated = { ...masterFields };
-  const fields = ['Email', 'Telefono', 'Indirizzo', 'CAP', 'Città', 'Esigenza', 'Note'];
-
+  
+  // Campi testuali da consolidare
+  const textFields = ['Email', 'Telefono', 'Indirizzo', 'CAP', 'Città', 'Esigenza', 'Note'];
+  
   for (const dupRecord of duplicateRecords) {
-    for (const field of fields) {
+    for (const field of textFields) {
+      // Se il master non ha il campo, prendi dal duplicato
       if (!consolidated[field] && dupRecord.fields?.[field]) {
         consolidated[field] = dupRecord.fields[field];
       }
     }
   }
+  
   return consolidated;
 }
 
@@ -117,6 +113,27 @@ function mergeRelations(masterRecord: any, duplicateRecords: any[]) {
     ordersToUpdate: Array.from(orders),
     activitiesToUpdate: Array.from(activities),
   };
+}
+
+function sanitizeFields(fields: any): any {
+  const sanitized: any = {};
+  
+  for (const [key, value] of Object.entries(fields)) {
+    // Skip forbidden fields
+    if (FORBIDDEN_FIELDS.has(key)) {
+      console.log(`⏭️  Skipping forbidden field: ${key}`);
+      continue;
+    }
+    
+    // Skip empty values
+    if (value === null || value === undefined || value === '') {
+      continue;
+    }
+    
+    sanitized[key] = value;
+  }
+  
+  return sanitized;
 }
 
 export async function POST(request: NextRequest) {
@@ -157,69 +174,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No duplicates found' }, { status: 404 });
     }
 
-    // 3. Consolidate fields from duplicates into master
+    console.log(`📊 Found ${duplicateRecords.length} duplicate records to merge`);
+
+    // 3. Consolidate text fields from duplicates into master
     const consolidated = consolidateFields(masterRecord, duplicateRecords);
 
     // 4. Merge relations (Orders, Activities)
     const { ordersToUpdate, activitiesToUpdate } = mergeRelations(masterRecord, duplicateRecords);
+    
+    // Add merged relations to consolidated fields
+    consolidated['Orders'] = ordersToUpdate;
+    consolidated['Attività'] = activitiesToUpdate;
 
-    // 5. Update master lead with consolidated fields ONLY (no link records in PATCH)
-    const updated = await updateLeadRecord(apiKey, baseId, leadsTableId, masterId, consolidated);
+    console.log(`📋 Consolidated fields ready. Orders: ${ordersToUpdate.length}, Activities: ${activitiesToUpdate.length}`);
+
+    // 5. Sanitize fields before sending to Airtable (remove forbidden/system fields)
+    const sanitizedFields = sanitizeFields(consolidated);
+    
+    console.log(`🧹 Sanitized fields:`, Object.keys(sanitizedFields));
+
+    // 6. Update master lead with consolidated fields
+    const updated = await updateLeadRecord(apiKey, baseId, leadsTableId, masterId, sanitizedFields);
     if (!updated) {
-      console.error('Failed to update master lead');
+      console.error('❌ Failed to update master lead');
       return NextResponse.json({ error: 'Failed to update master' }, { status: 500 });
     }
 
-    console.log(`✅ Master updated with consolidated fields`);
+    console.log(`✅ Master lead updated with consolidated data`);
 
-    // 6. Update Orders to point to master lead
+    // 7. Update Orders to point to master lead (if table available)
     if (ordersTableId && ordersToUpdate.length > 0) {
       console.log(`🔄 Updating ${ordersToUpdate.length} orders to master lead`);
-      const orderRecords = [];
-      for (const orderId of ordersToUpdate) {
-        const order = await getLeadRecord(apiKey, baseId, ordersTableId, orderId);
-        if (order) {
-          orderRecords.push({
-            id: orderId,
-            fields: { 'Cliente': [masterId] }, // Update Cliente link to master
-          });
-        }
-      }
+      const orderUpdates = ordersToUpdate.map(orderId => ({
+        id: orderId,
+        fields: { 'Cliente': [masterId] },
+      }));
 
-      if (orderRecords.length > 0) {
-        await batchUpdateRecords(apiKey, baseId, ordersTableId, orderRecords);
-        console.log(`✅ ${orderRecords.length} orders updated`);
+      const ordersSuccess = await batchUpdateRecords(apiKey, baseId, ordersTableId, orderUpdates);
+      if (ordersSuccess) {
+        console.log(`✅ ${ordersToUpdate.length} orders updated to master`);
       }
     }
 
-    // 7. Update Activities to point to master lead
+    // 8. Update Activities to point to master lead (if table available)
     if (activitiesTableId && activitiesToUpdate.length > 0) {
       console.log(`🔄 Updating ${activitiesToUpdate.length} activities to master lead`);
-      const activityRecords = [];
-      for (const activityId of activitiesToUpdate) {
-        const activity = await getLeadRecord(apiKey, baseId, activitiesTableId, activityId);
-        if (activity) {
-          activityRecords.push({
-            id: activityId,
-            fields: { 'Cliente': [masterId] }, // Update Cliente link to master
-          });
-        }
-      }
+      const activityUpdates = activitiesToUpdate.map(activityId => ({
+        id: activityId,
+        fields: { 'Cliente': [masterId] },
+      }));
 
-      if (activityRecords.length > 0) {
-        await batchUpdateRecords(apiKey, baseId, activitiesTableId, activityRecords);
-        console.log(`✅ ${activityRecords.length} activities updated`);
+      const activitiesSuccess = await batchUpdateRecords(apiKey, baseId, activitiesTableId, activityUpdates);
+      if (activitiesSuccess) {
+        console.log(`✅ ${activitiesToUpdate.length} activities updated to master`);
       }
     }
 
-    // 8. Delete duplicate leads
+    // 9. Delete duplicate leads
     let deletedCount = 0;
     for (const dup of duplicateRecords) {
       if (await deleteLeadRecord(apiKey, baseId, leadsTableId, dup.id)) {
         deletedCount++;
-        console.log(`✅ Deleted duplicate: ${dup.id}`);
+        console.log(`🗑️  Deleted duplicate: ${dup.id}`);
       }
     }
+
+    console.log(`🎉 Merge completed: ${deletedCount} leads consolidated into master`);
 
     await invalidateLeadCache();
 
@@ -231,10 +251,10 @@ export async function POST(request: NextRequest) {
         orders: ordersToUpdate.length,
         activities: activitiesToUpdate.length,
       },
-      message: `${deletedCount} lead uniti con successo. ${ordersToUpdate.length} ordini e ${activitiesToUpdate.length} attività riallocate.`,
+      message: `${deletedCount} lead uniti con successo. ${ordersToUpdate.length} ordini e ${activitiesToUpdate.length} attività riallocate al master.`,
     });
   } catch (error) {
-    console.error('Merge error:', error);
+    console.error('❌ Merge error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Merge failed' },
       { status: 500 }
