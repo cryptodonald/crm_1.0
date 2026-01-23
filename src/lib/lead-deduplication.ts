@@ -1,1 +1,158 @@
-import { LeadData } from '@/types/leads';\n\n/**\n * Normalizza una stringa per il confronto\n * - Lowercase\n * - Rimuove spazi, punteggiatura, caratteri speciali\n * - Mantiene solo lettere, numeri\n */\nfunction normalizeString(str: string | undefined): string {\n  if (!str) return '';\n  return str\n    .toLowerCase()\n    .trim()\n    // Rimuove accenti\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    // Rimuove spazi, punteggiatura, caratteri speciali\n    .replace(/[^a-z0-9]/g, '');\n}\n\n/**\n * Calcola la distanza di Levenshtein tra due stringhe\n * Usato per fuzzy matching su nomi simili ma non identici\n */\nfunction levenshteinDistance(a: string, b: string): number {\n  if (a.length === 0) return b.length;\n  if (b.length === 0) return a.length;\n\n  const matrix: number[][] = [];\n\n  for (let i = 0; i <= b.length; i++) {\n    matrix[i] = [i];\n  }\n\n  for (let j = 0; j <= a.length; j++) {\n    matrix[0][j] = j;\n  }\n\n  for (let i = 1; i <= b.length; i++) {\n    for (let j = 1; j <= a.length; j++) {\n      if (b.charAt(i - 1) === a.charAt(j - 1)) {\n        matrix[i][j] = matrix[i - 1][j - 1];\n      } else {\n        matrix[i][j] = Math.min(\n          matrix[i - 1][j - 1] + 1,\n          matrix[i][j - 1] + 1,\n          matrix[i - 1][j] + 1\n        );\n      }\n    }\n  }\n\n  return matrix[b.length][a.length];\n}\n\n/**\n * Calcola similarità tra due stringhe usando Levenshtein distance\n * Ritorna valore tra 0 e 1 (1 = identiche)\n */\nfunction calculateSimilarity(a: string, b: string): number {\n  if (a === b) return 1;\n  if (a.length === 0 || b.length === 0) return 0;\n\n  const maxLength = Math.max(a.length, b.length);\n  const distance = levenshteinDistance(a, b);\n  return 1 - distance / maxLength;\n}\n\n/**\n * Normalizza un numero di telefono\n * - Rimuove spazi, punteggiatura, parentesi\n * - Mantiene solo cifre e + all'inizio\n */\nfunction normalizePhone(phone: string | undefined): string {\n  if (!phone) return '';\n  return phone\n    .replace(/[\\s()-]/g, '')\n    .replace(/^0+/, ''); // Rimuove zeri all'inizio (es: 0039 → 39)\n}\n\n/**\n * Crea chiave di deduplicazione per un lead\n * Basata su Nome + Telefono normalizzati\n */\nexport interface DeduplicationKey {\n  nameKey: string;\n  phoneKey: string;\n  combined: string; // \"nameKey:phoneKey\"\n}\n\nexport function createDeduplicationKey(lead: LeadData): DeduplicationKey {\n  const nameKey = normalizeString(lead.Nome);\n  const phoneKey = normalizePhone(lead.Telefono);\n\n  return {\n    nameKey,\n    phoneKey,\n    combined: `${nameKey}:${phoneKey}`,\n  };\n}\n\n/**\n * Gruppo di lead potenzialmente duplicati\n */\nexport interface DuplicateGroup {\n  masterLead: LeadData; // Lead \"principale\" (più recente o selezionato)\n  duplicateLeads: LeadData[]; // Lead duplicati\n  matchType: 'exact' | 'fuzzy'; // Tipo di match (esatto o fuzzy)\n  similarity: number; // Similarity score (1 = esatto, 0.8+ = simile)\n}\n\n/**\n * Rileva lead duplicati in una lista\n * @param leads - Lista di lead da analizzare\n * @param fuzzySimilarityThreshold - Soglia di similarità per fuzzy matching (default 0.85)\n * @returns Array di gruppi duplicati\n */\nexport function detectDuplicates(\n  leads: LeadData[],\n  fuzzySimilarityThreshold = 0.85\n): DuplicateGroup[] {\n  if (leads.length < 2) return [];\n\n  // Mappa per tracciare i lead già assegnati a un gruppo\n  const processedLeads = new Set<string>();\n  const groups: DuplicateGroup[] = [];\n\n  // Mappa per exact matching (Nome + Telefono identici)\n  const exactMatches = new Map<string, LeadData[]>();\n\n  // First pass: exact matching\n  for (const lead of leads) {\n    const key = createDeduplicationKey(lead);\n\n    // Skip lead senza nome e telefono\n    if (!key.nameKey && !key.phoneKey) continue;\n\n    if (!exactMatches.has(key.combined)) {\n      exactMatches.set(key.combined, []);\n    }\n    exactMatches.get(key.combined)!.push(lead);\n  }\n\n  // Processa exact matches\n  for (const [, matchedLeads] of exactMatches) {\n    if (matchedLeads.length >= 2) {\n      // Ordina per data creazione (più recente primo)\n      const sorted = [...matchedLeads].sort((a, b) => {\n        const dateA = new Date(a.createdTime).getTime();\n        const dateB = new Date(b.createdTime).getTime();\n        return dateB - dateA;\n      });\n\n      const master = sorted[0];\n      const duplicates = sorted.slice(1);\n\n      // Marca come processati\n      for (const lead of matchedLeads) {\n        processedLeads.add(lead.id);\n      }\n\n      groups.push({\n        masterLead: master,\n        duplicateLeads: duplicates,\n        matchType: 'exact',\n        similarity: 1,\n      });\n    }\n  }\n\n  // Second pass: fuzzy matching per lead non ancora processati\n  const unprocessedLeads = leads.filter(lead => !processedLeads.has(lead.id));\n\n  for (let i = 0; i < unprocessedLeads.length; i++) {\n    const lead = unprocessedLeads[i];\n    if (processedLeads.has(lead.id)) continue;\n\n    const key1 = createDeduplicationKey(lead);\n    if (!key1.nameKey && !key1.phoneKey) continue;\n\n    const fuzzyMatches: { lead: LeadData; similarity: number }[] = [];\n\n    for (let j = i + 1; j < unprocessedLeads.length; j++) {\n      const otherLead = unprocessedLeads[j];\n      if (processedLeads.has(otherLead.id)) continue;\n\n      const key2 = createDeduplicationKey(otherLead);\n      if (!key2.nameKey && !key2.phoneKey) continue;\n\n      // Calcola similarità su Nome + Telefono\n      let similarity = 0;\n      let weight = 0;\n\n      if (key1.nameKey && key2.nameKey) {\n        similarity += calculateSimilarity(key1.nameKey, key2.nameKey) * 0.7; // 70% peso al nome\n        weight += 0.7;\n      }\n\n      if (key1.phoneKey && key2.phoneKey && key1.phoneKey !== '' && key2.phoneKey !== '') {\n        similarity += calculateSimilarity(key1.phoneKey, key2.phoneKey) * 0.3; // 30% peso al telefono\n        weight += 0.3;\n      }\n\n      if (weight > 0) {\n        similarity = similarity / weight;\n      }\n\n      if (similarity >= fuzzySimilarityThreshold) {\n        fuzzyMatches.push({ lead: otherLead, similarity });\n        processedLeads.add(otherLead.id);\n      }\n    }\n\n    if (fuzzyMatches.length > 0) {\n      processedLeads.add(lead.id);\n\n      // Ordina per similarity (più simile primo come master)\n      const sortedMatches = [\n        { lead, similarity: 1 },\n        ...fuzzyMatches,\n      ].sort((a, b) => b.similarity - a.similarity);\n\n      const avgSimilarity =\n        fuzzyMatches.reduce((sum, m) => sum + m.similarity, 0) / fuzzyMatches.length;\n\n      groups.push({\n        masterLead: sortedMatches[0].lead,\n        duplicateLeads: sortedMatches.slice(1).map(m => m.lead),\n        matchType: 'fuzzy',\n        similarity: avgSimilarity,\n      });\n    }\n  }\n\n  return groups;\n}\n\n/**\n * Funzione helper per detectare duplicati di un singolo lead\n * Ritorna i lead che sono duplicati di uno specifico lead\n */\nexport function findDuplicatesForLead(\n  leadId: string,\n  lead: LeadData,\n  allLeads: LeadData[],\n  fuzzySimilarityThreshold = 0.85\n): LeadData[] {\n  const groups = detectDuplicates(allLeads, fuzzySimilarityThreshold);\n\n  for (const group of groups) {\n    if (group.masterLead.id === leadId) {\n      return group.duplicateLeads;\n    }\n    if (group.duplicateLeads.some(dup => dup.id === leadId)) {\n      return [\n        group.masterLead,\n        ...group.duplicateLeads.filter(dup => dup.id !== leadId),\n      ];\n    }\n  }\n\n  return [];\n}\n\n/**\n * Testa se due lead sono duplicati\n */\nexport function areDuplicates(\n  lead1: LeadData,\n  lead2: LeadData,\n  fuzzySimilarityThreshold = 0.85\n): boolean {\n  const groups = detectDuplicates([lead1, lead2], fuzzySimilarityThreshold);\n  return groups.length > 0;\n}\n"}
+import { LeadData } from '@/types/leads';
+
+/**
+ * Levenshtein distance algorithm for fuzzy string matching
+ * Returns a value between 0 and 1 (higher = more similar)
+ */
+function levenshteinSimilarity(str1: string, str2: string): number {
+  const a = str1.toLowerCase().trim();
+  const b = str2.toLowerCase().trim();
+
+  if (a === b) return 1;
+  if (a.length === 0 || b.length === 0) return 0;
+
+  const matrix: number[][] = Array(b.length + 1)
+    .fill(null)
+    .map(() => Array(a.length + 1).fill(0));
+
+  for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+  for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+
+  for (let j = 1; j <= b.length; j++) {
+    for (let i = 1; i <= a.length; i++) {
+      const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1,
+        matrix[j - 1][i] + 1,
+        matrix[j - 1][i - 1] + indicator
+      );
+    }
+  }
+
+  const distance = matrix[b.length][a.length];
+  const maxLen = Math.max(a.length, b.length);
+  return 1 - distance / maxLen;
+}
+
+/**
+ * Normalize string for comparison
+ */
+function normalizeString(str: string | undefined): string {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/\s+/g, ''); // Remove all spaces
+}
+
+/**
+ * Normalize phone number for comparison
+ */
+function normalizePhone(phone: string | undefined): string {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '').slice(-10); // Keep only last 10 digits
+}
+
+export interface DuplicateGroup {
+  masterId: string;
+  duplicateIds: string[];
+  similarity: number;
+}
+
+/**
+ * Detect duplicate leads based on name and phone
+ */
+export function detectDuplicates(
+  leads: LeadData[],
+  threshold: number = 0.85,
+  exactOnly: boolean = false
+): DuplicateGroup[] {
+  const groups: DuplicateGroup[] = [];
+  const processed = new Set<string>();
+
+  for (let i = 0; i < leads.length; i++) {
+    if (processed.has(leads[i].id)) continue;
+
+    const master = leads[i];
+    const duplicates: Array<{ id: string; similarity: number }> = [];
+
+    for (let j = i + 1; j < leads.length; j++) {
+      if (processed.has(leads[j].id)) continue;
+
+      const candidate = leads[j];
+      let similarity = 0;
+
+      const normalizedMasterName = normalizeString(master.Nome);
+      const normalizedCandidateName = normalizeString(candidate.Nome);
+
+      if (exactOnly) {
+        // Exact match only
+        if (normalizedMasterName === normalizedCandidateName) {
+          const masterPhone = normalizePhone(master.Telefono);
+          const candidatePhone = normalizePhone(candidate.Telefono);
+
+          if (masterPhone && candidatePhone && masterPhone === candidatePhone) {
+            similarity = 1.0;
+          }
+        }
+      } else {
+        // Fuzzy matching
+        const nameSimilarity = levenshteinSimilarity(
+          normalizedMasterName,
+          normalizedCandidateName
+        );
+
+        if (nameSimilarity > 0.7) {
+          const masterPhone = normalizePhone(master.Telefono);
+          const candidatePhone = normalizePhone(candidate.Telefono);
+
+          if (masterPhone && candidatePhone && masterPhone === candidatePhone) {
+            similarity = Math.max(nameSimilarity, 0.95);
+          } else {
+            similarity = nameSimilarity * 0.9; // Slightly lower without phone match
+          }
+        }
+      }
+
+      if (similarity >= threshold) {
+        duplicates.push({ id: candidate.id, similarity });
+        processed.add(candidate.id);
+      }
+    }
+
+    if (duplicates.length > 0) {
+      groups.push({
+        masterId: master.id,
+        duplicateIds: duplicates.map(d => d.id),
+        similarity: Math.max(...duplicates.map(d => d.similarity)),
+      });
+      processed.add(master.id);
+    }
+  }
+
+  return groups;
+}
+
+/**
+ * Get duplicate groups for a single lead
+ */
+export function getDuplicatesForLead(
+  leadId: string,
+  allLeads: LeadData[],
+  threshold: number = 0.85
+): LeadData[] {
+  const lead = allLeads.find(l => l.id === leadId);
+  if (!lead) return [];
+
+  const groups = detectDuplicates(allLeads, threshold);
+  const group = groups.find(
+    g => g.masterId === leadId || g.duplicateIds.includes(leadId)
+  );
+
+  if (!group) return [];
+
+  const dupeIds = group.masterId === leadId ? group.duplicateIds : [group.masterId, ...group.duplicateIds].filter(id => id !== leadId);
+  return dupeIds.map(id => allLeads.find(l => l.id === id)!).filter(Boolean);
+}

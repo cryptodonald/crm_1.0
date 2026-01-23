@@ -1,1 +1,39 @@
-import { useState, useCallback } from 'react';\nimport { DuplicateGroup } from '@/lib/lead-deduplication';\nimport { LeadData } from '@/types/leads';\nimport { toast } from 'sonner';\n\nexport interface UseMergeLeadsState {\n  duplicates: DuplicateGroup[];\n  loading: boolean;\n  error: string | null;\n  merging: boolean;\n}\n\nexport interface UseMergeLeadsActions {\n  // Detecta lead duplicati\n  detectDuplicates: (threshold?: number, exactOnly?: boolean) => Promise<DuplicateGroup[]>;\n  // Unisce lead duplicati\n  mergeLead: (masterId: string, duplicateIds: string[]) => Promise<boolean>;\n  // Reset stato\n  reset: () => void;\n}\n\nexport function useMergeLeads(): UseMergeLeadsState & UseMergeLeadsActions {\n  const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);\n  const [loading, setLoading] = useState(false);\n  const [error, setError] = useState<string | null>(null);\n  const [merging, setMerging] = useState(false);\n\n  /**\n   * Detecta lead duplicati tramite API\n   */\n  const detectDuplicates = useCallback(\n    async (threshold = 0.85, exactOnly = false): Promise<DuplicateGroup[]> => {\n      setLoading(true);\n      setError(null);\n\n      try {\n        console.log('🔍 [useMergeLeads] Detecting duplicates...');\n        const params = new URLSearchParams();\n        params.set('threshold', threshold.toString());\n        if (exactOnly) params.set('exactOnly', 'true');\n\n        const response = await fetch(`/api/leads/duplicates?${params.toString()}`);\n\n        if (!response.ok) {\n          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));\n          throw new Error(errorData.error || `HTTP ${response.status}`);\n        }\n\n        const data = await response.json();\n        console.log(`✅ [useMergeLeads] Found ${data.count} duplicate groups`);\n\n        setDuplicates(data.duplicates || []);\n        return data.duplicates || [];\n      } catch (err) {\n        const errorMsg = err instanceof Error ? err.message : 'Unknown error';\n        console.error('❌ [useMergeLeads] Detection error:', errorMsg);\n        setError(errorMsg);\n        toast.error(`Errore nella rilevazione: ${errorMsg}`);\n        return [];\n      } finally {\n        setLoading(false);\n      }\n    },\n    []\n  );\n\n  /**\n   * Unisce lead duplicati nel master\n   */\n  const mergeLead = useCallback(\n    async (masterId: string, duplicateIds: string[]): Promise<boolean> => {\n      setMerging(true);\n      setError(null);\n\n      try {\n        console.log('🔗 [useMergeLeads] Starting merge...');\n        console.log(`  Master: ${masterId}`);\n        console.log(`  Duplicates: ${duplicateIds.join(', ')}`);\n\n        const response = await fetch('/api/leads/merge', {\n          method: 'POST',\n          headers: {\n            'Content-Type': 'application/json',\n          },\n          body: JSON.stringify({\n            masterId,\n            duplicateIds,\n            strategy: 'keep-master',\n          }),\n        });\n\n        if (!response.ok) {\n          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));\n          throw new Error(errorData.error || `HTTP ${response.status}`);\n        }\n\n        const data = await response.json();\n        console.log('✅ [useMergeLeads] Merge successful');\n        console.log(`  Merged: ${data.mergedCount} leads`);\n        console.log(`  Orders: ${data.preservedRelations?.orders || 0}`);\n        console.log(`  Activities: ${data.preservedRelations?.activities || 0}`);\n\n        // Clear duplicates list\n        setDuplicates([]);\n\n        // Toast success\n        toast.success(\n          data.message || `${data.mergedCount} lead uniti con successo`,\n          {\n            description: `Orders: ${data.preservedRelations?.orders || 0}, Activities: ${data.preservedRelations?.activities || 0}`,\n          }\n        );\n\n        return true;\n      } catch (err) {\n        const errorMsg = err instanceof Error ? err.message : 'Unknown error';\n        console.error('❌ [useMergeLeads] Merge error:', errorMsg);\n        setError(errorMsg);\n        toast.error(`Errore nel merge: ${errorMsg}`);\n        return false;\n      } finally {\n        setMerging(false);\n      }\n    },\n    []\n  );\n\n  /**\n   * Reset stato\n   */\n  const reset = useCallback(() => {\n    setDuplicates([]);\n    setError(null);\n    setLoading(false);\n    setMerging(false);\n  }, []);\n\n  return {\n    duplicates,\n    loading,\n    error,\n    merging,\n    detectDuplicates,\n    mergeLead,\n    reset,\n  };\n}\n"}
+'use client';
+
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+export function useMergeLeads() {
+  const [merging, setMerging] = useState(false);
+
+  const mergeLead = async (masterId: string, duplicateIds: string[]) => {
+    try {
+      setMerging(true);
+      console.log(`🔗 Merging ${duplicateIds.length} leads into ${masterId}`);
+
+      const response = await fetch('/api/leads/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterId, duplicateIds }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Merge failed');
+      }
+
+      toast.success(`✅ Lead uniti con successo! ${duplicateIds.length} record consolidati.`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Merge failed';
+      console.error('❌ Merge error:', error);
+      toast.error(`Errore durante il merge: ${message}`);
+      return false;
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  return { mergeLead, merging };
+}
