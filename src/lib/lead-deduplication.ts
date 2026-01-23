@@ -72,22 +72,16 @@ export function detectDuplicates(
   threshold: number = 0.85,
   exactOnly: boolean = false
 ): DuplicateGroup[] {
-  const groups: DuplicateGroup[] = [];
-  const processed = new Set<string>();
+  const allMatches = new Map<string, Set<string>>();
 
+  // Build full match graph - every lead checked against every other lead
   for (let i = 0; i < leads.length; i++) {
-    if (processed.has(leads[i].id)) continue;
-
-    const master = leads[i];
-    const duplicates: Array<{ id: string; similarity: number }> = [];
-
-    const masterPhone = normalizePhone(master.Telefono);
-    const normalizedMasterName = normalizeString(master.Nome);
-
     for (let j = i + 1; j < leads.length; j++) {
-      if (processed.has(leads[j].id)) continue;
-
+      const master = leads[i];
       const candidate = leads[j];
+
+      const masterPhone = normalizePhone(master.Telefono);
+      const normalizedMasterName = normalizeString(master.Nome);
       const candidatePhone = normalizePhone(candidate.Telefono);
       const normalizedCandidateName = normalizeString(candidate.Nome);
 
@@ -144,19 +138,65 @@ export function detectDuplicates(
         }
       }
 
+      // If match found, add to bidirectional graph
       if (similarity >= threshold) {
-        duplicates.push({ id: candidate.id, similarity });
-        processed.add(candidate.id);
+        if (!allMatches.has(master.id)) allMatches.set(master.id, new Set());
+        if (!allMatches.has(candidate.id)) allMatches.set(candidate.id, new Set());
+        allMatches.get(master.id)!.add(candidate.id);
+        allMatches.get(candidate.id)!.add(master.id);
+      }
+    }
+  }
+
+  // Build connected components (transitive closure)
+  const visited = new Set<string>();
+  const groups: DuplicateGroup[] = [];
+
+  for (const leadId of allMatches.keys()) {
+    if (visited.has(leadId)) continue;
+
+    // BFS to find all connected duplicates
+    const component = new Set<string>();
+    const queue = [leadId];
+    component.add(leadId);
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const matches = allMatches.get(current);
+
+      if (matches) {
+        for (const matchId of matches) {
+          if (!component.has(matchId)) {
+            component.add(matchId);
+            queue.push(matchId);
+          }
+        }
       }
     }
 
-    if (duplicates.length > 0) {
+    // Mark all as visited
+    for (const id of component) {
+      visited.add(id);
+    }
+
+    // Create group with first as master
+    if (component.size > 1) {
+      const sortedIds = Array.from(component).sort();
+      const masterId = sortedIds[0];
+      const duplicateIds = sortedIds.slice(1);
+
+      // Calculate max similarity in this group
+      let maxSimilarity = 0;
+      for (const dupId of duplicateIds) {
+        const matchesMaster = allMatches.get(masterId)?.has(dupId) ? 0.95 : 0.85;
+        maxSimilarity = Math.max(maxSimilarity, matchesMaster);
+      }
+
       groups.push({
-        masterId: master.id,
-        duplicateIds: duplicates.map(d => d.id),
-        similarity: Math.max(...duplicates.map(d => d.similarity)),
+        masterId,
+        duplicateIds,
+        similarity: maxSimilarity,
       });
-      processed.add(master.id);
     }
   }
 

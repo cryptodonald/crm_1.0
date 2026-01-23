@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
 import { leadsCache } from '@/lib/leads-cache';
 import { detectDuplicates, DuplicateGroup } from '@/lib/lead-deduplication';
+import { getAirtableClient } from '@/lib/airtable/client';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -15,52 +16,83 @@ export async function GET(request: NextRequest) {
     console.log('🔍 [Duplicates API] Starting detection');
     console.log(`📊 Threshold: ${threshold}, Exact only: ${exactOnly}`);
 
-    // leadsCache doesn't have getAll(), so always fetch from Airtable
-    console.log('📡 [Duplicates API] Fetching from Airtable...');
+    // Fetch ALL leads using Airtable client with pagination
+    console.log('📡 [Duplicates API] Fetching ALL leads from Airtable with pagination...');
 
-    const apiKey = await getAirtableKey();
-    const baseId = await getAirtableBaseId();
     const tableId = await getAirtableLeadsTableId();
-
-    if (!apiKey || !baseId || !tableId) {
+    if (!tableId) {
       return NextResponse.json(
-        { error: 'Missing Airtable credentials' },
+        { error: 'Missing Airtable table ID' },
         { status: 500 }
       );
     }
 
-    const params = new URLSearchParams();
-    params.set('loadAll', 'true');
-
-    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${params.toString()}`;
-
-    const response = await fetch(airtableUrl, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+    const client = getAirtableClient();
+    const records = await client.list(tableId, {
+      sort: [
+        {
+          field: 'Data',
+          direction: 'desc',
+        },
+      ],
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ [Duplicates API] Airtable error: ${response.status} - ${errorText}`);
-      return NextResponse.json(
-        { error: 'Failed to fetch leads from Airtable' },
-        { status: 500 }
-      );
-    }
-
-    const data = await response.json();
-    let leads = (data.records || []).map((record: any) => ({
+    let leads = records.map((record: any) => ({
       id: record.id,
       createdTime: record.createdTime,
       ...record.fields,
     }));
 
     console.log(`✅ [Duplicates API] Fetched ${leads.length} leads from Airtable`);
+    
+    // Debug: Check if Nome field exists
+    console.log('🔍 [Duplicates API] Checking lead structure...');
+    const sampleLead = leads[0];
+    console.log(`  First lead keys: ${Object.keys(sampleLead || {}).join(', ')}`);
+    console.log(`  First lead Nome: "${sampleLead?.Nome}"`);
+    console.log(`  First lead Telefono: "${sampleLead?.Telefono}"`);
+    
+    // Filter leads that have same phone
+    const phoneDuplicates = new Map();
+    leads.forEach((lead: any) => {
+      if (lead.Telefono) {
+        if (!phoneDuplicates.has(lead.Telefono)) {
+          phoneDuplicates.set(lead.Telefono, []);
+        }
+        phoneDuplicates.get(lead.Telefono).push(lead);
+      }
+    });
+    
+    console.log('📋 [Duplicates API] Leads with duplicate phones:');
+    for (const [phone, leadsWithPhone] of phoneDuplicates) {
+      if (leadsWithPhone.length > 1) {
+        console.log(`  Phone "${phone}": ${leadsWithPhone.length} leads`);
+        leadsWithPhone.forEach((lead: any, idx: number) => {
+          console.log(`    [${idx}] ${lead.Nome} | ${lead.Telefono}`);
+        });
+      }
+    }
+    
+    console.log('\n🔎 [Duplicates API] All Luigi/Graziani leads:');
+    leads.forEach((lead: any) => {
+      if ((lead.Nome?.toLowerCase().includes('luigi') || lead.Nome?.toLowerCase().includes('graziani')) && lead.Nome) {
+        console.log(`  "${lead.Nome}" | ${lead.Telefono}`);
+      }
+    });
 
     console.log('🔎 [Duplicates API] Running deduplication algorithm...');
     let groups = detectDuplicates(leads, threshold);
+    
+    // Log all groups found
+    console.log(`\n📊 [Duplicates API] Found ${groups.length} groups:`);
+    groups.forEach((group: any, idx: number) => {
+      const masterLead = leads.find((l: any) => l.id === group.masterId);
+      console.log(`  Group ${idx}: Master="${masterLead?.Nome}" (${masterLead?.Telefono}), Duplicates=${group.duplicateIds.length}, Similarity=${(group.similarity * 100).toFixed(0)}%`);
+      group.duplicateIds.forEach((dupId: string) => {
+        const dupLead = leads.find((l: any) => l.id === dupId);
+        console.log(`    - "${dupLead?.Nome}" (${dupLead?.Telefono})`);
+      });
+    });
 
     // Note: exactOnly filtering removed since DuplicateGroup doesn't have matchType field
 
