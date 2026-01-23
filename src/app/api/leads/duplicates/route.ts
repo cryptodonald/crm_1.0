@@ -15,56 +15,49 @@ export async function GET(request: NextRequest) {
     console.log('🔍 [Duplicates API] Starting detection');
     console.log(`📊 Threshold: ${threshold}, Exact only: ${exactOnly}`);
 
-    let leads = await leadsCache.getAll();
-    let cacheHit = true;
+    // leadsCache doesn't have getAll(), so always fetch from Airtable
+    console.log('📡 [Duplicates API] Fetching from Airtable...');
 
-    if (!leads || leads.length === 0) {
-      console.log('📡 [Duplicates API] Cache miss, fetching from Airtable...');
-      cacheHit = false;
+    const apiKey = await getAirtableKey();
+    const baseId = await getAirtableBaseId();
+    const tableId = await getAirtableLeadsTableId();
 
-      const apiKey = await getAirtableKey();
-      const baseId = await getAirtableBaseId();
-      const tableId = await getAirtableLeadsTableId();
-
-      if (!apiKey || !baseId || !tableId) {
-        return NextResponse.json(
-          { error: 'Missing Airtable credentials' },
-          { status: 500 }
-        );
-      }
-
-      const params = new URLSearchParams();
-      params.set('loadAll', 'true');
-
-      const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${params.toString()}`;
-
-      const response = await fetch(airtableUrl, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ [Duplicates API] Airtable error: ${response.status} - ${errorText}`);
-        return NextResponse.json(
-          { error: 'Failed to fetch leads from Airtable' },
-          { status: 500 }
-        );
-      }
-
-      const data = await response.json();
-      leads = (data.records || []).map((record: any) => ({
-        id: record.id,
-        createdTime: record.createdTime,
-        ...record.fields,
-      }));
-
-      console.log(`✅ [Duplicates API] Fetched ${leads.length} leads from Airtable`);
-    } else {
-      console.log(`✅ [Duplicates API] Using ${leads.length} leads from cache`);
+    if (!apiKey || !baseId || !tableId) {
+      return NextResponse.json(
+        { error: 'Missing Airtable credentials' },
+        { status: 500 }
+      );
     }
+
+    const params = new URLSearchParams();
+    params.set('loadAll', 'true');
+
+    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableId}?${params.toString()}`;
+
+    const response = await fetch(airtableUrl, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [Duplicates API] Airtable error: ${response.status} - ${errorText}`);
+      return NextResponse.json(
+        { error: 'Failed to fetch leads from Airtable' },
+        { status: 500 }
+      );
+    }
+
+    const data = await response.json();
+    let leads = (data.records || []).map((record: any) => ({
+      id: record.id,
+      createdTime: record.createdTime,
+      ...record.fields,
+    }));
+
+    console.log(`✅ [Duplicates API] Fetched ${leads.length} leads from Airtable`);
 
     console.log('🔎 [Duplicates API] Running deduplication algorithm...');
     let groups = detectDuplicates(leads, threshold);
@@ -99,7 +92,6 @@ export async function GET(request: NextRequest) {
         duplicates: duplicatesWithLeads,
         count: duplicatesWithLeads.length,
         totalLeads: leads.length,
-        cacheHit,
       },
       { status: 200 }
     );
