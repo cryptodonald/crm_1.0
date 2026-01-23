@@ -36,9 +36,13 @@ export function DuplicatesDialog({ open, onOpenChange, leads }: DuplicatesDialog
     setLoading(true);
     setError(null);
     try {
+      console.log('📞 Fetching duplicates...');
       const response = await fetch('/api/leads/duplicates?threshold=0.85');
+      
       if (!response.ok) {
-        throw new Error('Failed to load duplicates');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ API error:', response.status, errorData);
+        throw new Error(`Failed to load duplicates: ${response.status} - ${errorData.error || errorData.details || 'Unknown'}`);
       }
       const data = await response.json();
       

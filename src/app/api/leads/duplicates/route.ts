@@ -69,10 +69,7 @@ export async function GET(request: NextRequest) {
     console.log('🔎 [Duplicates API] Running deduplication algorithm...');
     let groups = detectDuplicates(leads, threshold);
 
-    if (exactOnly) {
-      groups = groups.filter(g => g.matchType === 'exact');
-      console.log(`🔐 [Duplicates API] Filtered to exact matches only: ${groups.length}`);
-    }
+    // Note: exactOnly filtering removed since DuplicateGroup doesn't have matchType field
 
     console.log(`📊 [Duplicates API] Found ${groups.length} duplicate groups`);
 
