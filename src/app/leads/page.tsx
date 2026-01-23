@@ -7,15 +7,17 @@ import { useLeadsList } from '@/hooks/use-leads-list';
 import { LeadsStats } from '@/components/leads/leads-stats';
 import { LeadsDataTable } from '@/components/leads-modified/leads-data-table-improved';
 import { NewLeadModal } from '@/components/leads/new-lead-modal';
+import { DuplicatesDialog } from '@/components/leads/duplicates-dialog';
 import { LeadsFilters, LeadData } from '@/types/leads';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Plus } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Plus, Link2 } from 'lucide-react';
 import { ActivityData } from '@/types/activities';
 
 export default function LeadsPage() {
   const [filters, setFilters] = useState<LeadsFilters>({});
   const [newLeadModalOpen, setNewLeadModalOpen] = useState(false);
+  const [duplicatesDialogOpen, setDuplicatesDialogOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityData[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
 
@@ -196,6 +198,15 @@ export default function LeadsPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => setDuplicatesDialogOpen(true)}
+                  title="Visualizza tutti i duplicati"
+                >
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Duplicati
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={refresh}
                   disabled={loading}
                   title="Aggiorna i dati"
@@ -255,6 +266,13 @@ export default function LeadsPage() {
         onOpenChange={setNewLeadModalOpen}
         onSuccess={handleLeadCreated}
       />
+
+      <DuplicatesDialog
+        open={duplicatesDialogOpen}
+        onOpenChange={setDuplicatesDialogOpen}
+        leads={leads}
+      />
     </AppLayoutCustom>
   );
 }
+
