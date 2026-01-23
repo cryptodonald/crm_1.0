@@ -213,20 +213,39 @@ export async function POST(request: NextRequest) {
       const ordersSuccess = await batchUpdateRecords(apiKey, baseId, ordersTableId, orderUpdates);
       if (ordersSuccess) {
         console.log(`✅ ${ordersToUpdate.length} orders updated to master`);
+      } else {
+        console.warn(`⚠️  Failed to update some orders, continuing with merge...`);
       }
     }
 
-    // 8. Update Activities to point to master lead (if table available)
+    // 8. Update Activities - try multiple field names if first fails
     if (activitiesTableId && activitiesToUpdate.length > 0) {
       console.log(`🔄 Updating ${activitiesToUpdate.length} activities to master lead`);
-      const activityUpdates = activitiesToUpdate.map(activityId => ({
-        id: activityId,
-        fields: { 'Cliente': [masterId] },
-      }));
+      
+      // Try different field names for the activity link
+      const possibleFieldNames = ['Cliente', 'Lead', 'Lead_ID', 'Contatto'];
+      let activitiesSuccess = false;
+      let usedFieldName = '';
 
-      const activitiesSuccess = await batchUpdateRecords(apiKey, baseId, activitiesTableId, activityUpdates);
-      if (activitiesSuccess) {
-        console.log(`✅ ${activitiesToUpdate.length} activities updated to master`);
+      for (const fieldName of possibleFieldNames) {
+        const activityUpdates = activitiesToUpdate.map(activityId => ({
+          id: activityId,
+          fields: { [fieldName]: [masterId] },
+        }));
+
+        const success = await batchUpdateRecords(apiKey, baseId, activitiesTableId, activityUpdates);
+        if (success) {
+          console.log(`✅ ${activitiesToUpdate.length} activities updated with field "${fieldName}"`);
+          activitiesSuccess = true;
+          usedFieldName = fieldName;
+          break;
+        } else {
+          console.log(`⏭️  Field "${fieldName}" not found, trying next...`);
+        }
+      }
+
+      if (!activitiesSuccess) {
+        console.warn(`⚠️  Could not update activities - unknown field name. Continuing with merge...`);
       }
     }
 
