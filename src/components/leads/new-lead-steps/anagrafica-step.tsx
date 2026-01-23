@@ -27,7 +27,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Check, ChevronDown, MapPin, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Check, ChevronDown, MapPin, Loader2, AlertTriangle, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 
@@ -40,6 +41,8 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
   const [addressPopoverOpen, setAddressPopoverOpen] = useState(false);
   const [lastSelectedAddress, setLastSelectedAddress] = useState('');
   const [isSelectingFromGooglePlaces, setIsSelectingFromGooglePlaces] = useState(false);
+  const [possibleDuplicates, setPossibleDuplicates] = useState<any[]>([]);
+  const [searchingDuplicates, setSearchingDuplicates] = useState(false);
 
   const { control, setValue, watch, formState: { errors } } = form;
   
@@ -52,6 +55,88 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
     suggestions: addressSuggestions, 
     clearSuggestions 
   } = useGooglePlaces();
+
+  const nomeValue = watch('Nome');
+  const telefonoValue = watch('Telefono');
+
+  // Cerca duplicati quando nome o telefono cambiano
+  useEffect(() => {
+    const searchDuplicates = async () => {
+      // Se non abbiamo né nome né telefono, non cercare
+      if (!nomeValue?.trim() && !telefonoValue?.trim()) {
+        setPossibleDuplicates([]);
+        return;
+      }
+
+      setSearchingDuplicates(true);
+      try {
+        const response = await fetch('/api/leads/duplicates?threshold=0.85');
+        if (response.ok) {
+          const data = await response.json();
+          const allDuplicates = data.groups || [];
+          
+          // Filtra per trovare duplicati del lead che stai creando
+          const myDuplicates: any[] = [];
+          for (const group of allDuplicates) {
+            const masterLead = data.leadsMap?.[group.masterId];
+            const dupLeads = group.duplicateIds
+              .map((id: string) => data.leadsMap?.[id])
+              .filter((l: any) => l);
+
+            // Controlla se uno dei lead nel gruppo corrisponde ai dati che stai inserendo
+            for (const lead of [masterLead, ...dupLeads]) {
+              if (!lead) continue;
+              
+              let matches = 0;
+              let matchType = '';
+
+              // Controllo nome
+              if (nomeValue && lead.Nome) {
+                const similarity = calculateSimilarity(nomeValue.toLowerCase(), lead.Nome.toLowerCase());
+                if (similarity > 0.85) {
+                  matches++;
+                  matchType += 'Nome ';
+                }
+              }
+
+              // Controllo telefono
+              if (telefonoValue && lead.Telefono) {
+                const normalizedNew = normalizePhone(telefonoValue);
+                const normalizedExisting = normalizePhone(lead.Telefono);
+                if (normalizedNew && normalizedExisting && normalizedNew === normalizedExisting) {
+                  matches++;
+                  matchType += 'Tel ';
+                }
+              }
+
+              // Se almeno un campo corrisponde, è un potenziale duplicato
+              if (matches > 0 && myDuplicates.find(d => d.id === lead.id) === undefined) {
+                myDuplicates.push({
+                  id: lead.id,
+                  nome: lead.Nome,
+                  telefono: lead.Telefono,
+                  email: lead.Email,
+                  city: lead.Città,
+                  matchType: matchType.trim()
+                });
+              }
+            }
+          }
+
+          setPossibleDuplicates(myDuplicates);
+        }
+      } catch (error) {
+        console.error('Error fetching duplicates:', error);
+        setPossibleDuplicates([]);
+      } finally {
+        setSearchingDuplicates(false);
+      }
+    };
+
+    // Debounce di 500ms per non fare troppi request
+    const timeoutId = setTimeout(searchDuplicates, 500);
+    return () => clearTimeout(timeoutId);
+  }, [nomeValue, telefonoValue]);
 
   // Reset degli stati locali quando il form viene resettato
   const formValues = watch();
@@ -71,6 +156,7 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
       setIsSelectingFromGooglePlaces(false);
       setAddressPopoverOpen(false);
       clearSuggestions();
+      setPossibleDuplicates([]);
     }
   }, [formValues, addressQuery, lastSelectedAddress, clearSuggestions]);
   
@@ -198,6 +284,41 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
     }
   };
 
+  function normalizePhone(phone: string): string {
+    if (!phone) return '';
+    return phone.replace(/\D/g, '').slice(-10);
+  }
+
+  function calculateSimilarity(str1: string, str2: string): number {
+    if (str1 === str2) return 1;
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    if (longer.length === 0) return 1;
+    const editDistance = getEditDistance(longer, shorter);
+    return (longer.length - editDistance) / longer.length;
+  }
+
+  function getEditDistance(s1: string, s2: string): number {
+    const costs = [];
+    for (let i = 0; i <= s1.length; i++) {
+      let lastValue = i;
+      for (let j = 0; j <= s2.length; j++) {
+        if (i === 0) {
+          costs[j] = j;
+        } else if (j > 0) {
+          let newValue = costs[j - 1];
+          if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+          }
+          costs[j - 1] = lastValue;
+          lastValue = newValue;
+        }
+      }
+      if (i > 0) costs[s2.length] = lastValue;
+    }
+    return costs[s2.length];
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-1 pb-2">
@@ -294,6 +415,38 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
             </FormItem>
           )}
         />
+
+        {/* Alert Duplicati Potenziali */}
+        {possibleDuplicates.length > 0 && (
+          <div className="md:col-span-2">
+            <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
+              <Link2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-amber-900 dark:text-amber-100">
+                <div className="font-semibold mb-2">⚠️ Possibili duplicati trovati:</div>
+                <div className="space-y-2">
+                  {possibleDuplicates.map((dup, idx) => (
+                    <div key={dup.id} className="text-sm p-2 bg-white dark:bg-black/20 rounded border border-amber-200 dark:border-amber-800">
+                      <div className="font-medium">{dup.nome}</div>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        {dup.telefono && <div>📞 {dup.telefono}</div>}
+                        {dup.email && <div>📧 {dup.email}</div>}
+                        {dup.city && <div>📍 {dup.city}</div>}
+                        <div className="mt-1">
+                          <span className="inline-block px-2 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded text-xs">
+                            Match: {dup.matchType}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-xs mt-2 text-amber-700 dark:text-amber-200">
+                  💡 Verifica se è lo stesso cliente prima di crearne un nuovo!
+                </div>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         {/* Indirizzo con autocomplete Google Places */}
         <div className="md:col-span-2">
