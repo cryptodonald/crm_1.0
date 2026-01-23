@@ -93,6 +93,7 @@ import {
 } from '@/types/leads';
 import { EditLeadModal } from '@/components/leads-profile/EditLeadModal';
 import { NewActivityModal } from '@/components/activities/new-activity-modal';
+import { MergeLeadsDialog } from '@/components/leads/merge-leads-dialog';
 import {
   ClienteColumn,
   ContattiColumn,
@@ -178,6 +179,9 @@ export function LeadsDataTable({
   // Stati per modal attività
   const [showNewActivityModal, setShowNewActivityModal] = useState(false);
   const [selectedLeadForActivity, setSelectedLeadForActivity] = useState<string | null>(null);
+
+  // Stati per merge dialog
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
 
   // Stati disponibili da Airtable
   const STATI_DISPONIBILI: LeadStato[] = [
@@ -855,12 +859,13 @@ export function LeadsDataTable({
 
           {/* Controlli secondari */}
           <div className="flex items-center space-x-2">
-            {/* Bulk Actions - appare solo quando ci sono righe selezionate */}
+          {/* Bulk Actions - appare solo quando ci sono righe selezionate */}
             <DataTableBulkActions
               selectedCount={selectedLeads.length}
               onClearSelection={handleClearSelection}
               onExport={handleExportSelectedLeads}
               onDelete={handleDeleteSelectedLeads}
+              onMerge={() => setShowMergeDialog(true)}
             />
 
             {/* Pulsante Reset globale - appare solo quando ci sono filtri attivi */}
@@ -1024,6 +1029,7 @@ export function LeadsDataTable({
                     <TableCell>
                       <ClienteColumn
                         lead={lead}
+                        allLeads={filteredAndSortedLeads}
                         onReferenceClick={refId =>
                           console.log('Reference clicked:', refId)
                         }
@@ -1332,6 +1338,17 @@ export function LeadsDataTable({
         onOpenChange={setShowNewActivityModal}
         prefilledLeadId={selectedLeadForActivity}
         onActivityCreated={handleActivityCreated}
+      />
+
+      {/* Merge Leads Dialog */}
+      <MergeLeadsDialog
+        open={showMergeDialog}
+        leads={filteredAndSortedLeads.filter(lead => selectedLeads.includes(lead.id))}
+        onOpenChange={setShowMergeDialog}
+        onMergeComplete={() => {
+          setSelectedLeads([]);
+          // Refresh della tabella avverrà automaticamente via hook
+        }}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Download, Trash2, X } from 'lucide-react';
+import { Download, Trash2, X, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DataTableBulkActionsProps {
@@ -9,6 +9,7 @@ interface DataTableBulkActionsProps {
   onClearSelection: () => void;
   onExport: () => void;
   onDelete: () => void;
+  onMerge?: () => void;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ export function DataTableBulkActions({
   onClearSelection,
   onExport,
   onDelete,
+  onMerge,
   className
 }: DataTableBulkActionsProps) {
   if (selectedCount === 0) {
@@ -46,6 +48,19 @@ export function DataTableBulkActions({
 
       {/* Action Buttons */}
       <div className="flex items-center gap-1">
+        {selectedCount >= 2 && onMerge && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onMerge}
+            className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-600 transition-all duration-200 group"
+            title="Unisci selezionati"
+          >
+            <Link2 className="h-4 w-4 transition-all duration-200 group-hover:scale-110" />
+            <span className="sr-only">Unisci</span>
+          </Button>
+        )}
+        
         <Button
           variant="ghost"
           size="sm"

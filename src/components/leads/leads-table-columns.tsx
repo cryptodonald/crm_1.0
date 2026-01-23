@@ -22,6 +22,7 @@ import {
   Clock,
   Lightbulb,
   Loader2,
+  Link2,
 } from 'lucide-react';
 import {
   LeadData,
@@ -41,18 +42,28 @@ import {
 } from '@/lib/avatar-utils';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { useFonteLookup } from '@/hooks/use-fonte-lookup';
+import { useLeadDuplicates } from '@/hooks/use-lead-duplicates';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 // Componente per colonna CLIENTE
 interface ClienteColumnProps {
   lead: LeadData;
   onReferenceClick?: (referenceId: string) => void;
+  allLeads?: LeadData[];
 }
 
-export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
+export function ClienteColumn({ lead, onReferenceClick, allLeads = [] }: ClienteColumnProps) {
   // Lookup dei nomi delle fonti dai record IDs
   const { names: fonteNames, loading: fonteLookupLoading } = useFonteLookup(
     lead.Fonte as string[] | undefined
   );
+  
+  // Rileva duplicati
+  const { hasDuplicates, duplicateCount, duplicates } = useLeadDuplicates(lead, allLeads);
 
   // Genera colore avatar dalla provenienza
   const getAvatarColor = (provenienza: LeadProvenienza): string => {
@@ -107,14 +118,41 @@ export function ClienteColumn({ lead, onReferenceClick }: ClienteColumnProps) {
 
       {/* Info principale */}
       <div className="min-w-0 flex-1">
-        {/* Nome + Badge */}
+        {/* Nome + Badge + Duplicate Indicator */}
         <div className="flex flex-col space-y-1">
-          <a
-            href={`/leads/${lead.id}`}
-            className="text-sm font-medium text-foreground hover:text-primary hover:underline cursor-pointer truncate"
-          >
-            {lead.Nome}
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/leads/${lead.id}`}
+              className="text-sm font-medium text-foreground hover:text-primary hover:underline cursor-pointer truncate"
+            >
+              {lead.Nome}
+            </a>
+            {hasDuplicates && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-1 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors">
+                    <Link2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{duplicateCount}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-3">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Duplicati rilevati ({duplicateCount})</div>
+                    <div className="space-y-1">
+                      {duplicates.map(dup => (
+                        <div key={dup.id} className="text-xs bg-blue-50 dark:bg-blue-900/20 rounded p-2 flex items-center justify-between">
+                          <span className="truncate">{dup.Nome}</span>
+                          {dup.Telefono && (
+                            <span className="text-muted-foreground text-xs ml-1 flex-shrink-0">{dup.Telefono}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
           <div className="flex items-center space-x-2">
             {/* Badge Stato */}
             <Badge className={cn('text-xs', getStatoBadgeColor(lead.Stato))}>
