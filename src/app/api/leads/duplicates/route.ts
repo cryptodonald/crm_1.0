@@ -76,17 +76,31 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 [Duplicates API] Found ${groups.length} duplicate groups`);
 
-    for (const group of groups) {
+    // Transform groups to include full lead objects
+    const duplicatesWithLeads = groups.map((group: any) => {
+      const masterLead = leads.find((l: any) => l.id === group.masterId);
+      const duplicateLeads = group.duplicateIds
+        .map((id: string) => leads.find((l: any) => l.id === id))
+        .filter((l: any) => l);
+
       console.log(
-        `  - ${group.masterLead.Nome} (${group.matchType}, ${(group.similarity * 100).toFixed(0)}%): ${group.duplicateLeads.length} duplicati`
+        `  - Master: ${masterLead?.Nome}, Duplicates: ${duplicateLeads.length}, Similarity: ${(group.similarity * 100).toFixed(0)}%`
       );
-    }
+
+      return {
+        masterId: group.masterId,
+        masterLead,
+        duplicateIds: group.duplicateIds,
+        duplicateLeads,
+        similarity: group.similarity,
+      };
+    });
 
     return NextResponse.json(
       {
         success: true,
-        duplicates: groups,
-        count: groups.length,
+        duplicates: duplicatesWithLeads,
+        count: duplicatesWithLeads.length,
         totalLeads: leads.length,
         cacheHit,
       },

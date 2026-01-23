@@ -42,23 +42,18 @@ export function DuplicatesDialog({ open, onOpenChange, leads }: DuplicatesDialog
       }
       const data = await response.json();
       
-      // Map groups to include lead details
-      const groupsWithDetails = (data.groups || []).map((group: any) => {
-        const master = data.leadsMap?.[group.masterId];
-        const dupes = group.duplicateIds
-          .map((id: string) => data.leadsMap?.[id])
-          .filter((l: any) => l);
-        
-        return {
-          masterId: group.masterId,
-          masterLead: master,
-          duplicateLeads: dupes,
-          similarity: group.similarity,
-        };
+      console.log('🔗 Loaded duplicates:', data);
+      
+      // API ritorna 'duplicates', non 'groups', con struttura {masterLead, duplicateLeads, similarity, matchType}
+      const groupsWithDetails = (data.duplicates || []).filter((group: any) => {
+        // Filtra solo i gruppi che hanno effettivamente duplicati
+        return group.masterLead && group.duplicateLeads && group.duplicateLeads.length > 0;
       });
 
+      console.log(`✅ Found ${groupsWithDetails.length} duplicate groups`);
       setDuplicateGroups(groupsWithDetails);
     } catch (err) {
+      console.error('Error loading duplicates:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
