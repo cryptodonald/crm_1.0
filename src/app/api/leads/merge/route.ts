@@ -78,14 +78,49 @@ const FORBIDDEN_FIELDS = new Set([
   'ID', // Campo calcolato
   'createdTime', // Di sistema
   'id', // Interno
+  'Data', // Data non deve essere cambiata durante consolidamento
 ]);
+
+function getOldestDate(dates: (string | Date | null | undefined)[]): string | null {
+  const validDates = dates
+    .filter((d): d is string | Date => d !== null && d !== undefined && d !== '')
+    .map(d => new Date(d).getTime())
+    .filter(d => !isNaN(d));
+
+  if (validDates.length === 0) return null;
+  
+  const oldest = new Date(Math.min(...validDates));
+  return oldest.toISOString().split('T')[0]; // Ritorna formato YYYY-MM-DD
+}
+
+function consolidateNotes(masterRecord: any, duplicateRecords: any[]): string {
+  const allNotes: string[] = [];
+  
+  // Master notes (marked as current)
+  if (masterRecord.fields?.['Note']) {
+    allNotes.push(`[MASTER] ${masterRecord.fields['Note']}`);
+  }
+  
+  // Duplicate notes (marked with lead name and date)
+  for (const dup of duplicateRecords) {
+    const dupName = dup.fields?.['Nome'] || 'Unknown';
+    const dupDate = dup.fields?.['Data'] || 'N.D.';
+    const dupNote = dup.fields?.['Note'];
+    
+    if (dupNote) {
+      allNotes.push(`[${dupName} - ${dupDate}] ${dupNote}`);
+    }
+  }
+  
+  return allNotes.join('\n---\n');
+}
 
 function consolidateFields(masterRecord: any, duplicateRecords: any[]) {
   const masterFields = masterRecord.fields || {};
   const consolidated = { ...masterFields };
   
-  // Campi testuali da consolidare
-  const textFields = ['Email', 'Telefono', 'Indirizzo', 'CAP', 'Città', 'Esigenza', 'Note'];
+  // Campi testuali da consolidare (escludendo Note che ha logica speciale)
+  const textFields = ['Email', 'Telefono', 'Indirizzo', 'CAP', 'Città', 'Esigenza'];
   
   for (const dupRecord of duplicateRecords) {
     for (const field of textFields) {
@@ -94,6 +129,22 @@ function consolidateFields(masterRecord: any, duplicateRecords: any[]) {
         consolidated[field] = dupRecord.fields[field];
       }
     }
+  }
+  
+  // Consolidate notes with markers
+  const allNotes = consolidateNotes(masterRecord, duplicateRecords);
+  if (allNotes) {
+    consolidated['Note'] = allNotes;
+  }
+  
+  // Set Data to oldest date
+  const allDates = [
+    masterRecord.fields?.['Data'],
+    ...duplicateRecords.map(d => d.fields?.['Data']),
+  ];
+  const oldestDate = getOldestDate(allDates);
+  if (oldestDate) {
+    consolidated['Data'] = oldestDate;
   }
   
   return consolidated;
@@ -187,6 +238,10 @@ export async function POST(request: NextRequest) {
     consolidated['Attività'] = activitiesToUpdate;
 
     console.log(`📋 Consolidated fields ready. Orders: ${ordersToUpdate.length}, Activities: ${activitiesToUpdate.length}`);
+    console.log(`📅 Data impostata a: ${consolidated['Data']}`);
+    if (consolidated['Note']) {
+      console.log(`📝 Note consolidate (righe: ${consolidated['Note'].split('\n').length})`);
+    }
 
     // 5. Sanitize fields before sending to Airtable (remove forbidden/system fields)
     const sanitizedFields = sanitizeFields(consolidated);
@@ -270,7 +325,7 @@ export async function POST(request: NextRequest) {
         orders: ordersToUpdate.length,
         activities: activitiesToUpdate.length,
       },
-      message: `${deletedCount} lead uniti con successo. ${ordersToUpdate.length} ordini e ${activitiesToUpdate.length} attività riallocate al master.`,
+      message: `${deletedCount} lead uniti con successo. Data impostata al ${consolidated['Data']}. ${ordersToUpdate.length} ordini e ${activitiesToUpdate.length} attività riallocate al master.`,
     });
   } catch (error) {
     console.error('❌ Merge error:', error);
