@@ -62,7 +62,10 @@ export interface DuplicateGroup {
 }
 
 /**
- * Detect duplicate leads based on name and phone
+ * Detect duplicate leads with OR logic:
+ * - Same phone (any name)
+ * - Same name (any phone)
+ * - Similar name (fuzzy match >85%)
  */
 export function detectDuplicates(
   leads: LeadData[],
@@ -78,40 +81,65 @@ export function detectDuplicates(
     const master = leads[i];
     const duplicates: Array<{ id: string; similarity: number }> = [];
 
+    const masterPhone = normalizePhone(master.Telefono);
+    const normalizedMasterName = normalizeString(master.Nome);
+
     for (let j = i + 1; j < leads.length; j++) {
       if (processed.has(leads[j].id)) continue;
 
       const candidate = leads[j];
-      let similarity = 0;
-
-      const normalizedMasterName = normalizeString(master.Nome);
+      const candidatePhone = normalizePhone(candidate.Telefono);
       const normalizedCandidateName = normalizeString(candidate.Nome);
 
-      if (exactOnly) {
-        // Exact match only
-        if (normalizedMasterName === normalizedCandidateName) {
-          const masterPhone = normalizePhone(master.Telefono);
-          const candidatePhone = normalizePhone(candidate.Telefono);
+      let similarity = 0;
 
-          if (masterPhone && candidatePhone && masterPhone === candidatePhone) {
-            similarity = 1.0;
-          }
+      if (exactOnly) {
+        // Exact match only: same name AND same phone
+        if (
+          normalizedMasterName === normalizedCandidateName &&
+          masterPhone &&
+          candidatePhone &&
+          masterPhone === candidatePhone
+        ) {
+          similarity = 1.0;
         }
       } else {
-        // Fuzzy matching
-        const nameSimilarity = levenshteinSimilarity(
-          normalizedMasterName,
-          normalizedCandidateName
-        );
+        // Fuzzy matching with OR logic:
 
-        if (nameSimilarity > 0.7) {
-          const masterPhone = normalizePhone(master.Telefono);
-          const candidatePhone = normalizePhone(candidate.Telefono);
+        // 1. SAME PHONE (highest priority) - any name is a duplicate
+        if (
+          masterPhone &&
+          candidatePhone &&
+          masterPhone === candidatePhone &&
+          masterPhone.length > 0
+        ) {
+          similarity = 0.95; // High confidence: same phone number
+        }
+        // 2. SAME NAME (high priority) - any phone is a duplicate
+        else if (normalizedMasterName === normalizedCandidateName && normalizedMasterName.length > 0) {
+          similarity = 0.90; // High confidence: exact name match
+        }
+        // 3. SIMILAR NAME (fuzzy match) with phone validation
+        else {
+          const nameSimilarity = levenshteinSimilarity(
+            normalizedMasterName,
+            normalizedCandidateName
+          );
 
-          if (masterPhone && candidatePhone && masterPhone === candidatePhone) {
-            similarity = Math.max(nameSimilarity, 0.95);
-          } else {
-            similarity = nameSimilarity * 0.9; // Slightly lower without phone match
+          if (nameSimilarity >= threshold) {
+            // Both names similar AND phones match
+            if (
+              masterPhone &&
+              candidatePhone &&
+              masterPhone === candidatePhone &&
+              masterPhone.length > 0
+            ) {
+              similarity = Math.max(nameSimilarity, 0.95);
+            }
+            // Both names similar but phones different (or missing)
+            else {
+              similarity = nameSimilarity * 0.85; // Slightly lower without phone confirmation
+            }
           }
         }
       }
