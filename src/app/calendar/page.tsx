@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { CalendarView } from '@/components/calendar/calendar-view';
@@ -26,6 +27,9 @@ import { KANBAN_COLUMNS, getKanbanColumnFromState } from '@/types/activities';
 import { toast } from 'sonner';
 
 export default function CalendarPage() {
+  // Sessione Google
+  const { data: session } = useSession();
+
   // Hook calendario per navigazione e filtri
   const {
     currentDate,
@@ -57,8 +61,51 @@ export default function CalendarPage() {
     deleteActivity
   } = useActivitiesClean(undefined, { loadAll: true });
 
+  // Stato per Google Calendar events
+  const [googleCalendarEvents, setGoogleCalendarEvents] = useState<any[]>([]);
+  const [googleCalendarLoading, setGoogleCalendarLoading] = useState(false);
+  const [googleCalendarError, setGoogleCalendarError] = useState<string | null>(null);
+
+  // Carica gli eventi da Google Calendar quando la data range cambia
+  useEffect(() => {
+    if (!session?.googleAccessToken) {
+      console.log('[CalendarPage] No Google Calendar session');
+      return;
+    }
+
+    const loadGoogleCalendarEvents = async () => {
+      try {
+        setGoogleCalendarLoading(true);
+        setGoogleCalendarError(null);
+
+        const { start, end } = getDateRange();
+        console.log('[CalendarPage] Fetching Google Calendar events:', { start, end });
+
+        const response = await fetch(
+          `/api/google-calendar/events?startDate=${start.toISOString()}&endDate=${end.toISOString()}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch events: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('[CalendarPage] Google Calendar events loaded:', data.count);
+        setGoogleCalendarEvents(data.events || []);
+      } catch (error) {
+        console.error('[CalendarPage] Error loading Google Calendar events:', error);
+        setGoogleCalendarError(error instanceof Error ? error.message : 'Unknown error');
+      } finally {
+        setGoogleCalendarLoading(false);
+      }
+    };
+
+    loadGoogleCalendarEvents();
+  }, [session?.googleAccessToken, getDateRange]);
+
   // Stato UI locale
   const [selectedActivity, setSelectedActivity] = useState<ActivityData | null>(null);
+  const [showGoogleEvents, setShowGoogleEvents] = useState(true); // Toggle per mostrare/nascondere eventi Google
   
   // Stato per il modal di attività
   const [activityModalOpen, setActivityModalOpen] = useState(false);
