@@ -219,8 +219,10 @@ export const getCachedApiKeys = async <T>(
 // Invalidazione specifica
 export const invalidateLeadCache = (leadId?: string) => {
   if (leadId) {
+    console.log(`[Cache Invalidation] Invalidating lead: ${leadId}`);
     return cacheService.invalidatePattern(`lead:${leadId}`);
   }
+  console.log('[Cache Invalidation] Invalidating ALL leads');
   return cacheService.invalidatePattern('lead:*');
 };
 

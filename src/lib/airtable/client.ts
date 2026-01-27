@@ -36,17 +36,24 @@ export interface AirtableQueryParams {
  * Advanced Airtable Client with comprehensive error handling and retry logic
  */
 export class AirtableClient {
-  private readonly apiKey: string;
-  private readonly baseId: string;
-  private readonly baseUrl: string;
+  private apiKey: string;
+  private baseId: string;
+  private baseUrl: string;
 
   // Rate limiting
   private lastRequestTime = 0;
   private readonly requestInterval = 200; // 5 requests per second max
 
   constructor(apiKey?: string, baseId?: string) {
-    this.apiKey = apiKey ?? env.AIRTABLE_API_KEY;
-    this.baseId = baseId ?? env.AIRTABLE_BASE_ID;
+    // Deprecato: MAI usare env direttamente
+    // Accetta credenziali per testing e route API dinamiche
+    if (!apiKey || !baseId) {
+      throw new Error(
+        'AirtableClient: apiKey and baseId are required. Use API Key Service instead: getAirtableClient() with async init'
+      );
+    }
+    this.apiKey = apiKey;
+    this.baseId = baseId;
     this.baseUrl = `https://api.airtable.com/v0/${this.baseId}`;
   }
 
@@ -295,17 +302,41 @@ export class AirtableClient {
   }
 }
 
-// Singleton instance
+/**
+ * Factory function to create Airtable client with dynamic credentials
+ * ALWAYS use this in API routes instead of direct instantiation
+ * 
+ * Usage in API routes:
+ * const client = await createAirtableClientFromKV();
+ * const records = await client.list(tableId);
+ */
+export async function createAirtableClientFromKV(): Promise<AirtableClient> {
+  const { getAirtableKey, getAirtableBaseId } = await import('@/lib/api-keys-service');
+  
+  const [apiKey, baseId] = await Promise.all([
+    getAirtableKey(),
+    getAirtableBaseId(),
+  ]);
+
+  if (!apiKey || !baseId) {
+    throw new Error('Failed to initialize Airtable client: missing API key or base ID');
+  }
+
+  return new AirtableClient(apiKey, baseId);
+}
+
+// Singleton instance (deprecated)
 let clientInstance: AirtableClient | null = null;
 
 /**
  * Get Airtable client instance (singleton pattern)
+ * DEPRECATED: Use createAirtableClientFromKV() in API routes
+ * This function is kept for backward compatibility only
  */
 export function getAirtableClient(): AirtableClient {
-  if (!clientInstance) {
-    clientInstance = new AirtableClient();
-  }
-  return clientInstance;
+  throw new Error(
+    'getAirtableClient() is deprecated. Use createAirtableClientFromKV() in API routes or pass credentials explicitly.'
+  );
 }
 
 // Utility functions for common operations

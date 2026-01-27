@@ -7,6 +7,7 @@ import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { ShieldX } from 'lucide-react';
+import { GoogleCalendarConnect } from '@/components/settings/google-calendar-connect';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -65,11 +66,11 @@ export default function SettingsPage() {
         <PageBreadcrumb pageName="Impostazioni" />
 
         <div className="px-4 lg:px-6">
-          <div className="flex flex-col gap-6">
-            {/* Page content will be implemented here */}
-            <div className="container mx-auto px-4 py-8 text-center">
-              <h1 className="mb-4 text-2xl font-bold">Impostazioni Sistema</h1>
-              <p className="text-muted-foreground">Contenuto da implementare</p>
+          <div className="flex flex-col gap-6 max-w-2xl">
+            {/* Google Calendar Integration */}
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Integrazioni</h2>
+              <GoogleCalendarConnect />
             </div>
           </div>
         </div>

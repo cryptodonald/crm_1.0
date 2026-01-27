@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
+import { getAirtableLeadsTableId } from '@/lib/api-keys-service';
 import { leadsCache } from '@/lib/leads-cache';
 import { detectDuplicates, DuplicateGroup } from '@/lib/lead-deduplication';
-import { getAirtableClient } from '@/lib/airtable/client';
+import { createAirtableClientFromKV } from '@/lib/airtable/client';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -16,18 +16,23 @@ export async function GET(request: NextRequest) {
     console.log('🔍 [Duplicates API] Starting detection');
     console.log(`📊 Threshold: ${threshold}, Exact only: ${exactOnly}`);
 
-    // Fetch ALL leads using Airtable client with pagination
-    console.log('📡 [Duplicates API] Fetching ALL leads from Airtable with pagination...');
+    // Get table ID and create client with dynamic credentials
+    console.log('📡 [Duplicates API] Initializing Airtable client from KV...');
+    
+    const [tableId, client] = await Promise.all([
+      getAirtableLeadsTableId(),
+      createAirtableClientFromKV(),
+    ]);
 
-    const tableId = await getAirtableLeadsTableId();
     if (!tableId) {
+      console.error('❌ Missing Airtable table ID');
       return NextResponse.json(
         { error: 'Missing Airtable table ID' },
         { status: 500 }
       );
     }
 
-    const client = getAirtableClient();
+    console.log('✅ Airtable client initialized, fetching leads...');
     const records = await client.list(tableId, {
       sort: [
         {
@@ -37,13 +42,13 @@ export async function GET(request: NextRequest) {
       ],
     });
 
+    console.log(`✅ [Duplicates API] Fetched ${records.length} leads from Airtable`);
+
     let leads = records.map((record: any) => ({
       id: record.id,
       createdTime: record.createdTime,
       ...record.fields,
     }));
-
-    console.log(`✅ [Duplicates API] Fetched ${leads.length} leads from Airtable`);
     
     // Debug: Check if Nome field exists
     console.log('🔍 [Duplicates API] Checking lead structure...');

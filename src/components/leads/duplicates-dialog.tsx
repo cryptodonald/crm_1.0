@@ -12,16 +12,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Link2, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Filter } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DuplicatesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leads: LeadData[];
+  onFilterDuplicates?: (leadIds: string[]) => void;
 }
 
-export function DuplicatesDialog({ open, onOpenChange, leads }: DuplicatesDialogProps) {
+export function DuplicatesDialog({ open, onOpenChange, leads, onFilterDuplicates }: DuplicatesDialogProps) {
   const [duplicateGroups, setDuplicateGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,24 +68,46 @@ export function DuplicatesDialog({ open, onOpenChange, leads }: DuplicatesDialog
 
   const totalDuplicates = duplicateGroups.reduce((sum, group) => sum + group.duplicateLeads.length, 0);
 
+  // Skeleton loader per gruppo duplicati
+  const DuplicateGroupSkeleton = () => (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-6 w-24" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Link2 className="h-5 w-5" />
-            Lead Duplicati Rilevati
+          <DialogTitle>
+            Lead Duplicati
           </DialogTitle>
           <DialogDescription>
-            {loading ? 'Caricamento...' : `Trovati ${duplicateGroups.length} gruppi di duplicati (${totalDuplicates} lead totali)`}
+            {loading ? 'Ricerca in corso...' : duplicateGroups.length === 0 ? 'Nessun duplicato' : `${duplicateGroups.length} ${duplicateGroups.length === 1 ? 'gruppo' : 'gruppi'} trovati`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-1">
           {loading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-3">Caricamento duplicati...</span>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <DuplicateGroupSkeleton key={i} />
+              ))}
             </div>
           )}
 
@@ -105,67 +129,61 @@ export function DuplicatesDialog({ open, onOpenChange, leads }: DuplicatesDialog
           )}
 
           {!loading && !error && duplicateGroups.length > 0 && (
-            <div className="space-y-4">
-              {duplicateGroups.map((group, idx) => (
-                <Card key={group.masterId} className="border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
-                  <CardContent className="pt-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="default">Gruppo #{idx + 1}</Badge>
-                          <Badge variant="outline">
-                            Similarità: {Math.round(group.similarity * 100)}%
-                          </Badge>
-                          <Badge variant="secondary">
-                            {group.duplicateLeads.length} duplicati
-                          </Badge>
-                        </div>
+            <div className="space-y-3">
+              {duplicateGroups.map((group) => (
+                <div key={group.masterId} className="border rounded-lg">
+                  {/* Master Lead */}
+                  <div className="bg-muted/30 px-4 py-3 border-b">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{group.masterLead?.Nome || 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {group.masterLead?.Telefono || group.masterLead?.Email || group.masterLead?.Città}
+                        </p>
                       </div>
-
-                      {/* Master Lead */}
-                      <div className="border-l-4 border-green-500 pl-4 py-2 bg-white dark:bg-black/20 rounded-r">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge className="bg-green-600">MASTER</Badge>
-                          <span className="font-semibold">{group.masterLead?.Nome || 'N/A'}</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground space-y-0.5">
-                          {group.masterLead?.Telefono && <div>📞 {group.masterLead.Telefono}</div>}
-                          {group.masterLead?.Email && <div>📧 {group.masterLead.Email}</div>}
-                          {group.masterLead?.Città && <div>📍 {group.masterLead.Città}</div>}
-                          {group.masterLead?.Data && <div>📅 {new Date(group.masterLead.Data).toLocaleDateString('it-IT')}</div>}
-                        </div>
-                      </div>
-
-                      {/* Duplicate Leads */}
-                      <div className="space-y-2">
-                        {group.duplicateLeads.map((dup: any) => (
-                          <div key={dup.id} className="border-l-4 border-amber-500 pl-4 py-2 bg-white dark:bg-black/20 rounded-r">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-300">DUPLICATO</Badge>
-                              <span className="font-medium">{dup.Nome || 'N/A'}</span>
-                            </div>
-                            <div className="text-sm text-muted-foreground space-y-0.5">
-                              {dup.Telefono && <div>📞 {dup.Telefono}</div>}
-                              {dup.Email && <div>📧 {dup.Email}</div>}
-                              {dup.Città && <div>📍 {dup.Città}</div>}
-                              {dup.Data && <div>📅 {new Date(dup.Data).toLocaleDateString('it-IT')}</div>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <Badge variant="outline" className="text-xs flex-shrink-0">{group.duplicateLeads.length}</Badge>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  
+                  {/* Duplicate Leads */}
+                  <div className="divide-y">
+                    {group.duplicateLeads.map((dup: any) => (
+                      <div key={dup.id} className="px-4 py-2.5 hover:bg-muted/40 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground truncate">{dup.Nome || 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {dup.Telefono || dup.Email || dup.Città}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs flex-shrink-0"
+                            onClick={() => {
+                              onFilterDuplicates?.([
+                                group.masterLead.id,
+                                dup.id,
+                                ...group.duplicateLeads.filter((d: any) => d.id !== dup.id).map((d: any) => d.id)
+                              ]);
+                              onOpenChange(false);
+                            }}
+                          >
+                            <Filter className="h-3.5 w-3.5 mr-1" />
+                            Filtra
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="flex justify-between items-center border-t pt-4 mt-4">
-          <p className="text-sm text-muted-foreground">
-            💡 Usa la selezione multipla nella tabella per unire i duplicati
-          </p>
-          <Button onClick={() => onOpenChange(false)}>Chiudi</Button>
+        <div className="border-t pt-3 mt-3 flex justify-end">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Chiudi</Button>
         </div>
       </DialogContent>
     </Dialog>

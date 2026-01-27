@@ -4,6 +4,13 @@ import { useState, useMemo } from 'react';
 import { LeadData } from '@/types/leads';
 import { useMergeLeads } from '@/hooks/use-merge-leads';
 import {
+  detectStateConflict,
+  detectAssigneeConflict,
+  getUniqueStates,
+  getUniqueAssignees,
+  getAttachmentsPreview,
+} from '@/lib/merge-utils';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle2, Link2, Loader2 } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 
 interface MergeLeadsDialogProps {
   open: boolean;
@@ -31,8 +38,10 @@ export function MergeLeadsDialog({
   onOpenChange,
   onMergeComplete,
 }: MergeLeadsDialogProps) {
-  const [step, setStep] = useState<'select-master' | 'preview' | 'confirm'>('select-master');
+  const [step, setStep] = useState<'select-master' | 'preview' | 'review' | 'confirm'>('select-master');
   const [selectedMasterId, setSelectedMasterId] = useState<string>(leads[0]?.id || '');
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('');
   const { mergeLead, merging } = useMergeLeads();
 
   const { master, duplicates } = useMemo(() => {
@@ -58,12 +67,22 @@ export function MergeLeadsDialog({
 
   const handleMerge = async () => {
     if (!master) return;
-    const success = await mergeLead(master.id, duplicates.map(d => d.id));
+    console.log('[Dialog] Starting merge...');
+    const success = await mergeLead(master.id, duplicates.map(d => d.id), {
+      selectedState: selectedState || undefined,
+      selectedAssignee: selectedAssignee || undefined,
+    });
+    console.log(`[Dialog] Merge result: success=${success}`);
     if (success) {
+      console.log('[Dialog] Merge successful, closing modal...');
       onOpenChange(false);
       onMergeComplete?.();
       setStep('select-master');
       setSelectedMasterId(leads[0]?.id || '');
+      setSelectedState('');
+      setSelectedAssignee('');
+    } else {
+      console.error('[Dialog] Merge failed but no error shown?');
     }
   };
 
@@ -73,24 +92,23 @@ export function MergeLeadsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Link2 className="h-5 w-5" />
+          <DialogTitle>
             Unisci Lead Duplicati
           </DialogTitle>
           <DialogDescription>
-            Stai per unire {duplicates.length} lead in "{master.Nome}"
+            {duplicates.length} {duplicates.length === 1 ? 'lead' : 'lead'} verranno consolidati in "{master.Nome}"
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant={step === 'select-master' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStep('select-master')}
               disabled={merging}
             >
-              1. Seleziona Master
+              1. Master
             </Button>
             <Button
               variant={step === 'preview' ? 'default' : 'outline'}
@@ -101,23 +119,28 @@ export function MergeLeadsDialog({
               2. Anteprima
             </Button>
             <Button
+              variant={step === 'review' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStep('review')}
+              disabled={merging || !selectedMasterId}
+            >
+              3. Scelte
+            </Button>
+            <Button
               variant={step === 'confirm' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStep('confirm')}
               disabled={merging || !selectedMasterId}
             >
-              3. Conferma
+              4. Conferma
             </Button>
           </div>
 
           {step === 'select-master' && (
             <div className="space-y-4">
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Seleziona quale lead mantenere come "principale". Gli altri verranno consolidati in questo.
-                </AlertDescription>
-              </Alert>
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm text-foreground">
+                <p>Seleziona quale lead mantenere come principale. Gli altri verranno consolidati in questo.</p>
+              </div>
 
               <RadioGroup value={selectedMasterId} onValueChange={setSelectedMasterId}>
                 <div className="space-y-3">
@@ -145,29 +168,26 @@ export function MergeLeadsDialog({
 
           {step === 'preview' && (
             <div className="space-y-4">
-              <Alert>
-                <CheckCircle2 className="h-4 w-4" />
-                <AlertDescription>
-                  Ecco come verranno consolidati i dati. I campi vuoti del master saranno riempiti con dati dai duplicati.
-                </AlertDescription>
-              </Alert>
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm text-foreground">
+                <p>Anteprima dei dati che verranno consolidati. I campi vuoti del master saranno riempiti dai duplicati.</p>
+              </div>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Lead Master: {master.Nome}</CardTitle>
-                  <CardDescription>I dati verranno consolidati qui</CardDescription>
+                  <CardTitle className="text-base">Lead Master: {master.Nome}</CardTitle>
+                  <CardDescription>Dati di consolidamento</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {preview?.map(item => (
                     <div key={item.field} className="space-y-2">
-                      <div className="font-medium text-sm">{item.field}</div>
+                      <div className="font-semibold text-sm text-foreground">{item.field}</div>
                       <div className="ml-4 space-y-2">
                         {item.masterValue ? (
-                          <div className="rounded bg-green-50 p-2 text-sm">
+                          <div className="rounded border bg-muted/50 p-2 text-sm">
                             <span className="font-medium">Master:</span> {String(item.masterValue)}
                           </div>
                         ) : (
-                          <div className="rounded bg-gray-50 p-2 text-sm text-muted-foreground">
+                          <div className="rounded border border-dashed bg-muted/30 p-2 text-sm text-muted-foreground">
                             (vuoto)
                           </div>
                         )}
@@ -175,8 +195,8 @@ export function MergeLeadsDialog({
                         {item.sources.length > 0 && (
                           <div className="space-y-1">
                             {item.sources.map((source, idx) => (
-                              <div key={idx} className="rounded bg-blue-50 p-2 text-sm">
-                                <span className="font-medium text-blue-700">{source.nome}:</span> {String(source.valore)}
+                              <div key={idx} className="rounded border bg-muted/30 p-2 text-sm">
+                                <span className="font-medium text-foreground">{source.nome}:</span> {String(source.valore)}
                               </div>
                             ))}
                           </div>
@@ -191,7 +211,128 @@ export function MergeLeadsDialog({
                 <Button variant="outline" className="flex-1" onClick={() => setStep('select-master')}>
                   Indietro
                 </Button>
-                <Button className="flex-1" onClick={() => setStep('confirm')}>
+                <Button className="flex-1" onClick={() => setStep('review')}>
+                  Procedi a Scelte
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 'review' && (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm text-foreground">
+                <p>Seleziona le opzioni per i campi conflittuali.</p>
+              </div>
+
+              {/* Debug logging */}
+              {(() => {
+                console.log('[Dialog Review] Master data:', master);
+                console.log('[Dialog Review] Duplicates data:', duplicates);
+                console.log('[Dialog Review] Master Stato:', (master as any).Stato);
+                console.log('[Dialog Review] Master Assegnatario:', (master as any).Assegnatario);
+                
+                const hasStateConflict = detectStateConflict(master as any, duplicates as any);
+                const hasAssigneeConflict = detectAssigneeConflict(master as any, duplicates as any);
+                const attachmentsPreview = getAttachmentsPreview(master as any, duplicates as any);
+                
+                console.log('[Dialog Review] State conflict:', hasStateConflict);
+                console.log('[Dialog Review] Assignee conflict:', hasAssigneeConflict);
+                console.log('[Dialog Review] Attachments preview:', attachmentsPreview);
+                console.log('[Dialog Review] Show state radio?', hasStateConflict);
+                console.log('[Dialog Review] Show assignee radio?', hasAssigneeConflict);
+                console.log('[Dialog Review] Show attachments?', attachmentsPreview.totalCount > 0);
+                
+                return null;
+              })()}
+
+              {/* Stato Section */}
+              {detectStateConflict(master as any, duplicates as any) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Quale Stato mantenere?</CardTitle>
+                    <CardDescription>
+                      Gli stati sono diversi tra il master e i duplicati.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <RadioGroup value={selectedState} onValueChange={setSelectedState}>
+                      <div className="space-y-3">
+                        {getUniqueStates(master as any, duplicates as any).map((state) => (
+                          <div key={state} className="flex items-center space-x-2">
+                            <RadioGroupItem value={state} id={`state-${state}`} />
+                            <Label htmlFor={`state-${state}`} className="cursor-pointer">
+                              {state}
+                              {state === (master as any).Stato && (
+                                <Badge variant="outline" className="ml-2 text-xs">Master</Badge>
+                              )}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </RadioGroup>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Assegnatario Section */}
+              {detectAssigneeConflict(master as any, duplicates as any) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Chi deve gestire il lead?</CardTitle>
+                    <CardDescription>
+                      Gli assegnatari sono diversi tra il master e i duplicati.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <RadioGroup value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                      <div className="space-y-3">
+                        {getUniqueAssignees(master as any, duplicates as any).map((assignee) => (
+                          <div key={assignee} className="flex items-center space-x-2">
+                            <RadioGroupItem value={assignee} id={`assignee-${assignee}`} />
+                            <Label htmlFor={`assignee-${assignee}`} className="cursor-pointer">
+                              {assignee}
+                              {assignee === (master as any).Assegnatario && (
+                                <Badge variant="outline" className="ml-2 text-xs">Master</Badge>
+                              )}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </RadioGroup>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Allegati Section */}
+              {getAttachmentsPreview(master as any, duplicates as any).totalCount > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Allegati da copiare</CardTitle>
+                    <CardDescription>
+                      Verranno copiati tutti gli allegati dal master e dai duplicati.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="font-medium">Dal master:</span> {getAttachmentsPreview(master as any, duplicates as any).masterCount} allegati
+                      </div>
+                      <div>
+                        <span className="font-medium">Dai duplicati:</span> {getAttachmentsPreview(master as any, duplicates as any).duplicateCount} allegati
+                      </div>
+                      <div className="pt-2 border-t">
+                        <span className="font-medium">Totale:</span> {getAttachmentsPreview(master as any, duplicates as any).totalCount} allegati
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setStep('preview')} disabled={merging}>
+                  Indietro
+                </Button>
+                <Button className="flex-1" onClick={() => setStep('confirm')} disabled={merging}>
                   Procedi a Conferma
                 </Button>
               </div>
@@ -200,14 +341,12 @@ export function MergeLeadsDialog({
 
           {step === 'confirm' && (
             <div className="space-y-4">
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Questa azione è irreversibile. Saranno eliminati {duplicates.length} lead e consolidati in "{master.Nome}".
-                </AlertDescription>
-              </Alert>
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-foreground">
+                <p className="font-medium">Avvertenza:</p>
+                <p className="mt-1">Questa azione è irreversibile. Saranno eliminati {duplicates.length} {duplicates.length === 1 ? 'lead' : 'lead'} e consolidati in "{master.Nome}".</p>
+              </div>
 
-              <Card className="border-yellow-200 bg-yellow-50">
+              <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Riepilogo Merge</CardTitle>
                 </CardHeader>
@@ -238,14 +377,14 @@ export function MergeLeadsDialog({
                 <Button variant="outline" className="flex-1" onClick={() => setStep('preview')} disabled={merging}>
                   Indietro
                 </Button>
-                <Button className="flex-1 bg-destructive hover:bg-destructive/90" onClick={handleMerge} disabled={merging}>
+                <Button className="flex-1" variant="default" onClick={handleMerge} disabled={merging}>
                   {merging ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Unendo...
+                      Consolidamento in corso
                     </>
                   ) : (
-                    'Conferma Merge'
+                    <>Unisci Lead</>
                   )}
                 </Button>
               </div>

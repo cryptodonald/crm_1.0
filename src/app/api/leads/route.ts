@@ -450,10 +450,18 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/leads - Create a new lead
- * Expects JSON body with LeadFormData
+ * POST /api/leads - Create a new lead OR invalidate cache
+ * Expects JSON body with LeadFormData, or query param ?invalidate=true
  */
 export async function POST(request: NextRequest) {
+  // Handle cache invalidation request
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get('invalidate') === 'true') {
+    console.log('[API] POST /api/leads?invalidate=true - Clearing cache');
+    leadsCache.clear();
+    return NextResponse.json({ success: true, message: 'Cache invalidated' });
+  }
+  
   const requestStart = performance.now();
   
   try {

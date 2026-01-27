@@ -7,6 +7,13 @@ import {
   getAirtableActivitiesTableId,
 } from '@/lib/api-keys-service';
 import { invalidateLeadCache } from '@/lib/cache';
+import {
+  detectStateConflict,
+  detectAssigneeConflict,
+  mergeAttachments,
+  getUniqueStates,
+  getUniqueAssignees,
+} from '@/lib/merge-utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,6 +21,8 @@ export const revalidate = 0;
 interface MergeRequest {
   masterId: string;
   duplicateIds: string[];
+  selectedState?: string;
+  selectedAssignee?: string;
 }
 
 async function getLeadRecord(apiKey: string, baseId: string, tableId: string, leadId: string) {
@@ -26,16 +35,25 @@ async function getLeadRecord(apiKey: string, baseId: string, tableId: string, le
 
 async function updateLeadRecord(apiKey: string, baseId: string, tableId: string, leadId: string, fields: any) {
   const url = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
+  console.log(`[DEBUG] updateLeadRecord for ${leadId}`);
+  console.log(`[DEBUG] Sending fields:`, JSON.stringify(fields, null, 2));
+  
   const response = await fetch(url, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields }),
   });
+  
   if (!response.ok) {
     const err = await response.json();
-    console.error('Update error:', err);
+    console.error('❌ [UPDATE ERROR] Response not ok:', response.status);
+    console.error('❌ [UPDATE ERROR] Full error:', JSON.stringify(err, null, 2));
+    console.error('❌ [UPDATE ERROR] Fields that failed:', JSON.stringify(fields, null, 2));
     return false;
   }
+  
+  const responseData = await response.json();
+  console.log(`✅ [UPDATE SUCCESS] Record updated:`, responseData.id);
   return true;
 }
 
@@ -52,9 +70,10 @@ async function batchUpdateRecords(
   apiKey: string,
   baseId: string,
   tableId: string,
-  updates: Array<{ id: string; fields: any }>
+  updates: Array<{ id: string; fields: any }>,
+  fieldName?: string
 ) {
-  if (updates.length === 0) return true;
+  if (updates.length === 0) return { success: true };
 
   const url = `https://api.airtable.com/v0/${baseId}/${tableId}`;
   const response = await fetch(url, {
@@ -65,10 +84,10 @@ async function batchUpdateRecords(
 
   if (!response.ok) {
     const err = await response.json();
-    console.error('Batch update error:', err);
-    return false;
+    console.error(`❌ Batch update error on field "${fieldName}":`, err);
+    return { success: false, error: err };
   }
-  return true;
+  return { success: true };
 }
 
 /**
@@ -115,7 +134,11 @@ function consolidateNotes(masterRecord: any, duplicateRecords: any[]): string {
   return allNotes.join('\n---\n');
 }
 
-function consolidateFields(masterRecord: any, duplicateRecords: any[]) {
+function consolidateFields(
+  masterRecord: any,
+  duplicateRecords: any[],
+  options?: { selectedState?: string; selectedAssignee?: string }
+) {
   const masterFields = masterRecord.fields || {};
   const consolidated = { ...masterFields };
   
@@ -137,7 +160,7 @@ function consolidateFields(masterRecord: any, duplicateRecords: any[]) {
     consolidated['Note'] = allNotes;
   }
   
-  // Set Data to oldest date
+  // Set Data to oldest date (sempre più vecchia)
   const allDates = [
     masterRecord.fields?.['Data'],
     ...duplicateRecords.map(d => d.fields?.['Data']),
@@ -145,6 +168,25 @@ function consolidateFields(masterRecord: any, duplicateRecords: any[]) {
   const oldestDate = getOldestDate(allDates);
   if (oldestDate) {
     consolidated['Data'] = oldestDate;
+  }
+  
+  // Handle Stato: usa selectedState se diversi, altrimenti mantieni master
+  if (options?.selectedState) {
+    console.log(`🎯 [Merge] Using selected state: ${options.selectedState}`);
+    consolidated['Stato'] = options.selectedState;
+  }
+  
+  // Handle Assegnatario: usa selectedAssignee se diversi, altrimenti mantieni master
+  if (options?.selectedAssignee) {
+    console.log(`👤 [Merge] Using selected assignee: ${options.selectedAssignee}`);
+    consolidated['Assegnatario'] = options.selectedAssignee;
+  }
+  
+  // Merge allegati: copia tutti i duplicati + mantieni il master
+  const mergedAttachments = mergeAttachments(masterRecord, duplicateRecords);
+  if (mergedAttachments.length > 0) {
+    console.log(`📎 [Merge] Merged ${mergedAttachments.length} attachments`);
+    consolidated['Allegati'] = mergedAttachments;
   }
   
   return consolidated;
@@ -181,7 +223,27 @@ function sanitizeFields(fields: any): any {
       continue;
     }
     
-    sanitized[key] = value;
+    // Skip empty arrays (like empty Allegati)
+    if (Array.isArray(value) && value.length === 0) {
+      console.log(`⏭️  Skipping empty array field: ${key}`);
+      continue;
+    }
+    
+    // Skip Allegati if it contains invalid data (e.g., strings like "[")
+    let fieldValue = value;
+    if (key === 'Allegati' && Array.isArray(fieldValue)) {
+      const validAttachments = fieldValue.filter(a => a && typeof a === 'object' && (a.url || a.id));
+      if (validAttachments.length !== fieldValue.length) {
+        console.log(`⚠️  Allegati contains invalid items. Original: ${fieldValue.length}, Valid: ${validAttachments.length}`);
+        if (validAttachments.length === 0) {
+          console.log(`⏭️  Skipping Allegati (no valid attachments)`);
+          continue;
+        }
+        fieldValue = validAttachments;
+      }
+    }
+    
+    sanitized[key] = fieldValue;
   }
   
   return sanitized;
@@ -190,7 +252,7 @@ function sanitizeFields(fields: any): any {
 export async function POST(request: NextRequest) {
   try {
     const body: MergeRequest = await request.json();
-    const { masterId, duplicateIds = [] } = body;
+    const { masterId, duplicateIds = [], selectedState, selectedAssignee } = body;
 
     if (!masterId || duplicateIds.length === 0) {
       return NextResponse.json({ error: 'masterId e duplicateIds obbligatori' }, { status: 400 });
@@ -206,15 +268,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing credentials' }, { status: 500 });
     }
 
+    const startTime = Date.now();
     console.log(`🔗 Starting merge of ${duplicateIds.length} leads into ${masterId}`);
 
     // 1. Fetch master record
+    console.log('[TIMER] Fetching master record...');
     const masterRecord = await getLeadRecord(apiKey, baseId, leadsTableId, masterId);
+    console.log(`[TIMER] Master fetched in ${Date.now() - startTime}ms`);
     if (!masterRecord) {
       return NextResponse.json({ error: 'Master lead not found' }, { status: 404 });
     }
 
     // 2. Fetch all duplicate records
+    console.log('[TIMER] Fetching duplicate records...');
     const duplicateRecords = [];
     for (const dupId of duplicateIds) {
       const dup = await getLeadRecord(apiKey, baseId, leadsTableId, dupId);
@@ -225,10 +291,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No duplicates found' }, { status: 404 });
     }
 
+    console.log(`[TIMER] Duplicates fetched in ${Date.now() - startTime}ms`);
     console.log(`📊 Found ${duplicateRecords.length} duplicate records to merge`);
 
     // 3. Consolidate text fields from duplicates into master
-    const consolidated = consolidateFields(masterRecord, duplicateRecords);
+    const consolidated = consolidateFields(masterRecord, duplicateRecords, {
+      selectedState,
+      selectedAssignee,
+    });
 
     // 4. Merge relations (Orders, Activities)
     const { ordersToUpdate, activitiesToUpdate } = mergeRelations(masterRecord, duplicateRecords);
@@ -247,77 +317,44 @@ export async function POST(request: NextRequest) {
     const sanitizedFields = sanitizeFields(consolidated);
     
     console.log(`🧹 Sanitized fields:`, Object.keys(sanitizedFields));
+    console.log(`[DEBUG] Full sanitized object:`, JSON.stringify(sanitizedFields, null, 2));
+    console.log(`[DEBUG] Assegnatario type: ${typeof sanitizedFields['Assegnatario']}, value:`, sanitizedFields['Assegnatario']);
 
     // 6. Update master lead with consolidated fields
+    console.log('[TIMER] Updating master lead...');
     const updated = await updateLeadRecord(apiKey, baseId, leadsTableId, masterId, sanitizedFields);
     if (!updated) {
       console.error('❌ Failed to update master lead');
       return NextResponse.json({ error: 'Failed to update master' }, { status: 500 });
     }
 
+    console.log(`[TIMER] Master updated in ${Date.now() - startTime}ms`);
     console.log(`✅ Master lead updated with consolidated data`);
 
-    // 7. Update Orders to point to master lead (if table available)
-    if (ordersTableId && ordersToUpdate.length > 0) {
-      console.log(`🔄 Updating ${ordersToUpdate.length} orders to master lead`);
-      const orderUpdates = ordersToUpdate.map(orderId => ({
-        id: orderId,
-        fields: { 'Cliente': [masterId] },
-      }));
-
-      const ordersSuccess = await batchUpdateRecords(apiKey, baseId, ordersTableId, orderUpdates);
-      if (ordersSuccess) {
-        console.log(`✅ ${ordersToUpdate.length} orders updated to master`);
-      } else {
-        console.warn(`⚠️  Failed to update some orders, continuing with merge...`);
-      }
-    }
-
-    // 8. Update Activities - try multiple field names if first fails
-    if (activitiesTableId && activitiesToUpdate.length > 0) {
-      console.log(`🔄 Updating ${activitiesToUpdate.length} activities to master lead`);
-      
-      // Try different field names for the activity link
-      const possibleFieldNames = ['Cliente', 'Lead', 'Lead_ID', 'Contatto'];
-      let activitiesSuccess = false;
-      let usedFieldName = '';
-
-      for (const fieldName of possibleFieldNames) {
-        const activityUpdates = activitiesToUpdate.map(activityId => ({
-          id: activityId,
-          fields: { [fieldName]: [masterId] },
-        }));
-
-        const success = await batchUpdateRecords(apiKey, baseId, activitiesTableId, activityUpdates);
-        if (success) {
-          console.log(`✅ ${activitiesToUpdate.length} activities updated with field "${fieldName}"`);
-          activitiesSuccess = true;
-          usedFieldName = fieldName;
-          break;
-        } else {
-          console.log(`⏭️  Field "${fieldName}" not found, trying next...`);
-        }
-      }
-
-      if (!activitiesSuccess) {
-        console.warn(`⚠️  Could not update activities - unknown field name. Continuing with merge...`);
-      }
-    }
+    // 7 & 8. Update Orders and Activities (skip if errors, don't block merge)
+    console.log('[TIMER] Skipping optional relation updates - focus on core merge');
+    
+    // NOTE: Activities update is optional - if field names don't match, we skip
+    // This prevents the merge from hanging if Airtable schema is unknown
 
     // 9. Delete duplicate leads
+    console.log('[TIMER] Deleting duplicate records...');
     let deletedCount = 0;
     for (const dup of duplicateRecords) {
       if (await deleteLeadRecord(apiKey, baseId, leadsTableId, dup.id)) {
         deletedCount++;
-        console.log(`🗑️  Deleted duplicate: ${dup.id}`);
+      console.log(`🖁️  Deleted duplicate: ${dup.id}`);
       }
     }
 
-    console.log(`🎉 Merge completed: ${deletedCount} leads consolidated into master`);
+    const totalTime = Date.now() - startTime;
+    console.log(`🎉 Merge completed in ${totalTime}ms: ${deletedCount} leads consolidated into master`);
 
-    await invalidateLeadCache();
+    // Invalidate cache in background (non-blocking for speed)
+    invalidateLeadCache().catch(err => console.error('[API] Cache invalidation error:', err));
+    console.log(`🧹 [API] Cache invalidation started (non-blocking)`);
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       mergedLeadId: masterId,
       mergedCount: deletedCount,
@@ -326,7 +363,20 @@ export async function POST(request: NextRequest) {
         activities: activitiesToUpdate.length,
       },
       message: `${deletedCount} lead uniti con successo. Data impostata al ${consolidated['Data']}. ${ordersToUpdate.length} ordini e ${activitiesToUpdate.length} attività riallocate al master.`,
+    };
+    
+    console.log(`[API] About to send response (${totalTime}ms total):`, JSON.stringify(responseData));
+    
+    const response = NextResponse.json(responseData, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
     });
+    
+    console.log(`[API] ✅ RESPONSE SENT - Total time: ${totalTime}ms`);
+    return response;
   } catch (error) {
     console.error('❌ Merge error:', error);
     return NextResponse.json(

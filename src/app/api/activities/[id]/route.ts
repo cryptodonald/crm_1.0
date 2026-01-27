@@ -7,6 +7,7 @@ import {
 import { ActivityFormData } from '@/types/activities';
 import { invalidateActivitiesCache } from '@/lib/cache';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
+import ActivitySyncService from '@/lib/activity-sync-service';
 
 export async function PATCH(
   request: NextRequest,
@@ -97,6 +98,20 @@ export async function PATCH(
     invalidateActivitiesCache().catch(err => 
       console.error('⚠️ [Activities PATCH] Background cache invalidation failed:', err)
     );
+    
+    // 📅 Sync to Google Calendar (async, non-blocking)
+    const userId = 'user_admin_001'; // TODO: Get from session
+    ActivitySyncService.syncUpdateActivity(updateData, resolvedParams.id, userId)
+      .then((syncResult) => {
+        if (syncResult.success) {
+          console.log(`✅ [Activities PATCH] Google Calendar sync successful: ${syncResult.googleEventId}`);
+        } else {
+          console.warn(`⚠️ [Activities PATCH] Google Calendar sync failed: ${syncResult.error}`);
+        }
+      })
+      .catch((error) => {
+        console.error('❌ [Activities PATCH] Google Calendar sync error:', error);
+      });
     
     return apiResponse;
   } catch (error) {
@@ -252,6 +267,20 @@ export async function PUT(
         console.error('⚠️ [Activities PUT] Background cache invalidation failed:', err)
       );
       
+      // 📅 Sync to Google Calendar (async, non-blocking)
+      const userId = 'user_admin_001'; // TODO: Get from session
+      ActivitySyncService.syncUpdateActivity(activityData, resolvedParams.id, userId)
+        .then((syncResult) => {
+          if (syncResult.success) {
+            console.log(`✅ [Activities PUT] Google Calendar sync successful: ${syncResult.googleEventId}`);
+          } else {
+            console.warn(`⚠️ [Activities PUT] Google Calendar sync failed: ${syncResult.error}`);
+          }
+        })
+        .catch((error) => {
+          console.error('❌ [Activities PUT] Google Calendar sync error:', error);
+        });
+      
       return apiResponse;
     } catch (error: any) {
       clearTimeout(timeoutId);
@@ -362,6 +391,20 @@ export async function DELETE(
     invalidateActivitiesCache().catch(err => 
       console.error('⚠️ [Activities DELETE] Background cache invalidation failed:', err)
     );
+    
+    // 📅 Sync to Google Calendar (async, non-blocking)
+    const userId = 'user_admin_001'; // TODO: Get from session
+    ActivitySyncService.syncDeleteActivity(resolvedParams.id, userId)
+      .then((syncResult) => {
+        if (syncResult.success) {
+          console.log(`✅ [Activities DELETE] Google Calendar sync successful`);
+        } else {
+          console.warn(`⚠️ [Activities DELETE] Google Calendar sync failed: ${syncResult.error}`);
+        }
+      })
+      .catch((error) => {
+        console.error('❌ [Activities DELETE] Google Calendar sync error:', error);
+      });
     
     return apiResponse;
   } catch (error) {

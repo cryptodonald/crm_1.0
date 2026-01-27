@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
 import { 
   getAirtableKey,
   getAirtableBaseId,
@@ -7,6 +8,8 @@ import {
 import { ActivityFormData } from '@/types/activities';
 import { getCachedActivities, invalidateActivitiesCache } from '@/lib/cache';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
+import { ActivitySyncService } from '@/lib/activity-sync-service';
+import { authConfig } from '@/lib/auth.config';
 
 export async function GET(request: NextRequest) {
   const requestStart = performance.now();
@@ -378,6 +381,33 @@ export async function POST(request: NextRequest) {
     recordApiLatency('activities_post_api', totalTime, false);
     
     console.log(`✅ [Activities API] Activity created successfully: ${result.id} in ${totalTime.toFixed(2)}ms`);
+
+    // 📅 Sync to Google Calendar (async, non-blocking)
+    // Get session to retrieve Google Calendar token
+    const session = await getServerSession(authConfig);
+    const userId = session?.user?.id || 'user_admin_001';
+    const encryptedAccessToken = (session as any)?.googleAccessToken; // Token is encrypted by NextAuth
+    
+    console.log(`🔐 [Activities API] Session check - User: ${userId}, Has Google token: ${!!encryptedAccessToken}`);
+    if (!encryptedAccessToken) {
+      console.log(`🔐 [Activities API] Session details:`, { hasSession: !!session, sessionKeys: Object.keys(session || {}) });
+    }
+    
+    if (encryptedAccessToken) {
+      ActivitySyncService.syncCreateActivity(activityData, result.id, userId, encryptedAccessToken)
+        .then((syncResult) => {
+          if (syncResult.success) {
+            console.log(`✅ [Activities API] Google Calendar sync successful: ${syncResult.googleEventId}`);
+          } else {
+            console.warn(`⚠️ [Activities API] Google Calendar sync failed: ${syncResult.error}`);
+          }
+        })
+        .catch((error) => {
+          console.error('❌ [Activities API] Google Calendar sync error:', error);
+        });
+    } else {
+      console.log('ℹ️ [Activities API] No Google Calendar token - sync skipped');
+    }
 
     return NextResponse.json({
       success: true,

@@ -103,6 +103,7 @@ export interface LeadsFilters {
   conNote?: boolean;
   conAllegati?: boolean;
   search?: string;
+  leadIds?: string[]; // Filtra per lista di lead IDs (e.g., duplicates)
 }
 
 export interface LeadsTableColumn {

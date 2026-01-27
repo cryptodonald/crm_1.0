@@ -179,15 +179,6 @@ export default function LeadsPage() {
     return success;
   };
 
-  // Handle filter duplicates from duplicates dialog
-  const handleFilterDuplicates = (leadIds: string[]) => {
-    console.log('[LeadsPage] Filtering duplicates:', leadIds);
-    setFilters({
-      ...filters,
-      leadIds: leadIds,
-    });
-  };
-
   return (
     <AppLayoutCustom>
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -274,13 +265,6 @@ export default function LeadsPage() {
         open={newLeadModalOpen}
         onOpenChange={setNewLeadModalOpen}
         onSuccess={handleLeadCreated}
-      />
-
-      <DuplicatesDialog
-        open={duplicatesDialogOpen}
-        onOpenChange={setDuplicatesDialogOpen}
-        leads={leads}
-        onFilterDuplicates={handleFilterDuplicates}
       />
     </AppLayoutCustom>
   );

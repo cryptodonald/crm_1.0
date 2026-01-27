@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUsers } from '@/hooks/use-users';
+import { useTablePreferences } from '@/hooks/use-table-preferences';
 import {
   Table,
   TableBody,
@@ -147,7 +148,9 @@ export function LeadsDataTable({
   className,
 }: LeadsDataTableProps) {
   const router = useRouter();
+  const { preferences, isLoaded, updateItemsPerPage, updateVisibleColumns } = useTablePreferences();
   const [searchTerm, setSearchTerm] = useState('');
+  // Usa i valori di default inizialmente, aggiorna quando preferences carica
   const [visibleColumns, setVisibleColumns] = useState(DEFAULT_VISIBLE_COLUMNS);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -182,6 +185,14 @@ export function LeadsDataTable({
 
   // Stati per merge dialog
   const [showMergeDialog, setShowMergeDialog] = useState(false);
+
+  // Apply preferences after loading from localStorage
+  useEffect(() => {
+    if (isLoaded && preferences) {
+      setVisibleColumns(preferences.visibleColumns);
+      setItemsPerPage(preferences.itemsPerPage);
+    }
+  }, [isLoaded, preferences]);
 
   // Stati disponibili da Airtable
   const STATI_DISPONIBILI: LeadStato[] = [
@@ -408,8 +419,14 @@ export function LeadsDataTable({
         filters.provenienza.length === 0 ||
         filters.provenienza.includes(lead.Provenienza);
 
+      // LeadIds filter - per filtrare gruppi di duplicati specifici
+      const matchesLeadIds =
+        !filters.leadIds ||
+        filters.leadIds.length === 0 ||
+        filters.leadIds.includes(lead.id);
+
       return (
-        matchesSearch && matchesDateRange && matchesStato && matchesProvenienza
+        matchesSearch && matchesDateRange && matchesStato && matchesProvenienza && matchesLeadIds
       );
     });
 
@@ -428,7 +445,7 @@ export function LeadsDataTable({
     }
 
     return filtered;
-  }, [leads, searchTerm, dateRange, filters.stato, filters.provenienza, sortField, sortDirection]);
+  }, [leads, searchTerm, dateRange, filters.stato, filters.provenienza, filters.leadIds, sortField, sortDirection]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredAndSortedLeads.length / itemsPerPage);
@@ -462,6 +479,18 @@ export function LeadsDataTable({
     setDateRange(undefined);
     onFiltersChange({});
     setCurrentPage(1);
+  };
+
+  // Salva le preferenze quando cambiano
+  const handleItemsPerPageChange = (newSize: number) => {
+    setItemsPerPage(newSize);
+    updateItemsPerPage(newSize);
+    setCurrentPage(1);
+  };
+
+  const handleVisibleColumnsChange = (newColumns: Record<string, boolean>) => {
+    setVisibleColumns(newColumns);
+    updateVisibleColumns(newColumns);
   };
 
   // Gestione checkbox
@@ -910,7 +939,7 @@ export function LeadsDataTable({
                   assegnatario: values.includes('assegnatario'),
                   note: values.includes('note'),
                 };
-                setVisibleColumns(newVisibleColumns);
+                handleVisibleColumnsChange(newVisibleColumns);
               }}
             />
           </div>
@@ -1263,8 +1292,7 @@ export function LeadsDataTable({
             } 
           }),
           setPageSize: (size: number) => {
-            setItemsPerPage(size);
-            setCurrentPage(1);
+            handleItemsPerPageChange(size);
           },
           getPageCount: () => totalPages,
           setPageIndex: (index: number) => setCurrentPage(index + 1),
@@ -1346,8 +1374,14 @@ export function LeadsDataTable({
         leads={filteredAndSortedLeads.filter(lead => selectedLeads.includes(lead.id))}
         onOpenChange={setShowMergeDialog}
         onMergeComplete={() => {
+          console.log('[MergeLeadsDialog] Merge complete - clearing selection and resetting filters');
           setSelectedLeads([]);
-          // Refresh della tabella avverrà automaticamente via hook
+          // Pulisci filtri di duplicati per mostrare di nuovo tutti i lead
+          onFiltersChange({});
+          // Reset ricerca e date
+          setSearchTerm('');
+          setDateRange(undefined);
+          setCurrentPage(1);
         }}
       />
     </div>
