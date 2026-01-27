@@ -2,11 +2,19 @@ import { type NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { encryptionService } from "@/lib/encryption";
 
+console.log('[NextAuth] Loading config...');
+console.log('[NextAuth] CLIENT_ID:', process.env.GOOGLE_OAUTH_CLIENT_ID ? '✅ Set' : '❌ Missing');
+console.log('[NextAuth] CLIENT_SECRET:', process.env.GOOGLE_OAUTH_CLIENT_SECRET ? '✅ Set' : '❌ Missing');
+
+if (!process.env.GOOGLE_OAUTH_CLIENT_ID || !process.env.GOOGLE_OAUTH_CLIENT_SECRET) {
+  throw new Error('Google OAuth credentials are missing!');
+}
+
 export const authConfig = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
