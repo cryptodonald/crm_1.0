@@ -24,6 +24,8 @@ import {
 import { cn } from '@/lib/utils';
 import type { ActivityData, ActivityStato, ActivityTipo } from '@/types/activities';
 import { KANBAN_COLUMNS, getKanbanColumnFromState } from '@/types/activities';
+import type { CalendarEvent } from '@/lib/google-calendar-adapter';
+import { adaptGoogleCalendarEvent } from '@/lib/google-calendar-adapter';
 import { toast } from 'sonner';
 
 export default function CalendarPage() {
@@ -91,7 +93,9 @@ export default function CalendarPage() {
 
         const data = await response.json();
         console.log('[CalendarPage] Google Calendar events loaded:', data.count);
-        setGoogleCalendarEvents(data.events || []);
+        // Trasforma gli eventi Google Calendar nel formato compatibile
+        const transformedEvents = (data.events || []).map((event: any) => adaptGoogleCalendarEvent(event));
+        setGoogleCalendarEvents(transformedEvents);
       } catch (error) {
         console.error('[CalendarPage] Error loading Google Calendar events:', error);
         setGoogleCalendarError(error instanceof Error ? error.message : 'Unknown error');
@@ -147,7 +151,8 @@ export default function CalendarPage() {
       );
     }
     
-    return filtered;
+    // Converti a CalendarEvent (per compatibilità con CalendarView)
+    return filtered as CalendarEvent[];
   }, [activities, filters, getDateRange]);
 
   // useEffect per aprire il modal quando editingActivity viene settato (risolve race condition)
@@ -162,7 +167,16 @@ export default function CalendarPage() {
     selectDate(date);
   };
 
-  const handleActivityClick = (activity: ActivityData) => {
+  const handleActivityClick = (activity: ActivityData | CalendarEvent) => {
+    // Se è un evento Google Calendar, non fare nulla (non è modificabile dal CRM)
+    if ('isGoogleEvent' in activity && activity.isGoogleEvent) {
+      toast.info('Gli eventi Google Calendar non sono modificabili dal CRM');
+      return;
+    }
+    
+    // Per attività CRM
+    const crmActivity = activity as ActivityData;
+    
     // FORZA chiusura del modal e reset completo degli stati
     setActivityModalOpen(false);
     setEditingActivity(null);
@@ -171,8 +185,8 @@ export default function CalendarPage() {
     
     // Usa timeout per assicurare che gli stati siano resettati prima di settare i nuovi
     setTimeout(() => {
-      setSelectedActivity(activity);
-      setEditingActivity(activity);
+      setSelectedActivity(crmActivity);
+      setEditingActivity(crmActivity);
       setPreselectedDate(null);
     }, 100); // 100ms dovrebbero bastare per il reset
   };
@@ -427,19 +441,42 @@ export default function CalendarPage() {
             {/* Calendario principale */}
             {!activitiesLoading && !activitiesError && (
               <div className="flex-1 overflow-hidden">
-                <CalendarView
-                  view={currentView}
-                  currentDate={currentDate}
-                  selectedDate={selectedDate}
-                  activities={filteredActivities}
-                  onDateClick={handleDateClick}
-                  onActivityClick={handleActivityClick}
-                  onCreateActivity={handleCreateActivity}
-                  isToday={isToday}
-                  isSelected={isSelected}
-                  isCurrentMonth={isCurrentMonth}
-                  className="h-full"
-                />
+                {googleCalendarLoading && (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                      <Clock className="w-8 h-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-muted-foreground">Caricamento calendario Google...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {googleCalendarError && (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center text-red-500">
+                      <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                      <p>Errore nel caricamento Google Calendar: {googleCalendarError}</p>
+                      <Button variant="outline" size="sm" className="mt-2">
+                        Riprova
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                {!googleCalendarLoading && !googleCalendarError && (
+                  <CalendarView
+                    view={currentView}
+                    currentDate={currentDate}
+                    selectedDate={selectedDate}
+                    activities={showGoogleEvents && session?.googleAccessToken ? googleCalendarEvents : (filteredActivities as CalendarEvent[])}
+                    onDateClick={handleDateClick}
+                    onActivityClick={handleActivityClick}
+                    onCreateActivity={handleCreateActivity}
+                    isToday={isToday}
+                    isSelected={isSelected}
+                    isCurrentMonth={isCurrentMonth}
+                    className="h-full"
+                  />
+                )}
               </div>
             )}
           </div>

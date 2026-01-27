@@ -22,19 +22,28 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Calendar, Clock, Plus, Phone, Mail, MessageSquare, Users, RotateCcw, FileText } from 'lucide-react';
+import { Calendar, Clock, Plus, Phone, Mail, MessageSquare, Users, RotateCcw, FileText, ExternalLink } from 'lucide-react';
 import type { CalendarView } from '@/hooks/use-calendar';
 import type { ActivityData } from '@/types/activities';
 import { KANBAN_COLUMNS, getKanbanColumnFromState } from '@/types/activities';
+import type { CalendarEvent, GoogleCalendarEventFormatted } from '@/lib/google-calendar-adapter';
+import {
+  isGoogleCalendarEvent,
+  getEventDate,
+  getEventTitle,
+  getEventType,
+  getEventStatus,
+  getEventNotes,
+} from '@/lib/google-calendar-adapter';
 
 // ===== TYPES =====
 interface CalendarViewProps {
   view: CalendarView;
   currentDate: Date;
   selectedDate: Date | null;
-  activities: ActivityData[];
+  activities: CalendarEvent[];
   onDateClick: (date: Date) => void;
-  onActivityClick: (activity: ActivityData) => void;
+  onActivityClick: (activity: ActivityData | GoogleCalendarEventFormatted) => void;
   onCreateActivity: (date: Date) => void;
   isToday: (date: Date) => boolean;
   isSelected: (date: Date) => boolean;
@@ -44,11 +53,14 @@ interface CalendarViewProps {
 
 // ===== ACTIVITY CARD COMPONENT =====
 const ActivityCard: React.FC<{
-  activity: ActivityData;
+  activity: CalendarEvent;
   compact?: boolean;
   onClick: () => void;
 }> = ({ activity, compact = false, onClick }) => {
-  const kanbanColumn = getKanbanColumnFromState(activity.Stato);
+  const isGoogleEvent = isGoogleCalendarEvent(activity);
+  
+  // Per eventi Google Calendar, usa uno stato fisso
+  const kanbanColumn = isGoogleEvent ? 'done' : getKanbanColumnFromState((activity as ActivityData).Stato);
   const columnConfig = KANBAN_COLUMNS[kanbanColumn];
   
   // Determina il colore in base allo stato
@@ -93,6 +105,9 @@ const ActivityCard: React.FC<{
 
   const getTypeIcon = (tipo: string) => {
     const iconProps = { className: 'w-3 h-3 text-muted-foreground' };
+    if (tipo === 'Evento Google Calendar') {
+      return <ExternalLink {...iconProps} />; // Icona diversa per Google Calendar
+    }
     switch (tipo) {
       case 'Chiamata':
         return <Phone {...iconProps} />;
@@ -113,93 +128,86 @@ const ActivityCard: React.FC<{
 
   if (compact) {
     // Versione compatta per celle calendario - stile Google Calendar
+    const eventTitle = getEventTitle(activity);
+    const eventType = getEventType(activity);
+    const eventDate = getEventDate(activity);
+    const eventStatus = getEventStatus(activity);
+    
     return (
       <div
         onClick={onClick}
         className={cn(
           'w-full text-left px-1.5 py-1 mb-0.5 rounded-sm border transition-all cursor-pointer text-xs',
           'hover:shadow-sm hover:border-foreground/30 hover:bg-background/50',
-          getStatusClasses(activity.Stato),
-          getPriorityIndicator(activity.Priorità),
+          isGoogleEvent ? 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100' : getStatusClasses((activity as ActivityData).Stato),
+          !isGoogleEvent && getPriorityIndicator((activity as ActivityData).Priorità),
           // Rendi le attività completate leggermente più opache
           kanbanColumn === 'done' && 'opacity-80'
         )}
       >
         <div className="flex items-center gap-1 min-w-0">
           <div className="flex-shrink-0">
-            {getTypeIcon(activity.Tipo)}
+            {getTypeIcon(eventType)}
           </div>
           <div className="truncate flex-1 font-medium leading-tight">
-            {(() => {
-              // Logica fallback migliorata per il nome dell'attività
-              if (activity['Nome Lead'] && activity['Nome Lead'][0]) {
-                return activity['Nome Lead'][0];
-              }
-              if (activity.Titolo && activity.Titolo !== '') {
-                return activity.Titolo;
-              }
-              if (activity.Obiettivo && activity.Obiettivo !== '') {
-                return activity.Obiettivo;
-              }
-              // Fallback finale con tipo di attività
-              return activity.Tipo || 'Attività';
-            })()}
+            {eventTitle}
           </div>
         </div>
-        {activity.Data && (
-          <div className="text-[10px] text-muted-foreground mt-0.5 leading-none">
-            {format(new Date(activity.Data), 'HH:mm')}
-          </div>
-        )}
+        <div className="text-[10px] text-muted-foreground mt-0.5 leading-none">
+          {format(eventDate, 'HH:mm')}
+        </div>
       </div>
     );
   }
 
   // Versione espansa per vista agenda
+  const eventTitle = getEventTitle(activity);
+  const eventType = getEventType(activity);
+  const eventDate = getEventDate(activity);
+  const eventStatus = getEventStatus(activity);
+  const eventNotes = getEventNotes(activity);
+  
   return (
     <div
       onClick={onClick}
       className={cn(
         'w-full p-4 rounded-lg border transition-all cursor-pointer',
         'hover:shadow-sm hover:border-foreground/20 bg-background',
-        getStatusClasses(activity.Stato),
-        getPriorityIndicator(activity.Priorità),
+        isGoogleEvent ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30' : getStatusClasses((activity as ActivityData).Stato),
+        !isGoogleEvent && getPriorityIndicator((activity as ActivityData).Priorità),
         // Rendi le attività completate leggermente più opache
         kanbanColumn === 'done' && 'opacity-80'
       )}
     >
       <div className="flex items-start gap-3">
         <div className="mt-0.5">
-          {getTypeIcon(activity.Tipo)}
+          {getTypeIcon(eventType)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
               <h4 className="font-medium text-sm truncate">
-                {activity['Nome Lead'] && activity['Nome Lead'][0] || activity.Titolo || 'Attività'}
+                {eventTitle}
               </h4>
               <p className="text-sm text-muted-foreground mt-1">
-                {activity.Tipo}
-                {activity.Obiettivo && ` • ${activity.Obiettivo}`}
+                {eventType}
               </p>
             </div>
-            <Badge variant={getStatusVariant(activity.Stato)} className="text-xs shrink-0 ml-2">
-              {activity.Stato}
+            <Badge variant={getStatusVariant(eventStatus)} className="text-xs shrink-0 ml-2">
+              {eventStatus}
             </Badge>
           </div>
           
-          {activity.Note && (
+          {eventNotes && (
             <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-              {activity.Note}
+              {eventNotes}
             </p>
           )}
           
-          {activity.Data && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
-              <Clock className="w-3 h-3" />
-              {format(new Date(activity.Data), 'EEEE d MMMM, HH:mm', { locale: it })}
-            </div>
-          )}
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+            <Clock className="w-3 h-3" />
+            {format(eventDate, 'EEEE d MMMM, HH:mm', { locale: it })}
+          </div>
         </div>
       </div>
     </div>
@@ -209,8 +217,8 @@ const ActivityCard: React.FC<{
 // ===== DAY ACTIVITIES POPOVER COMPONENT =====
 const DayActivitiesPopover: React.FC<{
   date: Date;
-  activities: ActivityData[];
-  onActivityClick: (activity: ActivityData) => void;
+  activities: CalendarEvent[];
+  onActivityClick: (activity: CalendarEvent) => void;
   children: React.ReactNode;
 }> = ({ date, activities, onActivityClick, children }) => {
   const [open, setOpen] = React.useState(false);
@@ -266,14 +274,14 @@ const DayActivitiesPopover: React.FC<{
 const MonthView: React.FC<{
   currentDate: Date;
   selectedDate: Date | null;
-  activities: ActivityData[];
+  activities: CalendarEvent[];
   onDateClick: (date: Date) => void;
-  onActivityClick: (activity: ActivityData) => void;
+  onActivityClick: (activity: CalendarEvent) => void;
   onCreateActivity: (date: Date) => void;
   isToday: (date: Date) => boolean;
   isSelected: (date: Date) => boolean;
   isCurrentMonth: (date: Date) => boolean;
-}> = ({ 
+}> = ({
   currentDate, 
   selectedDate, 
   activities, 
@@ -299,20 +307,19 @@ const MonthView: React.FC<{
 
   // Raggruppa attività per data
   const activitiesByDate = React.useMemo(() => {
-    const grouped: Record<string, ActivityData[]> = {};
+    const grouped: Record<string, CalendarEvent[]> = {};
     activities.forEach(activity => {
-      if (activity.Data) {
-        const dateKey = format(new Date(activity.Data), 'yyyy-MM-dd');
-        if (!grouped[dateKey]) {
-          grouped[dateKey] = [];
-        }
-        grouped[dateKey].push(activity);
+      const eventDate = getEventDate(activity);
+      const dateKey = format(eventDate, 'yyyy-MM-dd');
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
       }
+      grouped[dateKey].push(activity);
     });
     return grouped;
   }, [activities]);
 
-  const getActivitiesForDate = (date: Date): ActivityData[] => {
+  const getActivitiesForDate = (date: Date): CalendarEvent[] => {
     const dateKey = format(date, 'yyyy-MM-dd');
     return activitiesByDate[dateKey] || [];
   };
@@ -455,8 +462,8 @@ const MonthView: React.FC<{
 // ===== WEEK VIEW COMPONENT =====
 const WeekView: React.FC<{
   currentDate: Date;
-  activities: ActivityData[];
-  onActivityClick: (activity: ActivityData) => void;
+  activities: CalendarEvent[];
+  onActivityClick: (activity: CalendarEvent) => void;
   onCreateActivity: (date: Date) => void;
   isToday: (date: Date) => boolean;
 }> = ({ currentDate, activities, onActivityClick, onCreateActivity, isToday: checkIsToday }) => {
@@ -473,8 +480,7 @@ const WeekView: React.FC<{
   // Filtra e raggruppa attività per giorno e ora
   const getActivitiesForDayAndHour = (day: Date, hour: number) => {
     return activities.filter(activity => {
-      if (!activity.Data) return false;
-      const activityDate = new Date(activity.Data);
+      const activityDate = getEventDate(activity);
       return (
         isSameDay(activityDate, day) &&
         activityDate.getHours() === hour
@@ -485,8 +491,8 @@ const WeekView: React.FC<{
   // Ottieni tutte le attività per un giorno
   const getActivitiesForDay = (day: Date) => {
     return activities.filter(activity => {
-      if (!activity.Data) return false;
-      return isSameDay(new Date(activity.Data), day);
+      const activityDate = getEventDate(activity);
+      return isSameDay(activityDate, day);
     });
   };
 
@@ -589,16 +595,14 @@ const WeekView: React.FC<{
                   
                   {/* Attività all-day o senza ora specifica - solo nella prima ora (8:00) */}
                   {hour === 8 && dayActivities.filter(activity => {
-                    if (!activity.Data) return true;
-                    const activityDate = new Date(activity.Data);
+                    const activityDate = getEventDate(activity);
                     const activityHour = activityDate.getHours();
                     return activityHour === 0 || activityHour < 8 || activityHour > 20;
                   }).length > 0 && (
                     <DayActivitiesPopover
                       date={day}
                       activities={dayActivities.filter(activity => {
-                        if (!activity.Data) return true;
-                        const activityDate = new Date(activity.Data);
+                        const activityDate = getEventDate(activity);
                         const activityHour = activityDate.getHours();
                         return activityHour === 0 || activityHour < 8 || activityHour > 20;
                       })}
@@ -610,8 +614,7 @@ const WeekView: React.FC<{
                       >
                         <div className="text-xs font-medium text-primary">
                           {dayActivities.filter(activity => {
-                            if (!activity.Data) return true;
-                            const activityDate = new Date(activity.Data);
+                            const activityDate = getEventDate(activity);
                             const activityHour = activityDate.getHours();
                             return activityHour === 0 || activityHour < 8 || activityHour > 20;
                           }).length} attività giornaliere
@@ -631,17 +634,17 @@ const WeekView: React.FC<{
 
 // ===== AGENDA VIEW COMPONENT =====
 const AgendaView: React.FC<{
-  activities: ActivityData[];
-  onActivityClick: (activity: ActivityData) => void;
+  activities: CalendarEvent[];
+  onActivityClick: (activity: CalendarEvent) => void;
 }> = ({ activities, onActivityClick }) => {
   // Raggruppa attività per data
   const activitiesByDate = React.useMemo(() => {
-    const grouped: Record<string, ActivityData[]> = {};
+    const grouped: Record<string, CalendarEvent[]> = {};
     activities
-      .filter(activity => activity.Data)
-      .sort((a, b) => new Date(a.Data!).getTime() - new Date(b.Data!).getTime())
+      .sort((a, b) => getEventDate(a).getTime() - getEventDate(b).getTime())
       .forEach(activity => {
-        const dateKey = format(new Date(activity.Data!), 'yyyy-MM-dd');
+        const eventDate = getEventDate(activity);
+        const dateKey = format(eventDate, 'yyyy-MM-dd');
         if (!grouped[dateKey]) {
           grouped[dateKey] = [];
         }
