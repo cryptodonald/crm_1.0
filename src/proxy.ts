@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { env } from '@/env';
 
 // Route che richiedono autenticazione
 const PROTECTED_ROUTES = [
@@ -77,14 +78,17 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Verifica validità del token (disabilitato temporaneamente per test)
-  // TODO: Fix JWT verification in Edge Runtime
-  console.log(`📝 [MIDDLEWARE] Token found, assuming valid for now: ${token.substring(0, 20)}...`);
-  
-  // Per ora assumiamo che il token sia valido se presente
-  const payload = { nome: 'Test User', email: 'test@example.com' };
-
-  console.log(`✅ [MIDDLEWARE] Auth valid for user: ${payload.nome} (${payload.email})`);
+  // Verifica validità del token con JWT
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET) as any;
+    console.log(`✅ [MIDDLEWARE] JWT verified for user: ${payload.nome || payload.email}`);
+  } catch (error) {
+    console.log(`❌ [MIDDLEWARE] JWT verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('from', pathname);
+    loginUrl.searchParams.set('error', 'invalid_token');
+    return NextResponse.redirect(loginUrl);
+  }
 
   // Redirect root alla dashboard se autenticato
   if (pathname === '/') {
