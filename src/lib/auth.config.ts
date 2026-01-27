@@ -2,19 +2,24 @@ import { type NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { encryptionService } from "@/lib/encryption";
 
-console.log('[NextAuth] Loading config...');
-console.log('[NextAuth] CLIENT_ID:', process.env.GOOGLE_OAUTH_CLIENT_ID ? '✅ Set' : '❌ Missing');
-console.log('[NextAuth] CLIENT_SECRET:', process.env.GOOGLE_OAUTH_CLIENT_SECRET ? '✅ Set' : '❌ Missing');
+const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
 
-if (!process.env.GOOGLE_OAUTH_CLIENT_ID || !process.env.GOOGLE_OAUTH_CLIENT_SECRET) {
-  throw new Error('Google OAuth credentials are missing!');
+console.log('[NextAuth] Loading config...');
+console.log('[NextAuth] CLIENT_ID:', clientId ? '✅ Set' : '❌ Missing');
+console.log('[NextAuth] CLIENT_SECRET:', clientSecret ? '✅ Set' : '❌ Missing');
+
+if (!clientId || !clientSecret) {
+  console.error('[NextAuth] GOOGLE_OAUTH_CLIENT_ID:', clientId ? 'set' : 'MISSING');
+  console.error('[NextAuth] GOOGLE_OAUTH_CLIENT_SECRET:', clientSecret ? 'set' : 'MISSING');
+  throw new Error('Google OAuth credentials are missing from environment variables!');
 }
 
 export const authConfig = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+      clientId: clientId,
+      clientSecret: clientSecret,
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
@@ -54,8 +59,8 @@ export const authConfig = {
             const response = await fetch('https://oauth2.googleapis.com/token', {
               method: 'POST',
               body: new URLSearchParams({
-                client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-                client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+                client_id: clientId,
+                client_secret: clientSecret,
                 grant_type: 'refresh_token',
                 refresh_token: encryptionService.decrypt(token.googleRefreshToken as string),
               }),
