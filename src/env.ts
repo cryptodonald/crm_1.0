@@ -13,7 +13,11 @@ type RequiredKeys =
   | 'DATABASE_URL'
   | 'GOOGLE_PLACES_API_KEY'
   | 'GITHUB_TOKEN'
-  | 'GITHUB_WEBHOOK_SECRET';
+  | 'GITHUB_WEBHOOK_SECRET'
+  | 'OPENAI_API_KEY'
+  | 'ENCRYPTION_MASTER_KEY'
+  | 'GOOGLE_OAUTH_CLIENT_ID'
+  | 'GOOGLE_OAUTH_CLIENT_SECRET';
 
 const requiredKeys: RequiredKeys[] = [
   'AIRTABLE_API_KEY',
@@ -25,6 +29,10 @@ const requiredKeys: RequiredKeys[] = [
   'GOOGLE_PLACES_API_KEY',
   'GITHUB_TOKEN',
   'GITHUB_WEBHOOK_SECRET',
+  'OPENAI_API_KEY',
+  'ENCRYPTION_MASTER_KEY',
+  'GOOGLE_OAUTH_CLIENT_ID',
+  'GOOGLE_OAUTH_CLIENT_SECRET',
 ];
 
 function mask(value: string | undefined): string {
@@ -52,15 +60,21 @@ if (missing.length > 0) {
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   AIRTABLE_API_KEY: envValues['AIRTABLE_API_KEY']!,
   AIRTABLE_BASE_ID: envValues['AIRTABLE_BASE_ID']!,
   VERCEL_BLOB_READ_WRITE_TOKEN: envValues['VERCEL_BLOB_READ_WRITE_TOKEN']!,
   NEXTAUTH_SECRET: envValues['NEXTAUTH_SECRET']!,
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL || '',
   JWT_SECRET: envValues['JWT_SECRET']!,
   DATABASE_URL: envValues['DATABASE_URL']!,
   GOOGLE_PLACES_API_KEY: envValues['GOOGLE_PLACES_API_KEY']!,
+  GOOGLE_OAUTH_CLIENT_ID: envValues['GOOGLE_OAUTH_CLIENT_ID']!,
+  GOOGLE_OAUTH_CLIENT_SECRET: envValues['GOOGLE_OAUTH_CLIENT_SECRET']!,
   GITHUB_TOKEN: envValues['GITHUB_TOKEN']!,
   GITHUB_WEBHOOK_SECRET: envValues['GITHUB_WEBHOOK_SECRET']!,
+  OPENAI_API_KEY: envValues['OPENAI_API_KEY']!,
+  ENCRYPTION_MASTER_KEY: envValues['ENCRYPTION_MASTER_KEY']!,
 };
 
 export function getEnvVar(name: string, defaultValue?: string): string {
