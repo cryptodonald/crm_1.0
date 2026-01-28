@@ -1,8 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { env } from '@/env';
 
-const JWT_SECRET = env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-do-not-use-in-prod';
 const JWT_EXPIRES_IN = '7d'; // Token valido per 7 giorni
 
 export interface UserData {
