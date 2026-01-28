@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
+import { RedisCache, generateCacheKey } from '@/lib/redis-cache';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 
 // 💥 DISABLE ALL NEXT.JS CACHING FOR THIS ROUTE
@@ -701,6 +702,10 @@ export async function POST(request: NextRequest) {
     const totalTime = Date.now() - startTime;
     recordApiLatency('orders', 'create', totalTime);
     
+    // Invalidate orders cache
+    await RedisCache.invalidateOrders();
+    console.log('🧹 Redis cache invalidated after order creation');
+    
     console.log(`✅ [CREATE ORDER] Complete! Order: ${orderId}, Items: ${orderItemsResult.length} (${totalTime}ms)`);
     
     return NextResponse.json({
@@ -802,6 +807,10 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
+    // Invalidate orders cache
+    await RedisCache.invalidateOrders();
+    console.log('🧹 Redis cache invalidated after order deletion');
+    
     console.log(`✅ [DELETE] Summary: ${deletedIds.length}/${orderIds.length} orders deleted successfully`);
 
     return NextResponse.json({
