@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAirtableKey, getAirtableBaseId, getAirtableLeadsTableId } from '@/lib/api-keys-service';
-import { leadsCache } from '@/lib/leads-cache';
+import { RedisCache, generateCacheKey } from '@/lib/redis-cache';
 import { invalidateLeadCache, invalidateUsersCache } from '@/lib/cache';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 import { LeadFormData } from '@/types/leads';
@@ -268,8 +268,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Invalida la cache dopo le eliminazioni
-    leadsCache.clear();
-    console.log('🧹 Cache cleared after deletions');
+    await RedisCache.invalidateLeads();
+    console.log('🧹 Redis cache invalidated after deletions');
 
     const result = {
       success: true,
@@ -319,7 +319,7 @@ export async function GET(request: NextRequest) {
     const ultraRefresh = searchParams.get('_ultraRefresh') === 'true';
     
     if (clearCache || ultraRefresh) {
-      leadsCache.clear();
+      await RedisCache.invalidateLeads();
     }
     
     console.log(`[API] Loading ${loadAll ? 'all' : 'paginated'} leads${clearCache || ultraRefresh ? ' (cache cleared)' : ''}`);
@@ -354,10 +354,10 @@ export async function GET(request: NextRequest) {
       
       if (!forceRefresh) {
         // Genera chiave cache basata sui parametri
-        cacheKey = leadsCache.generateKey(searchParams);
+        cacheKey = generateCacheKey(searchParams);
         
         // Controlla cache prima
-        cachedData = leadsCache.get(cacheKey);
+        cachedData = await RedisCache.getLeads(cacheKey);
         if (cachedData) {
           console.log(`🚀 [CACHE HIT] Serving ${cachedData.length} leads from cache`);
           const transformedData = {
@@ -369,7 +369,7 @@ export async function GET(request: NextRequest) {
         }
       } else {
         console.log(`🔄 [FORCE REFRESH] Bypassing cache and fetching fresh data from Airtable`);
-        cacheKey = leadsCache.generateKey(searchParams);
+        cacheKey = generateCacheKey(searchParams);
       }
       
       console.log(`💾 [CACHE MISS] Fetching from Airtable...`);
@@ -385,7 +385,7 @@ export async function GET(request: NextRequest) {
       }));
       
       // Salva in cache per future richieste
-      leadsCache.set(cacheKey, transformedRecords);
+      await RedisCache.setLeads(cacheKey, transformedRecords);
       
       const transformedData = {
         records: transformedRecords,
@@ -458,7 +458,7 @@ export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   if (searchParams.get('invalidate') === 'true') {
     console.log('[API] POST /api/leads?invalidate=true - Clearing cache');
-    leadsCache.clear();
+    await RedisCache.invalidateLeads();
     return NextResponse.json({ success: true, message: 'Cache invalidated' });
   }
   
@@ -636,7 +636,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ [CREATE LEAD] Successfully created:', createdRecord.id);
 
     // 🚀 Invalida entrambe le cache (legacy + KV) - async, non-blocking
-    leadsCache.clear();
+    await RedisCache.invalidateLeads();
     Promise.all([
       invalidateLeadCache(), // Invalida tutta la cache lead KV
       invalidateUsersCache(), // Gli users potrebbero avere conteggi aggiornati
