@@ -1,1 +1,18 @@
-import { DefaultSession } from "next-auth";\n\ndeclare module "next-auth" {\n  interface Session extends DefaultSession {\n    googleAccessToken?: string;\n    googleRefreshToken?: string;\n    googleCalendarEmail?: string;\n    googleTokenExpiresAt?: number;\n  }\n\n  interface JWT {\n    googleAccessToken?: string;\n    googleRefreshToken?: string;\n    googleCalendarEmail?: string;\n    googleTokenExpiresAt?: number;\n    error?: string;\n  }\n}\n
+import { DefaultSession } from "next-auth";
+
+declare module "next-auth" {
+  interface Session extends DefaultSession {
+    googleAccessToken?: string;
+    googleRefreshToken?: string;
+    googleCalendarEmail?: string;
+    googleTokenExpiresAt?: number;
+  }
+
+  interface JWT {
+    googleAccessToken?: string;
+    googleRefreshToken?: string;
+    googleCalendarEmail?: string;
+    googleTokenExpiresAt?: number;
+    error?: string;
+  }
+}
