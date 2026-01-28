@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     console.log('[GoogleCalendarEvents] Starting request');
 
     // Verifica sessione
-    const session = await getServerSession(authConfig);
+    const session: any = await getServerSession(authConfig);
     if (!session?.googleAccessToken) {
       console.warn('[GoogleCalendarEvents] No Google session found');
       return NextResponse.json(
