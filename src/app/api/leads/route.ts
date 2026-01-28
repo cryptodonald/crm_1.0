@@ -658,8 +658,8 @@ export async function POST(request: NextRequest) {
     if (!finalFields.Fonte) {
       console.warn('⚠️ [TRANSFORM] Fonte field missing from Airtable response');
       // Prova a ricostruirlo dal body se disponibile
-      if (body._fonteName) {
-        const sourceRecordIdAgain = await getMarketingSourceRecordId(apiKey, baseId, body._fonteName);
+      if ((body as any)._fonteName) {
+        const sourceRecordIdAgain = await getMarketingSourceRecordId(apiKey, baseId, (body as any)._fonteName);
         if (sourceRecordIdAgain) {
           finalFields.Fonte = [sourceRecordIdAgain];
           console.log(`✅ [TRANSFORM] Reconstructed Fonte from body: ${sourceRecordIdAgain}`);

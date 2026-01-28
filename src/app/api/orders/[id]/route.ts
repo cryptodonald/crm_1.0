@@ -331,7 +331,7 @@ export async function PUT(
       value: orderData['Stato_Ordine'],
       type: typeof orderData['Stato_Ordine'],
       length: orderData['Stato_Ordine']?.length,
-      charCodes: orderData['Stato_Ordine'] ? Array.from(orderData['Stato_Ordine']).map(c => c.charCodeAt(0)) : null,
+      charCodes: orderData['Stato_Ordine'] ? Array.from(orderData['Stato_Ordine'] as string).map((c: string) => c.charCodeAt(0)) : null,
       raw: JSON.stringify(orderData['Stato_Ordine'])
     });
 

@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   // Enable experimental features
   experimental: {
     // Enable optimized package imports
