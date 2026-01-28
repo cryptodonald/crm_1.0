@@ -63,6 +63,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash": "^4.17.20",
     "@types/mime-types": "^3.0.1",
+    "@upstash/ratelimit": "^2.0.8",
     "@vercel/blob": "^1.1.1",
     "@vercel/kv": "^3.0.0",
     "airtable": "^0.12.2",

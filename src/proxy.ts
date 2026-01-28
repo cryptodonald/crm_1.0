@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { authRateLimiter, apiRateLimiter, checkRateLimit } from './lib/ratelimit';
 
 // Route che richiedono autenticazione
 const PROTECTED_ROUTES = [
@@ -40,6 +41,28 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   console.log(`🔒 [MIDDLEWARE] Processing request for: ${pathname}`);
+
+  // Rate limiting per auth routes (5 req/min per IP)
+  if (pathname.startsWith('/api/auth/')) {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const { success, limit, remaining } = await checkRateLimit(ip, authRateLimiter);
+    
+    if (!success) {
+      console.warn(`🚫 [MIDDLEWARE] Rate limit exceeded for auth: ${ip}`);
+      return new NextResponse(
+        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        { 
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RateLimit-Limit': limit.toString(),
+            'X-RateLimit-Remaining': remaining.toString(),
+          }
+        }
+      );
+    }
+    console.log(`✅ [MIDDLEWARE] Auth API rate limit OK: ${remaining}/${limit} remaining`);
+  }
 
   // Verifica se è una route pubblica
   if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
@@ -100,6 +123,28 @@ export async function proxy(request: NextRequest) {
     }
     
     console.log(`✅ [MIDDLEWARE] Auth verified for user: ${payload.nome} (${payload.email || 'no-email'})`);
+    
+    // Rate limiting per protected API routes (30 req/min per user)
+    if (pathname.startsWith('/api/')) {
+      const userId = payload.userId as string;
+      const { success, limit, remaining } = await checkRateLimit(userId, apiRateLimiter);
+      
+      if (!success) {
+        console.warn(`🚫 [MIDDLEWARE] API rate limit exceeded for user: ${userId}`);
+        return new NextResponse(
+          JSON.stringify({ error: 'Too many API requests. Please slow down.' }),
+          { 
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-RateLimit-Limit': limit.toString(),
+              'X-RateLimit-Remaining': remaining.toString(),
+            }
+          }
+        );
+      }
+      console.log(`✅ [MIDDLEWARE] API rate limit OK: ${remaining}/${limit} remaining`);
+    }
     
     // Add user info to request headers for API routes
     const requestHeaders = new Headers(request.headers);
