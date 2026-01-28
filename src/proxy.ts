@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 
 // Route che richiedono autenticazione
 const PROTECTED_ROUTES = [
@@ -36,7 +36,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/',
 ];
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   console.log(`🔒 [MIDDLEWARE] Processing request for: ${pathname}`);
@@ -77,23 +77,62 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Verifica validità del token (disabilitato temporaneamente per test)
-  // TODO: Fix JWT verification in Edge Runtime
-  console.log(`📝 [MIDDLEWARE] Token found, assuming valid for now: ${token.substring(0, 20)}...`);
-  
-  // Per ora assumiamo che il token sia valido se presente
-  const payload = { nome: 'Test User', email: 'test@example.com' };
+  // Verify JWT with jose (Edge Runtime compatible)
+  try {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('❌ [MIDDLEWARE] JWT_SECRET not found in environment');
+      const loginUrl = new URL('/login', request.url);
+      return NextResponse.redirect(loginUrl);
+    }
 
-  console.log(`✅ [MIDDLEWARE] Auth valid for user: ${payload.nome} (${payload.email})`);
+    const secret = new TextEncoder().encode(jwtSecret);
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ['HS256']
+    });
+    
+    // Validate payload structure
+    if (!payload.userId || !payload.nome) {
+      console.error('❌ [MIDDLEWARE] Invalid token payload structure');
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('auth-token');
+      return response;
+    }
+    
+    console.log(`✅ [MIDDLEWARE] Auth verified for user: ${payload.nome} (${payload.email || 'no-email'})`);
+    
+    // Add user info to request headers for API routes
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-user-id', payload.userId as string);
+    requestHeaders.set('x-user-nome', payload.nome as string);
+    if (payload.email) {
+      requestHeaders.set('x-user-email', payload.email as string);
+    }
+    if (payload.ruolo) {
+      requestHeaders.set('x-user-ruolo', payload.ruolo as string);
+    }
 
-  // Redirect root alla dashboard se autenticato
-  if (pathname === '/') {
-    console.log(`🔄 [MIDDLEWARE] Redirecting root to dashboard`);
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Redirect root alla dashboard se autenticato
+    if (pathname === '/') {
+      console.log(`🔄 [MIDDLEWARE] Redirecting root to dashboard`);
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Utente autenticato, procedi con headers
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    
+  } catch (error) {
+    console.error('❌ [MIDDLEWARE] JWT verification failed:', error instanceof Error ? error.message : 'Unknown error');
+    
+    // Clear invalid token and redirect to login
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    response.cookies.delete('auth-token');
+    return response;
   }
-
-  // Utente autenticato, procedi
-  return NextResponse.next();
 }
 
 // Configurazione matcher - definisce su quali route applicare il middleware
