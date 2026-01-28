@@ -311,14 +311,18 @@ export class AirtableClient {
  * const records = await client.list(tableId);
  */
 export async function createAirtableClientFromKV(): Promise<AirtableClient> {
-  // Read credentials directly from environment variables (Vercel)
-  // No longer using KV storage for secrets
-  const { env } = await import('@/env');
-  
-  const apiKey = env.AIRTABLE_API_KEY;
-  const baseId = env.AIRTABLE_BASE_ID;
+  // Read credentials DIRECTLY from process.env (bypassing env.ts)
+  // This ensures compatibility with Vercel environment variables
+  const apiKey = process.env.AIRTABLE_API_KEY;
+  const baseId = process.env.AIRTABLE_BASE_ID;
 
   if (!apiKey || !baseId) {
+    console.error('[Airtable Client] Missing credentials:', {
+      hasApiKey: !!apiKey,
+      hasBaseId: !!baseId,
+      apiKeyPrefix: apiKey?.substring(0, 8) || 'MISSING',
+      baseIdPrefix: baseId?.substring(0, 8) || 'MISSING',
+    });
     throw new Error('Failed to initialize Airtable client: missing API key or base ID in environment variables');
   }
 
