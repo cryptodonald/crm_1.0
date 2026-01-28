@@ -224,13 +224,13 @@ export async function DELETE(request: NextRequest) {
 
     // Airtable supporta l'eliminazione di fino a 10 record per volta
     const BATCH_SIZE = 10;
-    const batches = [];
+    const batches: any[] = [];
     for (let i = 0; i < leadIds.length; i += BATCH_SIZE) {
       batches.push(leadIds.slice(i, i + BATCH_SIZE));
     }
 
-    const deletedIds = [];
-    const errors = [];
+    const deletedIds: any[] = [];
+    const errors: any[] = [];
 
     for (const batch of batches) {
       try {

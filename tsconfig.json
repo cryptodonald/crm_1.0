@@ -76,8 +76,6 @@
     ".next",
     "dist",
     "build",
-    "coverage",
-    "**/*.example.tsx",
-    "**/*.example.ts"
+    "coverage"
   ]
 }
