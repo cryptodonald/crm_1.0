@@ -6,7 +6,7 @@ import {
   getAirtableActivitiesTableId,
 } from '@/lib/api-keys-service';
 import { ActivityFormData } from '@/types/activities';
-import { getCachedActivities, invalidateActivitiesCache } from '@/lib/cache';
+import { RedisCache } from '@/lib/redis-cache';
 import { recordApiLatency, recordError } from '@/lib/performance-monitor';
 import { ActivitySyncService } from '@/lib/activity-sync-service';
 import { authConfig } from '@/lib/auth.config';
@@ -53,15 +53,23 @@ export async function GET(request: NextRequest) {
     
     const cacheKey = `activities:${limit}:${offset}:${sortField}:${sortDirection}:${filterKeys}`;
 
-    // 🚀 Use caching system for performance optimization (skip cache if force refresh)
+    // 🚀 Use Redis caching for performance optimization
     let result;
     if (forceRefresh) {
       console.log('🚀 [Activities API] Force refresh - bypassing cache entirely');
-      // Skip cache entirely and fetch fresh data
       result = await fetchActivitiesFromAirtable();
     } else {
-      console.log('💾 [Activities API] Using cached data when available');
-      result = await getCachedActivities(cacheKey, fetchActivitiesFromAirtable);
+      console.log('💾 [Activities API] Checking Redis cache...');
+      const cachedData = await RedisCache.getActivities(cacheKey);
+      if (cachedData) {
+        console.log('✅ [Activities API] Cache HIT - returning cached data');
+        result = JSON.parse(cachedData as string);
+      } else {
+        console.log('❌ [Activities API] Cache MISS - fetching from Airtable');
+        result = await fetchActivitiesFromAirtable();
+        // Store in cache for next time
+        await RedisCache.setActivities(cacheKey, result, 300); // 5 min TTL
+      }
     }
     
     // Inline function to fetch from Airtable
@@ -374,10 +382,9 @@ export async function POST(request: NextRequest) {
       throw new Error(result.error?.message || `Airtable API error: ${response.status}`);
     }
 
-    // 🚀 Invalidate cache after successful creation (async, non-blocking)
-    invalidateActivitiesCache().catch(error => {
-      console.warn('⚠️ [Activities API] Cache invalidation failed (non-critical):', error);
-    });
+    // 🚀 Invalidate Redis cache after successful creation
+    await RedisCache.invalidateActivities();
+    console.log('🧹 Redis cache invalidated after activity creation');
     
     const totalTime = performance.now() - requestStart;
     
