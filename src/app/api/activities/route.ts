@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       const cachedData = await RedisCache.getActivities(cacheKey);
       if (cachedData) {
         console.log('✅ [Activities API] Cache HIT - returning cached data');
-        result = JSON.parse(cachedData as string);
+        result = cachedData;
       } else {
         console.log('❌ [Activities API] Cache MISS - fetching from Airtable');
         result = await fetchActivitiesFromAirtable();

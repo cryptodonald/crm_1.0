@@ -29,7 +29,7 @@ export class RedisCache {
 
   static async setLeads(key: string, data: any, ttl: number = this.DEFAULT_TTL): Promise<void> {
     try {
-      await kv.setex(`${this.PREFIX}leads:${key}`, ttl, JSON.stringify(data));
+      await kv.setex(`${this.PREFIX}leads:${key}`, ttl, data);
       console.log(`✅ Redis SET leads:${key} (TTL: ${ttl}s)`);
     } catch (error) {
       console.error('❌ Redis SET error:', error);
@@ -66,7 +66,7 @@ export class RedisCache {
 
   static async setOrders(key: string, data: any, ttl: number = this.DEFAULT_TTL): Promise<void> {
     try {
-      await kv.setex(`${this.PREFIX}orders:${key}`, ttl, JSON.stringify(data));
+      await kv.setex(`${this.PREFIX}orders:${key}`, ttl, data);
       console.log(`✅ Redis SET orders:${key} (TTL: ${ttl}s)`);
     } catch (error) {
       console.error('❌ Redis SET orders error:', error);
@@ -101,7 +101,7 @@ export class RedisCache {
 
   static async setActivities(key: string, data: any, ttl: number = this.DEFAULT_TTL): Promise<void> {
     try {
-      await kv.setex(`${this.PREFIX}activities:${key}`, ttl, JSON.stringify(data));
+      await kv.setex(`${this.PREFIX}activities:${key}`, ttl, data);
       console.log(`✅ Redis SET activities:${key} (TTL: ${ttl}s)`);
     } catch (error) {
       console.error('❌ Redis SET activities error:', error);
@@ -148,7 +148,7 @@ export class RedisCache {
 
   static async set(key: string, value: any, ttl: number = this.DEFAULT_TTL): Promise<void> {
     try {
-      await kv.setex(`${this.PREFIX}${key}`, ttl, JSON.stringify(value));
+      await kv.setex(`${this.PREFIX}${key}`, ttl, value);
     } catch (error) {
       console.error('❌ Redis SET error:', error);
     }
