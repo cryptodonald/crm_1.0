@@ -73,3 +73,7 @@ temp_debug.js
 debug-token.js
 set-test-password.js
 setup-email.js
+
+# Local environment variables (DO NOT COMMIT)
+.env.local
+.env*.local
