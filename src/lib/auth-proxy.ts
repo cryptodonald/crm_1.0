@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-import { authRateLimiter, apiRateLimiter, checkRateLimit } from './lib/ratelimit';
+import { authRateLimiter, apiRateLimiter, checkRateLimit } from './ratelimit';
 
 // Route che richiedono autenticazione
 const PROTECTED_ROUTES = [

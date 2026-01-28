@@ -145,10 +145,12 @@ export async function GET(request: NextRequest) {
       
       // Combine all filter conditions
       if (filterConditions.length > 0) {
-        const filterFormula = filterConditions.length === 1 
+        const filterFormula = filterConditions.length === 1
           ? filterConditions[0]
           : `AND(${filterConditions.join(', ')})`;
-        url.searchParams.set('filterByFormula', filterFormula);
+        if (filterFormula) {
+          url.searchParams.set('filterByFormula', filterFormula);
+        }
       }
 
       console.log('📡 [Activities API] Fetching from Airtable:', url.toString());
@@ -298,7 +300,9 @@ export async function POST(request: NextRequest) {
       
       // Handle formats like "00:15", "1:30", "15" (minutes)
       if (duration.includes(':')) {
-        const [hours, minutes] = duration.split(':').map(Number);
+        const parts = duration.split(':').map(Number);
+        const hours = parts[0] || 0;
+        const minutes = parts[1] || 0;
         return (hours * 60) + minutes;
       }
       
@@ -384,9 +388,9 @@ export async function POST(request: NextRequest) {
 
     // 📅 Sync to Google Calendar (async, non-blocking)
     // Get session to retrieve Google Calendar token
-    const session = await getServerSession(authConfig);
+    const session: any = await getServerSession(authConfig);
     const userId = session?.user?.id || 'user_admin_001';
-    const encryptedAccessToken = (session as any)?.googleAccessToken; // Token is encrypted by NextAuth
+    const encryptedAccessToken = session?.googleAccessToken; // Token is encrypted by NextAuth
     
     console.log(`🔐 [Activities API] Session check - User: ${userId}, Has Google token: ${!!encryptedAccessToken}`);
     if (!encryptedAccessToken) {
