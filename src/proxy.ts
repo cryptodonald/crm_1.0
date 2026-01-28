@@ -1,4 +1,4 @@
-export { proxy as middleware } from './lib/auth-proxy';
+export { proxy } from './lib/auth-proxy';
 
 // Config must be exported directly, not re-exported
 export const config = {

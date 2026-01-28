@@ -199,6 +199,25 @@ Rischio **Stored XSS** se dati vengono renderizzati senza escape.
 
 ## 🟠 HIGH PRIORITY ISSUES
 
+### ✅ HIGH-000: Next.js Middleware Deprecation Warning [FIXED]
+
+**Status**: ✅ RISOLTO (2026-01-28)
+
+**Problema**:
+Next.js 16 depreca la convention `middleware.ts` in favore di `proxy.ts`.
+Build warning: "The 'middleware' file convention is deprecated. Please use 'proxy' instead."
+
+**Fix Applicato**:
+1. Rinominato `src/middleware.ts` → `src/proxy.ts`
+2. Aggiornato export da `export { proxy as middleware }` → `export { proxy }`
+3. Build warning completamente rimosso
+
+**Commit**: `fix(next16): migrate from middleware.ts to proxy.ts`
+
+**Effort**: 30 minuti
+
+---
+
 ### HIGH-001: Duplicated Environment Management Files
 
 **File**:
