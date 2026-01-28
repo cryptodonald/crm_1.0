@@ -423,9 +423,3 @@ Raccomandiamo di:
 ---
 
 *Per domande o problemi, consultare:*
-- `ISSUE_LIST.md` - Lista completa problemi
-- `FIX_PLAN.md` - Piano dettagliato fix
-- `STEP1_REVIEW_SUMMARY.md` - Review Step 1
-- `SECRETS_SCAN_PLAN.md` - Piano scan secrets
-
-**END OF AUDIT REPORT**
