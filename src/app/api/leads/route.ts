@@ -353,26 +353,30 @@ export async function GET(request: NextRequest) {
       let cacheKey = '';
       
       if (!forceRefresh) {
+        console.log('💾 [Leads API] Checking Redis cache...');
         // Genera chiave cache basata sui parametri
         cacheKey = generateCacheKey(searchParams);
+        console.log(`🔑 [Leads API] Cache key: ${cacheKey}`);
         
         // Controlla cache prima
         cachedData = await RedisCache.getLeads(cacheKey);
         if (cachedData) {
-          console.log(`🚀 [CACHE HIT] Serving ${cachedData.length} leads from cache`);
+          console.log(`✅ [Leads API] Cache HIT - Serving ${cachedData.length} leads from Redis`);
           const transformedData = {
             records: cachedData,
             offset: undefined,
             fromCache: true, // Flag per debug
           };
           return NextResponse.json(transformedData);
+        } else {
+          console.log('❌ [Leads API] Cache MISS - fetching from Airtable');
         }
       } else {
-        console.log(`🔄 [FORCE REFRESH] Bypassing cache and fetching fresh data from Airtable`);
+        console.log(`🔄 [Leads API] Force refresh - bypassing cache entirely`);
         cacheKey = generateCacheKey(searchParams);
       }
       
-      console.log(`💾 [CACHE MISS] Fetching from Airtable...`);
+      console.log(`📡 [Leads API] Fetching from Airtable...`);
       // Fetch ALL records using recursive pagination
       console.log('🔄 Loading ALL leads from Airtable...');
       const allRecords = await fetchAllRecords(apiKey, baseId, tableId, baseParams);
@@ -385,7 +389,9 @@ export async function GET(request: NextRequest) {
       }));
       
       // Salva in cache per future richieste
+      console.log(`💾 [Leads API] Saving ${transformedRecords.length} records to Redis cache...`);
       await RedisCache.setLeads(cacheKey, transformedRecords);
+      console.log(`✅ [Leads API] Cache saved successfully`);
       
       const transformedData = {
         records: transformedRecords,
@@ -393,7 +399,7 @@ export async function GET(request: NextRequest) {
         fromCache: false, // Flag per debug
       };
 
-      console.log(`✅ Loaded ${allRecords.length} leads total and cached`);
+      console.log(`✅ [Leads API] Loaded ${allRecords.length} leads total and cached`);
       return NextResponse.json(transformedData);
     } else {
       // Standard paginated request
