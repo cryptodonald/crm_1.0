@@ -367,7 +367,14 @@ export async function GET(request: NextRequest) {
             offset: undefined,
             fromCache: true, // Flag per debug
           };
-          return NextResponse.json(transformedData);
+          return NextResponse.json(transformedData, {
+            headers: {
+              'X-Cache-Status': 'HIT',
+              'X-Cache-Key': cacheKey,
+              'X-Cache-Source': 'Redis KV',
+              'X-Record-Count': String(cachedData.length)
+            }
+          });
         } else {
           console.log('❌ [Leads API] Cache MISS - fetching from Airtable');
         }
@@ -400,7 +407,15 @@ export async function GET(request: NextRequest) {
       };
 
       console.log(`✅ [Leads API] Loaded ${allRecords.length} leads total and cached`);
-      return NextResponse.json(transformedData);
+      return NextResponse.json(transformedData, {
+        headers: {
+          'X-Cache-Status': 'MISS',
+          'X-Cache-Key': cacheKey,
+          'X-Cache-Source': 'Airtable',
+          'X-Record-Count': String(transformedRecords.length),
+          'X-Cache-Saved': 'true'
+        }
+      });
     } else {
       // Standard paginated request
       const maxRecords = searchParams.get('maxRecords') || '25';
