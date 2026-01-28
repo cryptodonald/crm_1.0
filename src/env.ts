@@ -10,7 +10,6 @@ type RequiredKeys =
   | 'NEXTAUTH_SECRET'
   | 'JWT_SECRET'
   | 'VERCEL_BLOB_READ_WRITE_TOKEN'
-  | 'GOOGLE_PLACES_API_KEY'
   | 'GITHUB_TOKEN'
   | 'GITHUB_WEBHOOK_SECRET'
   | 'OPENAI_API_KEY'
@@ -24,7 +23,6 @@ const requiredKeys: RequiredKeys[] = [
   'NEXTAUTH_SECRET',
   'JWT_SECRET',
   'VERCEL_BLOB_READ_WRITE_TOKEN',
-  'GOOGLE_PLACES_API_KEY',
   'GITHUB_TOKEN',
   'GITHUB_WEBHOOK_SECRET',
   'OPENAI_API_KEY',
@@ -66,7 +64,7 @@ export const env = {
   NEXTAUTH_URL: process.env.NEXTAUTH_URL || '',
   JWT_SECRET: envValues['JWT_SECRET']!,
   DATABASE_URL: process.env.DATABASE_URL, // Optional: only needed if using a relational database
-  GOOGLE_PLACES_API_KEY: envValues['GOOGLE_PLACES_API_KEY']!,
+  GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '', // Uses same key as Maps API
   GOOGLE_OAUTH_CLIENT_ID: envValues['GOOGLE_OAUTH_CLIENT_ID']!,
   GOOGLE_OAUTH_CLIENT_SECRET: envValues['GOOGLE_OAUTH_CLIENT_SECRET']!,
   GITHUB_TOKEN: envValues['GITHUB_TOKEN']!,

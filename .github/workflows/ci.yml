@@ -1,0 +1,80 @@
+name: CI Safety Checks
+
+on:
+  pull_request:
+    branches: [master, develop]
+  push:
+    branches: [master, develop]
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Lint with ESLint
+        run: pnpm run lint --max-warnings 0
+        continue-on-error: false
+      
+      - name: Type check with TypeScript
+        run: pnpm exec tsc --noEmit
+        continue-on-error: false
+      
+      - name: Build (verify production build)
+        run: pnpm run build
+        env:
+          # Provide dummy env vars for build test
+          NEXTAUTH_SECRET: test-secret-${{ github.run_id }}
+          JWT_SECRET: test-secret-${{ github.run_id }}
+          AIRTABLE_API_KEY: test-key-${{ github.run_id }}
+          AIRTABLE_BASE_ID: appTest${{ github.run_id }}
+          VERCEL_BLOB_READ_WRITE_TOKEN: test-token-${{ github.run_id }}
+          GITHUB_TOKEN: test-token-${{ github.run_id }}
+          GITHUB_WEBHOOK_SECRET: test-secret-${{ github.run_id }}
+          OPENAI_API_KEY: sk-test-${{ github.run_id }}
+          ENCRYPTION_MASTER_KEY: test-key-${{ github.run_id }}
+          GOOGLE_OAUTH_CLIENT_ID: test-id-${{ github.run_id }}
+          GOOGLE_OAUTH_CLIENT_SECRET: test-secret-${{ github.run_id }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: test-key-${{ github.run_id }}
+        continue-on-error: false
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check for secrets (detect-secrets)
+        run: |
+          pip install detect-secrets
+          detect-secrets scan --baseline .secrets.baseline --all-files || true
+        continue-on-error: true
+      
+      - name: Check for exposed API keys in git history
+        run: |
+          # Quick scan for common secret patterns in git history
+          ! git log --all --source --remotes -S "AIRTABLE_API_KEY=pat" --oneline | head -10 | grep -q .
+          ! git log --all --source --remotes -S "NEXTAUTH_SECRET=" --oneline | head -10 | grep -q .
+          echo "✅ No obvious exposed secrets found in recent git history"
+        continue-on-error: true

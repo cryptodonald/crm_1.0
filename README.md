@@ -81,7 +81,7 @@ src/
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Environment variables (see `.env.example`)
+- Environment variables (see `VERCEL_ENV_LIST.md`)
 
 ### Installation
 
@@ -93,10 +93,71 @@ src/
 
 2. **Environment setup**:
 
+   Create `.env.local` with required variables from [VERCEL_ENV_LIST.md](VERCEL_ENV_LIST.md):
+
    ```bash
    cp .env.example .env.local
    # Edit .env.local with your actual API keys
+   # Required: AIRTABLE_API_KEY, AIRTABLE_BASE_ID, NEXTAUTH_SECRET, JWT_SECRET, etc.
    ```
+
+3. **Development server**:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Development Workflow
+
+**Type checking:**
+```bash
+npm run tsc --noEmit  # or: npx tsc --noEmit
+```
+
+**Linting:**
+```bash
+npm run lint
+```
+
+**Format code:**
+```bash
+npm run format
+```
+
+**Running tests:**
+```bash
+npm run test
+```
+
+**Full CI checks (before committing):**
+```bash
+npm run tsc --noEmit && npm run lint && npm run build
+```
+
+### Production Build
+
+```bash
+npm run build
+npm start
+```
+
+## 🔒 **Security & Environment Variables**
+
+All sensitive environment variables are managed through **Vercel Project Settings** in production.
+
+**Local development:** Use `.env.local` (git-ignored) — see [VERCEL_ENV_LIST.md](VERCEL_ENV_LIST.md) for complete list.
+
+**CI/CD:** GitHub Actions automatically runs type checking and linting on pull requests (see `.github/workflows/ci.yml`).
+
+⚠️ **Never commit secrets or `.env.local` to git.**
+
+## 📋 **Architecture & Documentation
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system design.
+
+See [REFACTOR_PLAN.md](REFACTOR_PLAN.md) for ongoing improvements and roadmap.
 
 3. **Development server**:
 
