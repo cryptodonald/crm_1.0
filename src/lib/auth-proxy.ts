@@ -42,27 +42,9 @@ export async function proxy(request: NextRequest) {
   
   console.log(`🔒 [MIDDLEWARE] Processing request for: ${pathname}`);
 
-  // Rate limiting per auth routes (5 req/min per IP)
-  if (pathname.startsWith('/api/auth/')) {
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-    const { success, limit, remaining } = await checkRateLimit(ip, authRateLimiter);
-    
-    if (!success) {
-      console.warn(`🚫 [MIDDLEWARE] Rate limit exceeded for auth: ${ip}`);
-      return new NextResponse(
-        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
-        { 
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-RateLimit-Limit': limit.toString(),
-            'X-RateLimit-Remaining': remaining.toString(),
-          }
-        }
-      );
-    }
-    console.log(`✅ [MIDDLEWARE] Auth API rate limit OK: ${remaining}/${limit} remaining`);
-  }
+  // Rate limiting DISABLED temporarily for debugging
+  // TODO: Re-enable after KV is properly configured
+  console.log(`⚠️ [MIDDLEWARE] Rate limiting DISABLED for: ${pathname}`);
 
   // Verifica se è una route pubblica
   if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
@@ -124,27 +106,8 @@ export async function proxy(request: NextRequest) {
     
     console.log(`✅ [MIDDLEWARE] Auth verified for user: ${payload.nome} (${payload.email || 'no-email'})`);
     
-    // Rate limiting per protected API routes (30 req/min per user)
-    if (pathname.startsWith('/api/')) {
-      const userId = payload.userId as string;
-      const { success, limit, remaining } = await checkRateLimit(userId, apiRateLimiter);
-      
-      if (!success) {
-        console.warn(`🚫 [MIDDLEWARE] API rate limit exceeded for user: ${userId}`);
-        return new NextResponse(
-          JSON.stringify({ error: 'Too many API requests. Please slow down.' }),
-          { 
-            status: 429,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-RateLimit-Limit': limit.toString(),
-              'X-RateLimit-Remaining': remaining.toString(),
-            }
-          }
-        );
-      }
-      console.log(`✅ [MIDDLEWARE] API rate limit OK: ${remaining}/${limit} remaining`);
-    }
+    // Rate limiting DISABLED for API routes too
+    console.log(`⚠️ [MIDDLEWARE] API rate limiting DISABLED`);
     
     // Add user info to request headers for API routes
     const requestHeaders = new Headers(request.headers);
