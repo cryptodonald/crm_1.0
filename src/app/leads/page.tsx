@@ -31,6 +31,12 @@ export default function LeadsPage() {
   } = useBatchLeadsPage(filters);
 
   console.log(`⚡ [Leads Page] Loaded in ${timing.total}ms (${timing.cached ? 'CACHED' : 'FRESH'})`);
+  console.log(`📊 [Leads Page] State:`, { 
+    leadsCount: leads.length, 
+    filters, 
+    loading,
+    hasStats: !!stats 
+  });
 
   // Handle CRUD operations (mantiene compatibilità con LeadsDataTable)
   const handleCreateClick = () => setNewLeadModalOpen(true);
@@ -126,6 +132,7 @@ export default function LeadsPage() {
               <LeadsStats
                 stats={stats}
                 loading={loading}
+                error={error}
                 className="w-full"
               />
             )}

@@ -1,16 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { LeadData, LeadsFilters } from '@/types/leads';
+import { LeadData, LeadsFilters, LeadsStats } from '@/types/leads';
 import { ActivityData } from '@/types/activities';
-
-interface LeadsStats {
-  totale: number;
-  nuoviUltimi7Giorni: number;
-  contattatiEntro48h: number;
-  tassoQualificazione: number;
-  tassoConversione: number;
-  byStato: Record<string, number>;
-  byProvenienza: Record<string, number>;
-}
 
 interface BatchLeadsPageData {
   leads: {
