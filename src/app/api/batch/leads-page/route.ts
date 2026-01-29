@@ -216,6 +216,7 @@ function calculateLeadsStats(
   tassoConversione: number;
   byStato: Record<string, number>;
   byProvenienza: Record<string, number>;
+  tendenza: 'stable';
 } {
   const start = performance.now();
   
@@ -278,7 +279,8 @@ function calculateLeadsStats(
     tassoQualificazione,
     tassoConversione,
     byStato,
-    byProvenienza
+    byProvenienza,
+    tendenza: 'stable' as const // Placeholder per compatibilità tipo
   };
 }
 
