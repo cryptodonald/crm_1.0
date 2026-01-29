@@ -90,9 +90,9 @@ export function useBatchLeadsPage(filters?: LeadsFilters): UseBatchLeadsPageRetu
       console.log(`   Stats calculated: ${data._timing.stats}ms`);
       
       // Update state with batch data
-      setLeads(data.leads.records);
-      setActivities(data.activities.records);
-      setStats(data.stats);
+      setLeads(data.leads?.records || []);
+      setActivities(data.activities?.records || []);
+      setStats(data.stats || null);
       setTiming({
         total: data._timing.total,
         cached: data._meta.cached
