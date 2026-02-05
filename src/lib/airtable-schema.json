@@ -1,0 +1,2979 @@
+{
+  "generatedAt": "2026-02-02T15:51:50.694Z",
+  "baseId": "app359c17lK0Ta8Ws",
+  "tables": {
+    "Lead": {
+      "id": "tblKIZ9CDjcQorONA",
+      "fields": {
+        "ID": {
+          "id": "fldFVsIGHZkLvnp5O",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Data": {
+          "id": "fldo1bSuO1yjHXjkL",
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "client"
+          }
+        },
+        "Referenza": {
+          "id": "fldPOa4TYVKbLiJTa",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKIZ9CDjcQorONA",
+            "isReversed": false,
+            "prefersSingleRecordLink": true,
+            "inverseLinkFieldId": "fld0mxht6l5onjOfT"
+          }
+        },
+        "Nome referenza": {
+          "id": "fldoCxUXtxrl6J7OJ",
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldPOa4TYVKbLiJTa",
+            "fieldIdInLinkedTable": "fldKeDrS1XiJ47Prc",
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Fonte": {
+          "id": "fldCoDBMqa36c2jJ2",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblXyEscyPcP8TMLG",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldr9lUxIj5ZNkXYT"
+          }
+        },
+        "Nome": {
+          "id": "fldKeDrS1XiJ47Prc",
+          "type": "singleLineText"
+        },
+        "Gender": {
+          "id": "fld42I37Sfnphcmza",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selBs9NpFhNiy5xFd",
+                "name": "male",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selvQSYRFNlwbWij2",
+                "name": "female",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selRNJPB5bx84CFny",
+                "name": "unknown",
+                "color": "tealLight2"
+              }
+            ]
+          }
+        },
+        "Telefono": {
+          "id": "fldJJO2MU9E1Q0U6I",
+          "type": "singleLineText"
+        },
+        "Email": {
+          "id": "fldM2RXG7aRwGXLZU",
+          "type": "email"
+        },
+        "Indirizzo": {
+          "id": "fldyt6SwpuJfROOd2",
+          "type": "multilineText"
+        },
+        "CAP": {
+          "id": "fldIzZxsJ9oRQIQy8",
+          "type": "number",
+          "options": {
+            "precision": 0
+          }
+        },
+        "Città": {
+          "id": "fldgTqcRN7Ce4hPrk",
+          "type": "singleLineText"
+        },
+        "Esigenza": {
+          "id": "fld7ALmK1onyIj1zX",
+          "type": "multilineText"
+        },
+        "Stato": {
+          "id": "fldzDSwT9nKOnbkan",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "seliAkKBnPT1hZTU9",
+                "name": "Nuovo"
+              },
+              {
+                "id": "sel8TCnoY9vGbxea6",
+                "name": "Contattato"
+              },
+              {
+                "id": "selYetjyVcwWAMELk",
+                "name": "Qualificato"
+              },
+              {
+                "id": "sel15ApWjxePXjIx1",
+                "name": "In Negoziazione"
+              },
+              {
+                "id": "selmcKxrWBk6a6E0S",
+                "name": "Cliente"
+              },
+              {
+                "id": "selfBi0UCg4Mt8w2P",
+                "name": "Perso"
+              },
+              {
+                "id": "seltQHPbL4JPt4ogP",
+                "name": "Sospeso"
+              }
+            ]
+          }
+        },
+        "Allegati": {
+          "id": "fldoI9OwYbSTJuDmE",
+          "type": "multilineText"
+        },
+        "Assegnatario": {
+          "id": "fldu170X3rbZBaGdj",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl141xF7ZQskCqGh",
+            "isReversed": false,
+            "prefersSingleRecordLink": true,
+            "inverseLinkFieldId": "fldtEVUcSYMyioncZ"
+          }
+        },
+        "Ordini": {
+          "id": "fldL4vLMGuXMCs9yA",
+          "type": "singleLineText"
+        },
+        "Attività": {
+          "id": "fldkdo2z38CnPc3Uk",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblbcuRXKrWvne0Wy",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldl9Pzx0SnlSrkXv"
+          }
+        },
+        "From field: Referenza": {
+          "id": "fld0mxht6l5onjOfT",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKIZ9CDjcQorONA",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldPOa4TYVKbLiJTa"
+          }
+        },
+        "Notes": {
+          "id": "fld4NKnBTOB0g1QYs",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblmvBiXtpQ2Qm0C7",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldnNg4T43UMokhNB"
+          }
+        },
+        "Conversations": {
+          "id": "fldoD2h8AYJf3zx23",
+          "type": "singleLineText"
+        },
+        "Order": {
+          "id": "fldwRJVejr2Grk4e8",
+          "type": "singleLineText"
+        },
+        "Orders": {
+          "id": "fldZj5OaJQQwyIHRt",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblkqfCMabBpVD1fP",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fld3dZM6IrbRLdXhg"
+          }
+        }
+      }
+    },
+    "Activity": {
+      "id": "tblbcuRXKrWvne0Wy",
+      "fields": {
+        "ID": {
+          "id": "fld6pXq1O74quaBeM",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "ID Lead": {
+          "id": "fldl9Pzx0SnlSrkXv",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKIZ9CDjcQorONA",
+            "isReversed": false,
+            "prefersSingleRecordLink": true,
+            "inverseLinkFieldId": "fldkdo2z38CnPc3Uk"
+          }
+        },
+        "Nome Lead": {
+          "id": "fldjTRENBzctRrCGL",
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldl9Pzx0SnlSrkXv",
+            "fieldIdInLinkedTable": "fldKeDrS1XiJ47Prc",
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Assegnatario": {
+          "id": "fldY0qOsEB266QoZ8",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl141xF7ZQskCqGh",
+            "isReversed": false,
+            "prefersSingleRecordLink": true,
+            "inverseLinkFieldId": "flddIU6nf39fivElY"
+          }
+        },
+        "Nome Assegnatario": {
+          "id": "fld1tvUfoVtr9G9PK",
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldY0qOsEB266QoZ8",
+            "fieldIdInLinkedTable": "fldPuUTYFd9Ln9LyK",
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Titolo": {
+          "id": "fldMHDDUqDvOOCLTt",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "{fldcR1a25ViHoT3mY} & \" - \" & {fldjTRENBzctRrCGL}",
+            "referencedFieldIds": [
+              "fldcR1a25ViHoT3mY",
+              "fldjTRENBzctRrCGL"
+            ],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Tipo": {
+          "id": "fldcR1a25ViHoT3mY",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selh4hcXUcSTqIeja",
+                "name": "Chiamata"
+              },
+              {
+                "id": "sell1DGXpBIhf6gGc",
+                "name": "WhatsApp"
+              },
+              {
+                "id": "selBOT0kksO9tFwHx",
+                "name": "Email"
+              },
+              {
+                "id": "selSq22haD7C0XuLY",
+                "name": "SMS"
+              },
+              {
+                "id": "selP090c7koWJtMJK",
+                "name": "Consulenza"
+              },
+              {
+                "id": "sel3OG6estfLqcNRM",
+                "name": "Follow-up"
+              },
+              {
+                "id": "selOMWh4gGTW4qRhF",
+                "name": "Altro"
+              }
+            ]
+          }
+        },
+        "Stato": {
+          "id": "fldcEU2D7zwwj28bS",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selmPSfxX4ZlqlWj0",
+                "name": "Da Pianificare"
+              },
+              {
+                "id": "sell1DGXpBIhf6gGc",
+                "name": "Pianificata"
+              },
+              {
+                "id": "sel6i5q728gFXUzRX",
+                "name": "In corso"
+              },
+              {
+                "id": "selPLPJxq3EH8wGj6",
+                "name": "In attesa"
+              },
+              {
+                "id": "selh4hcXUcSTqIeja",
+                "name": "Completata"
+              },
+              {
+                "id": "selBOT0kksO9tFwHx",
+                "name": "Annullata"
+              },
+              {
+                "id": "seliH3G82ErTqyW5S",
+                "name": "Rimandata"
+              }
+            ]
+          }
+        },
+        "Data": {
+          "id": "fldPvGAPV9iYGKvtJ",
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "client"
+          }
+        },
+        "Durata stimata": {
+          "id": "fldpBB4UKATOiXLru",
+          "type": "duration",
+          "options": {
+            "durationFormat": "h:mm"
+          }
+        },
+        "Obiettivo": {
+          "id": "fldDA3bPMzKloIWa2",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selIbwF8hyoSZr3Xx",
+                "name": "Primo contatto"
+              },
+              {
+                "id": "seldhPt4L5JEgRckz",
+                "name": "Qualificazione lead"
+              },
+              {
+                "id": "sel1NxcyL8BnS0G6i",
+                "name": "Presentazione prodotto"
+              },
+              {
+                "id": "sel0e6ifokVgr5nVv",
+                "name": "Invio preventivo"
+              },
+              {
+                "id": "selrzREb2ElIOqPfr",
+                "name": "Follow-up preventivo"
+              },
+              {
+                "id": "selfilHYcBqXWncpR",
+                "name": "Negoziazione"
+              },
+              {
+                "id": "sel1ET0KfDZvPQOBp",
+                "name": "Chiusura ordine"
+              },
+              {
+                "id": "selFm8ViANI7Ik77i",
+                "name": "Fissare appuntamento"
+              },
+              {
+                "id": "selDW2tjHogjRI3PT",
+                "name": "Confermare appuntamento"
+              },
+              {
+                "id": "selQWLogWZP6LpjWZ",
+                "name": "Promemoria appuntamento"
+              },
+              {
+                "id": "selLhgUtgO9GjxhwJ",
+                "name": "Consegna prodotto"
+              },
+              {
+                "id": "seloxGBJDTIKVWIKv",
+                "name": "Assistenza tecnica"
+              },
+              {
+                "id": "selHft0kCQZLsz4Zo",
+                "name": "Controllo soddisfazione"
+              },
+              {
+                "id": "seljKRO4Jd9m1mtsi",
+                "name": "Upsell Cross-sell"
+              },
+              {
+                "id": "selis1dYUPSj7d3OY",
+                "name": "Richiesta recensione"
+              }
+            ]
+          }
+        },
+        "Priorità": {
+          "id": "fldjihrvpzgl1bc4h",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "sellkAiv70gepiRPd",
+                "name": "Bassa"
+              },
+              {
+                "id": "selmjvfo3CulzzvDJ",
+                "name": "Media"
+              },
+              {
+                "id": "selUtGLEYZ83becuO",
+                "name": "Alta"
+              },
+              {
+                "id": "sellKM4ZLSQFtpVba",
+                "name": "Urgente"
+              }
+            ]
+          }
+        },
+        "Note": {
+          "id": "fldrcsQBXJAbwXtJX",
+          "type": "multilineText"
+        },
+        "Esito": {
+          "id": "fldaY6kTm1VVtZgGm",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selVB6wt8nBmYcyjj",
+                "name": "Contatto riuscito"
+              },
+              {
+                "id": "seld8cIdyXuSeYUgf",
+                "name": "Nessuna risposta"
+              },
+              {
+                "id": "selZJayh0QmhZofkT",
+                "name": "Numero errato"
+              },
+              {
+                "id": "selVuHuaA8FERYu1e",
+                "name": "Non disponibile"
+              },
+              {
+                "id": "selAf23wrvvL0Sbja",
+                "name": "Non presentato"
+              },
+              {
+                "id": "selW2KLU11985uy1H",
+                "name": "Molto interessato"
+              },
+              {
+                "id": "selEvW5eC2tuAj5UM",
+                "name": "Interessato"
+              },
+              {
+                "id": "seliUoHiE3nD7OjHG",
+                "name": "Poco interessato"
+              },
+              {
+                "id": "selv783iyPfK22JEO",
+                "name": "Non interessato"
+              },
+              {
+                "id": "selMUhsMy4pWjeXNf",
+                "name": "Informazioni raccolte"
+              },
+              {
+                "id": "selyNOLE8pWpaQkma",
+                "name": "Preventivo richiesto"
+              },
+              {
+                "id": "selZBskt74KIR4L5m",
+                "name": "Preventivo inviato"
+              },
+              {
+                "id": "selTkCvn6lLlro9p3",
+                "name": "Appuntamento fissato"
+              },
+              {
+                "id": "selX7rihWzAhRkgGs",
+                "name": "Ordine confermato"
+              },
+              {
+                "id": "selOi8DodZ4dBDqjI",
+                "name": "Opportunità persa"
+              },
+              {
+                "id": "selitAKZtQBJhpTX0",
+                "name": "Servizio completato"
+              },
+              {
+                "id": "selXOvoiU9YGBhGH7",
+                "name": "Problema risolto"
+              },
+              {
+                "id": "selGVkVhr5uXCUSQb",
+                "name": "Cliente soddisfatto"
+              },
+              {
+                "id": "selCZZvfxY38Jnzte",
+                "name": "Recensione ottenuta"
+              }
+            ]
+          }
+        },
+        "Prossima azione": {
+          "id": "fldrJg8nLxcJP4hbF",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selDXbcpmEmMLZ0vA",
+                "name": "Chiamata"
+              },
+              {
+                "id": "sel7TNBNxM5IszekJ",
+                "name": "WhatsApp"
+              },
+              {
+                "id": "selj6pR9gRq6eMxVR",
+                "name": "Email"
+              },
+              {
+                "id": "sel36RS8T68x06asR",
+                "name": "SMS"
+              },
+              {
+                "id": "seln7hBtuMf5Hk4Aj",
+                "name": "Consulenza"
+              },
+              {
+                "id": "selDIo8qcIpsMcCz6",
+                "name": "Follow-up"
+              },
+              {
+                "id": "selnZr9ztdpEaUKyz",
+                "name": "Nessuna"
+              }
+            ]
+          }
+        },
+        "Data prossima azione": {
+          "id": "fldS3v6etzoTOExOP",
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "client"
+          }
+        },
+        "Allegati": {
+          "id": "fldPcEwR5jCyIhPvC",
+          "type": "multilineText"
+        },
+        "Creato il ": {
+          "id": "fldy429iW236noQ8B",
+          "type": "createdTime",
+          "options": {
+            "result": {
+              "type": "dateTime",
+              "options": {
+                "dateFormat": {
+                  "name": "local",
+                  "format": "l"
+                },
+                "timeFormat": {
+                  "name": "24hour",
+                  "format": "HH:mm"
+                },
+                "timeZone": "client"
+              }
+            }
+          }
+        },
+        "Ultima modifica": {
+          "id": "fldzEZhPBXa68idd0",
+          "type": "lastModifiedTime",
+          "options": {
+            "isValid": true,
+            "referencedFieldIds": [],
+            "result": {
+              "type": "dateTime",
+              "options": {
+                "dateFormat": {
+                  "name": "local",
+                  "format": "l"
+                },
+                "timeFormat": {
+                  "name": "24hour",
+                  "format": "HH:mm"
+                },
+                "timeZone": "client"
+              }
+            }
+          }
+        },
+        "Order": {
+          "id": "fldSDUhq6QLMQPOsz",
+          "type": "singleLineText"
+        }
+      }
+    },
+    "Notes": {
+      "id": "tblmvBiXtpQ2Qm0C7",
+      "fields": {
+        "ID": {
+          "id": "fldQ9C8FopcgY5olR",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Lead": {
+          "id": "fldnNg4T43UMokhNB",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKIZ9CDjcQorONA",
+            "isReversed": false,
+            "prefersSingleRecordLink": true,
+            "inverseLinkFieldId": "fld4NKnBTOB0g1QYs"
+          }
+        },
+        "User": {
+          "id": "fldV9X9o3K9xNgbka",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl141xF7ZQskCqGh",
+            "isReversed": false,
+            "prefersSingleRecordLink": true,
+            "inverseLinkFieldId": "fldiQQFLoTV7efMjv"
+          }
+        },
+        "Content": {
+          "id": "fldcN1Bb8fjT46OyO",
+          "type": "multilineText"
+        },
+        "Type": {
+          "id": "fldEe2eW9PboYAcRS",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selNsGO82HevBq9AX",
+                "name": "Riflessione",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selu584XIDEKESLxG",
+                "name": "Promemoria",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selBbP5YVvOD7wBrO",
+                "name": "Follow-up",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selAXRBMXtsRjFVy9",
+                "name": "Info Cliente",
+                "color": "greenLight2"
+              }
+            ]
+          }
+        },
+        "Pinned": {
+          "id": "flduQTxMKNqGqe5i8",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        "CreatedAt": {
+          "id": "fldY6MDn5uxeCtkBA",
+          "type": "createdTime",
+          "options": {
+            "result": {
+              "type": "dateTime",
+              "options": {
+                "dateFormat": {
+                  "name": "iso",
+                  "format": "YYYY-MM-DD"
+                },
+                "timeFormat": {
+                  "name": "24hour",
+                  "format": "HH:mm"
+                },
+                "timeZone": "Europe/Rome"
+              }
+            }
+          }
+        }
+      }
+    },
+    "User": {
+      "id": "tbl141xF7ZQskCqGh",
+      "fields": {
+        "ID": {
+          "id": "fldTcrLFlAu7xd3xd",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Nome": {
+          "id": "fldPuUTYFd9Ln9LyK",
+          "type": "singleLineText"
+        },
+        "Email": {
+          "id": "fld5F70WsIXmO7Jmr",
+          "type": "email"
+        },
+        "Attivo": {
+          "id": "fld7y6Wq3Rgggc7nb",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        "Ruolo": {
+          "id": "fldFoPbzvdL39ZLWV",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "seleljf7WCbU4A02C",
+                "name": "Admin"
+              },
+              {
+                "id": "selefdVM41cJiLJHj",
+                "name": "Sales"
+              }
+            ]
+          }
+        },
+        "Telefono": {
+          "id": "fldICIhUTA2KIrx5s",
+          "type": "phoneNumber"
+        },
+        "Activity": {
+          "id": "flddIU6nf39fivElY",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblbcuRXKrWvne0Wy",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldY0qOsEB266QoZ8"
+          }
+        },
+        "Lead": {
+          "id": "fldtEVUcSYMyioncZ",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKIZ9CDjcQorONA",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldu170X3rbZBaGdj"
+          }
+        },
+        "Automations": {
+          "id": "fldY1HqSbYus6Pteq",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblSd4GAZo9yHQvG0",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldUz1TRvalxuYfFL"
+          }
+        },
+        "Password": {
+          "id": "fldbo4AIlMX7FSyJt",
+          "type": "singleLineText"
+        },
+        "Avatar_URL": {
+          "id": "fldrHmmV8pAzaMU46",
+          "type": "url"
+        },
+        "Orders": {
+          "id": "fldjiodCTOFhX8Upu",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblkqfCMabBpVD1fP",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "flduS5UnHPMVTi7j3"
+          }
+        },
+        "Commission_Payments": {
+          "id": "fld5vnck9OAmFgDrj",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblbn6gRCwpmYICdZ",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldcgx9z01MkxV2uY"
+          }
+        },
+        "AI_Conversations": {
+          "id": "fldtBeb2r7gA6HJWS",
+          "type": "singleLineText"
+        },
+        "Notes": {
+          "id": "fldiQQFLoTV7efMjv",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblmvBiXtpQ2Qm0C7",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldV9X9o3K9xNgbka"
+          }
+        }
+      }
+    },
+    "Automations": {
+      "id": "tblSd4GAZo9yHQvG0",
+      "fields": {
+        "ID": {
+          "id": "fldER6lYod0IkPSZH",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Name": {
+          "id": "fld7UCuiiSPzduZiU",
+          "type": "singleLineText"
+        },
+        "Category": {
+          "id": "fldLB8NTUKbbTjqSj",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selMUjgiUJYT8riEQ",
+                "name": "Gestione Lead"
+              },
+              {
+                "id": "seltpXD0L7PI1KErC",
+                "name": "Gestione Activity"
+              },
+              {
+                "id": "selup11z1eYsH27z1",
+                "name": "Gestione Order"
+              },
+              {
+                "id": "selySCT4RRNlUsibN",
+                "name": "Gestione Products"
+              },
+              {
+                "id": "selLrks54RjdRbMnH",
+                "name": "Gestione User"
+              },
+              {
+                "id": "selEJygyg1g694vhG",
+                "name": "Sistema"
+              },
+              {
+                "id": "selQ4eZNNfPVaH3Ah",
+                "name": "Report"
+              },
+              {
+                "id": "selog0HsMrI0B5gyQ",
+                "name": "Pulizia Dati"
+              }
+            ]
+          }
+        },
+        "Priority": {
+          "id": "fldFD9hyBeFGhFpaU",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selHx4NLoDRbQiqmb",
+                "name": "Bassa"
+              },
+              {
+                "id": "selsJcJ4Rs5rHTAka",
+                "name": "Media"
+              },
+              {
+                "id": "sel0HmDtJVIQXOipj",
+                "name": "Alta"
+              },
+              {
+                "id": "sel7VzgVJDo6A1i79",
+                "name": "Critica"
+              }
+            ]
+          }
+        },
+        "IsActive": {
+          "id": "fld6LSkcukbmhSgFn",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        "TriggerTable": {
+          "id": "fldbl26ucKOv47Nfy",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selxFdOVTG1FlhBjF",
+                "name": "Lead"
+              },
+              {
+                "id": "selaBog97vxnewLwe",
+                "name": "Activity"
+              },
+              {
+                "id": "selbqGy9RKvqZKCCR",
+                "name": "Order"
+              },
+              {
+                "id": "sel8cbkivZUX6dhQi",
+                "name": "Products"
+              },
+              {
+                "id": "selUhuCyR0gs4YPYo",
+                "name": "User"
+              },
+              {
+                "id": "sel2Z5x82rFW3IE0z",
+                "name": "System"
+              }
+            ]
+          }
+        },
+        "TriggerEvent": {
+          "id": "fldZhjH5BrMzfrnQ8",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selkvGMpyLMebujfk",
+                "name": "Record Created",
+                "color": "blueLight2"
+              },
+              {
+                "id": "seldmR76TIZ2lVuRi",
+                "name": "Record Updated",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selr3Q2gpX5xTJpTd",
+                "name": "Record Deleted",
+                "color": "greenLight2"
+              }
+            ]
+          }
+        },
+        "TriggerField": {
+          "id": "fldcbulewcZv9x8E0",
+          "type": "singleLineText"
+        },
+        "TriggerOperator": {
+          "id": "fldsiCrx99OZAc6mi",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selWVsZqRupVj3eUL",
+                "name": "equals",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel16qwkWhZurJk3t",
+                "name": "not_equals",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selJpQhulX9QTZSpt",
+                "name": "contains",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selF7DZvFqi6RsUmS",
+                "name": "is_empty",
+                "color": "greenLight2"
+              },
+              {
+                "id": "selKFNbZbFkHweyxh",
+                "name": "is_not_empty",
+                "color": "yellowLight2"
+              }
+            ]
+          }
+        },
+        "TriggerOperator2": {
+          "id": "fld82PjklhSCyBqut",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selWVsZqRupVj3eUL",
+                "name": "equals",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel16qwkWhZurJk3t",
+                "name": "not_equals",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selJpQhulX9QTZSpt",
+                "name": "contains",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selF7DZvFqi6RsUmS",
+                "name": "is_empty",
+                "color": "greenLight2"
+              },
+              {
+                "id": "selKFNbZbFkHweyxh",
+                "name": "is_not_empty",
+                "color": "yellowLight2"
+              }
+            ]
+          }
+        },
+        "TriggerValue": {
+          "id": "fldsJKwzYPAp0gpjq",
+          "type": "singleLineText"
+        },
+        "TriggerValue2": {
+          "id": "fldeVWXtoZeurnf60",
+          "type": "singleLineText"
+        },
+        "LastExecuted": {
+          "id": "fldT40thLOuKETzBX",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          }
+        },
+        "ExecutionCount": {
+          "id": "fldDprmtNnxB9wbCz",
+          "type": "number",
+          "options": {
+            "precision": 0
+          }
+        },
+        "CreatedBy": {
+          "id": "fldUz1TRvalxuYfFL",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl141xF7ZQskCqGh",
+            "isReversed": false,
+            "prefersSingleRecordLink": true,
+            "inverseLinkFieldId": "fldY1HqSbYus6Pteq"
+          }
+        },
+        "Description": {
+          "id": "fldf3XGjuOxwoPtp2",
+          "type": "multilineText"
+        },
+        "ActionType": {
+          "id": "fldxTKv52oidsVOgY",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selSzFAdut88Z8tz3",
+                "name": "update_field",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selp9FoEjB2jgymSP",
+                "name": "create_activity",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selD4T0OC99HC7eCY",
+                "name": "send_notification",
+                "color": "tealLight2"
+              }
+            ]
+          }
+        },
+        "ActionTargetTable": {
+          "id": "fldea86uuuN6fgKyJ",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "sel0NPh0ZEb1tdwA2",
+                "name": "Lead",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selKQfjmW3MsucGWA",
+                "name": "Activity",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selafsbDBqHB3b6l8",
+                "name": "Order",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selIhWFTZt7IYbbEZ",
+                "name": "User",
+                "color": "greenLight2"
+              }
+            ]
+          }
+        },
+        "ActionTargetField": {
+          "id": "fldBMRaRVEgxyggUx",
+          "type": "singleLineText"
+        },
+        "ActionValue": {
+          "id": "fldScr0u094iiIGEy",
+          "type": "singleLineText"
+        },
+        "TriggerField2": {
+          "id": "fld6Peej0Yj1mcbGe",
+          "type": "singleLineText"
+        },
+        "TriggerLogic": {
+          "id": "fld3JQ1ij2TMGQbdl",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selh6Tqo7PkO2zzgr",
+                "name": "AND",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selFPmGgA5qrOfMDv",
+                "name": "OR",
+                "color": "cyanLight2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "Products": {
+      "id": "tblEFvr3aT2jQdYUL",
+      "fields": {
+        "Codice_Matrice": {
+          "id": "fldf5PKjtvf3P9BSf",
+          "type": "singleLineText"
+        },
+        "Nome_Prodotto": {
+          "id": "fldnfP2LuK00IeR83",
+          "type": "singleLineText"
+        },
+        "Metadata": {
+          "id": "fld0g5uzN3scrhewX",
+          "type": "multilineText"
+        },
+        "Descrizione": {
+          "id": "fld7udAiJPd0lxR2M",
+          "type": "multilineText"
+        },
+        "Categoria": {
+          "id": "fldCMCaLlXpQYoT2d",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "sel0GSvD7norcYdbk",
+                "name": "Materassi",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selbhkabpPkaDwTGq",
+                "name": "Reti",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sell4KuXpSUZi1jA2",
+                "name": "Cuscini",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel5cQAYbOHmAudr4",
+                "name": "Letti",
+                "color": "grayLight2"
+              },
+              {
+                "id": "seliFRwYKaA6mM4gu",
+                "name": "Accessori",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel00geSXCIcBksfI",
+                "name": "Altro",
+                "color": "blueLight2"
+              }
+            ]
+          }
+        },
+        "Prezzo_Listino_Attuale": {
+          "id": "fldrrD3mW6B0KPDv5",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Costo_Attuale": {
+          "id": "fld6mXCvw3WZ24PH1",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Margine_Standard": {
+          "id": "fld8pq835edGJruAP",
+          "type": "percent",
+          "options": {
+            "precision": 2
+          }
+        },
+        "Foto_Prodotto": {
+          "id": "fld6blsbk5MH1QJsl",
+          "type": "multipleAttachments",
+          "options": {
+            "isReversed": false
+          }
+        },
+        "Schede_Tecniche": {
+          "id": "fldxtFQZgmNUiODEj",
+          "type": "multipleAttachments",
+          "options": {
+            "isReversed": false
+          }
+        },
+        "Manuali": {
+          "id": "fldDmxM7yKC5PH7OH",
+          "type": "multipleAttachments",
+          "options": {
+            "isReversed": false
+          }
+        },
+        "Certificazioni": {
+          "id": "fldKfcHq8EOreZeNi",
+          "type": "multipleAttachments",
+          "options": {
+            "isReversed": false
+          }
+        },
+        "Attivo": {
+          "id": "fldH21aOdPe6q5Hwe",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        "In_Evidenza": {
+          "id": "fld2pmubbYdlqou3W",
+          "type": "checkbox",
+          "options": {
+            "icon": "star",
+            "color": "yellowBright"
+          }
+        },
+        "Product_Variants": {
+          "id": "fldcTbEStsa1OXEhc",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblGnZgea6HlO2pJ4",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldPOTbVPXlwSv8CX"
+          }
+        },
+        "Product_Price_History": {
+          "id": "fldk8bWtscU83cgts",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblXtMoiDwLEBG5WE",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "flddACnZLYJL3LUJH"
+          }
+        },
+        "Order_Items": {
+          "id": "fldAc77TrLphlTvuV",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblxzhMCa5UJOMZqC",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldZGeKUdK49WaCJD"
+          }
+        }
+      }
+    },
+    "Product_Variants": {
+      "id": "tblGnZgea6HlO2pJ4",
+      "fields": {
+        "ID_Variante": {
+          "id": "fldCyKxW7OtVzruuD",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "ID_Prodotto": {
+          "id": "fldPOTbVPXlwSv8CX",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblEFvr3aT2jQdYUL",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldcTbEStsa1OXEhc"
+          }
+        },
+        "Tipo_Variante": {
+          "id": "fld76sosPd6N9CyYM",
+          "type": "singleLineText"
+        },
+        "Codice_Variante": {
+          "id": "fldyUMyeLliWoa5CP",
+          "type": "singleLineText"
+        },
+        "Nome_Variante": {
+          "id": "fldNAjiLucHjGQArQ",
+          "type": "singleLineText"
+        },
+        "Descrizione_Variante": {
+          "id": "fldZz8UM21ABwwNvJ",
+          "type": "multilineText"
+        },
+        "Prezzo_Aggiuntivo_Attuale": {
+          "id": "fldrszGsOcpwNfb6M",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Costo_Aggiuntivo_Attuale": {
+          "id": "fldeTUHJMy6a0qcTc",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Posizione": {
+          "id": "fldn5nJx0KhnWqCwi",
+          "type": "number",
+          "options": {
+            "precision": 0
+          }
+        },
+        "Attivo": {
+          "id": "fldbt0RXTaIkMd1uF",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        "Product_Price_History": {
+          "id": "fldaMVNaGzS9mtKpE",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblXtMoiDwLEBG5WE",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldHqRKbtjOWWgNDY"
+          }
+        },
+        "Order_Items": {
+          "id": "fldPkRbJEjzuFdtzF",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblxzhMCa5UJOMZqC",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldKWCrN5sxh7ImNq"
+          }
+        },
+        "Product_Structures": {
+          "id": "flduMIWF7H4h3E18r",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl58tZxGfEnLpUZA",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldOmV1x9AjTXS7Rd"
+          }
+        }
+      }
+    },
+    "Product_Structures": {
+      "id": "tbl58tZxGfEnLpUZA",
+      "fields": {
+        "ID_Struttura": {
+          "id": "fldQbrcmblGqdC7uK",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Nome": {
+          "id": "fldgqiEUXdssXskHP",
+          "type": "singleLineText"
+        },
+        "Descrizione": {
+          "id": "fld1mSHas3qImJlCW",
+          "type": "multilineText"
+        },
+        "Campi_JSON": {
+          "id": "fldNYgShbWYl54lbn",
+          "type": "multilineText"
+        },
+        "Attiva": {
+          "id": "fldmCDyiPiLc2z03p",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        "Data_Creazione": {
+          "id": "fldkcnayxkyHb1U0q",
+          "type": "createdTime",
+          "options": {
+            "result": {
+              "type": "dateTime",
+              "options": {
+                "dateFormat": {
+                  "name": "local",
+                  "format": "l"
+                },
+                "timeFormat": {
+                  "name": "12hour",
+                  "format": "h:mma"
+                },
+                "timeZone": "client"
+              }
+            }
+          }
+        },
+        "Data_Modifica": {
+          "id": "fldNexSklGqEc9PvK",
+          "type": "lastModifiedTime",
+          "options": {
+            "isValid": true,
+            "referencedFieldIds": [],
+            "result": {
+              "type": "dateTime",
+              "options": {
+                "dateFormat": {
+                  "name": "local",
+                  "format": "l"
+                },
+                "timeFormat": {
+                  "name": "12hour",
+                  "format": "h:mma"
+                },
+                "timeZone": "client"
+              }
+            }
+          }
+        },
+        "Product_Variants": {
+          "id": "fldOmV1x9AjTXS7Rd",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblGnZgea6HlO2pJ4",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "flduMIWF7H4h3E18r"
+          }
+        }
+      }
+    },
+    "Orders": {
+      "id": "tblkqfCMabBpVD1fP",
+      "fields": {
+        "ID_Ordine": {
+          "id": "fldKZoq9URhNahDQi",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "ID_Lead": {
+          "id": "fld3dZM6IrbRLdXhg",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKIZ9CDjcQorONA",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldZj5OaJQQwyIHRt"
+          }
+        },
+        "ID_Venditore": {
+          "id": "flduS5UnHPMVTi7j3",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl141xF7ZQskCqGh",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldjiodCTOFhX8Upu"
+          }
+        },
+        "Data_Ordine": {
+          "id": "fldV3eolPCwWr6pmn",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            }
+          }
+        },
+        "Data_Consegna_Richiesta": {
+          "id": "fldFMgVfdak8c9AEY",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            }
+          }
+        },
+        "Stato_Ordine": {
+          "id": "fldsFQI58A858ybfQ",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selbMMRRzJdn6byoU",
+                "name": "Bozza",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel0a5I7DY9QhFnNt",
+                "name": "Confermato",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selU5HXXvfyg8EC3u",
+                "name": "In Produzione",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel9vC0GbIkVQQMTp",
+                "name": "Spedito",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel1GEXUFKOdoMOCa",
+                "name": "Consegnato",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selYf0e27PUp4hiRP",
+                "name": "Annullato",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Stato_Pagamento": {
+          "id": "fldLpW7xlQ1e5ruKE",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selRS2gDvHQ1BoMtk",
+                "name": "Non Pagato",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel027xjK932ct1YB",
+                "name": "Pagamento Parziale",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selnSYzWapT8pYMZ2",
+                "name": "Pagato",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selV6MQWykNwfYJuK",
+                "name": "Rimborsato",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Modalita_Pagamento": {
+          "id": "fldV0IITHIiM8EArD",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selA1qhb4hW7PpEPv",
+                "name": "Contanti",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel9DqFabXixsqUau",
+                "name": "Bonifico",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selj2e6Vkm3cdtVX0",
+                "name": "Carta Credito",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selIeWLl0PktAxXdy",
+                "name": "Finanziamento",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selwzzPcXPGBzrHov",
+                "name": "Assegno",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selvbPblTHNxFBu0R",
+                "name": "PayPal",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Totale_Lordo": {
+          "id": "fldzanwXkVjZVAsmk",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Totale_Sconto": {
+          "id": "fldNFWpxKbHrAjK7M",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Totale_Netto": {
+          "id": "fldIZtRCPezW5V9xd",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Totale_IVA": {
+          "id": "fldCwlLWBLvsVfb1D",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Totale_Finale": {
+          "id": "fldsxbpf65whI1AQ9",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Percentuale_Sconto": {
+          "id": "fldtvGAvNTrZ8G8Ny",
+          "type": "number",
+          "options": {
+            "precision": 2
+          }
+        },
+        "Percentuale_Commissione": {
+          "id": "fld4sYLFUwPmuqHBn",
+          "type": "number",
+          "options": {
+            "precision": 2
+          }
+        },
+        "Importo_Commissione": {
+          "id": "fldvgndBHQEVxGmRp",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Indirizzo_Consegna": {
+          "id": "fldnGa1Jn46EnhtkZ",
+          "type": "multilineText"
+        },
+        "Note_Cliente": {
+          "id": "fldWhtHJPher9BpFG",
+          "type": "multilineText"
+        },
+        "Note_Interne": {
+          "id": "fldgrJvkrUElCjlOf",
+          "type": "multilineText"
+        },
+        "Codice_Tracking": {
+          "id": "fldPwKEhLNO4xDnNI",
+          "type": "singleLineText"
+        },
+        "Finanziamento_Richiesto": {
+          "id": "fld58fCIeramxdmMU",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "blueBright"
+          }
+        },
+        "Rata_Mensile": {
+          "id": "fldm2OP4lliO6RsLW",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Numero_Rate": {
+          "id": "fldIqwzaEKIsEHOyQ",
+          "type": "number",
+          "options": {
+            "precision": 0
+          }
+        },
+        "Tasso_Interesse": {
+          "id": "fldtA2U6vTFMJNAP2",
+          "type": "number",
+          "options": {
+            "precision": 2
+          }
+        },
+        "Stato_Finanziamento": {
+          "id": "fldG6mIbWvMDIz0xy",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selWgqCri64eRsisz",
+                "name": "Non_Richiesto",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selRFilBZVIaQ37fL",
+                "name": "In_Valutazione",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selVxr5hFmTdXE3o6",
+                "name": "Approvato",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selKYFW68N3lDDadz",
+                "name": "Rifiutato",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Data_Creazione": {
+          "id": "fldvrdaW7q95QqBXb",
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "Europe/Rome"
+          }
+        },
+        "Ultima_Modifica": {
+          "id": "fldvPeT9zhUvbeXaT",
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "Europe/Rome"
+          }
+        },
+        "Order_Items": {
+          "id": "fldZzH34LRo1JHMN9",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblxzhMCa5UJOMZqC",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldBiodqrYsNVjq8X"
+          }
+        },
+        "Commission_Payments": {
+          "id": "fldZCBePkAYMaODUL",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblbn6gRCwpmYICdZ",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldVBnrujZJSavXF0"
+          }
+        },
+        "Payment_Transactions": {
+          "id": "fldwAKt1c4Mw7M1ra",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl2bzbSxMDch72CY",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldpkihjNEE12t6r4"
+          }
+        },
+        "URL_Contratto": {
+          "id": "fldK2r2c1OwqRlADt",
+          "type": "multilineText"
+        },
+        "URL_Documenti_Cliente": {
+          "id": "fldojXdvvx7o0Dg8m",
+          "type": "multilineText"
+        },
+        "URL_Schede_Cliente": {
+          "id": "fldlE65U4fgLVCCH2",
+          "type": "multilineText"
+        }
+      }
+    },
+    "Order_Items": {
+      "id": "tblxzhMCa5UJOMZqC",
+      "fields": {
+        "ID_Riga": {
+          "id": "fldpVEjQiKnH2xJBG",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "ID_Ordine": {
+          "id": "fldBiodqrYsNVjq8X",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblkqfCMabBpVD1fP",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldZzH34LRo1JHMN9"
+          }
+        },
+        "ID_Prodotto": {
+          "id": "fldZGeKUdK49WaCJD",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblEFvr3aT2jQdYUL",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldAc77TrLphlTvuV"
+          }
+        },
+        "Configurazione_Varianti": {
+          "id": "fldKWCrN5sxh7ImNq",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblGnZgea6HlO2pJ4",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldPkRbJEjzuFdtzF"
+          }
+        },
+        "Quantita": {
+          "id": "fld5ibYJnA4cHfjIC",
+          "type": "number",
+          "options": {
+            "precision": 0
+          }
+        },
+        "Prezzo_Unitario": {
+          "id": "fldDoZkNQXaVaxwHt",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Costo_Unitario": {
+          "id": "fldYTHV2SfEHsI2zw",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Sconto_Percentuale": {
+          "id": "fld1efGweweGNUGBI",
+          "type": "number",
+          "options": {
+            "precision": 2
+          }
+        },
+        "Sconto_Importo": {
+          "id": "fldLYb17RcQ7c4Guy",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Prezzo_Finale_Unitario": {
+          "id": "fldK6kceQ1nXwVjGp",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Totale_Riga": {
+          "id": "fldh0fpTAsgMVv1wb",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Configurazione_JSON": {
+          "id": "fld5pqeewU5Y65No4",
+          "type": "multilineText"
+        },
+        "Note_Configurazione": {
+          "id": "fld0Rhbd0xBYUJhpi",
+          "type": "multilineText"
+        },
+        "Codice_Prodotto_Configurato": {
+          "id": "fldsPYCm1tKKOllhH",
+          "type": "singleLineText"
+        },
+        "Nome_Prodotto_Personalizzato": {
+          "id": "fldJgF6dCdeA8pyPt",
+          "type": "singleLineText"
+        },
+        "Dimensioni_Finali": {
+          "id": "fldjSBenztZeD7nqF",
+          "type": "singleLineText"
+        },
+        "Peso_Stimato": {
+          "id": "fldwqX4QPTl2Mmw2A",
+          "type": "number",
+          "options": {
+            "precision": 2
+          }
+        }
+      }
+    },
+    "Product_Price_History": {
+      "id": "tblXtMoiDwLEBG5WE",
+      "fields": {
+        "ID_Storico": {
+          "id": "fldaCyE6tzocxKRlj",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "ID_Prodotto": {
+          "id": "flddACnZLYJL3LUJH",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblEFvr3aT2jQdYUL",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldk8bWtscU83cgts"
+          }
+        },
+        "ID_Variante": {
+          "id": "fldHqRKbtjOWWgNDY",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblGnZgea6HlO2pJ4",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldaMVNaGzS9mtKpE"
+          }
+        },
+        "Prezzo_Vendita": {
+          "id": "fldj5iNYRp1bJ64KN",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Prezzo_Costo": {
+          "id": "fldPltua8MDcN4Gd2",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Data_Validita_Da": {
+          "id": "fldF0uXIqWYvfrJGP",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            }
+          }
+        },
+        "Data_Validita_A": {
+          "id": "fld77YoRDp2qCxfLw",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            }
+          }
+        },
+        "Tipo_Prezzo": {
+          "id": "fldDeaxMBDaOihCys",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "sel8v4NTovnU0iMEd",
+                "name": "Base",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sellxxXmgf99NOxKZ",
+                "name": "Promo",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selTkFIxYV4uRPWm3",
+                "name": "Scontato",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selnTKR0wXimojOK5",
+                "name": "Speciale",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Motivo_Cambio": {
+          "id": "fld0T1C93vYkMJ5Zc",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "sel6X66STafh5HiyW",
+                "name": "Aggiornamento_Listino",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selJGvfsLRM8ZZMtn",
+                "name": "Promozione",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selS5ywkDlHzHjrWO",
+                "name": "Correzione_Errore",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selIxZn7qtjaLtsRc",
+                "name": "Cambio_Fornitore",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selGx0l1VsLqOmIhe",
+                "name": "Inflazione",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Creato_Da": {
+          "id": "fldAjxoYpvtrLn5Xc",
+          "type": "singleLineText"
+        },
+        "Note": {
+          "id": "fldMYMZCoia4CGtod",
+          "type": "multilineText"
+        },
+        "Attivo": {
+          "id": "fldoNP68tyFOlqbFA",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        }
+      }
+    },
+    "Commission_Payments": {
+      "id": "tblbn6gRCwpmYICdZ",
+      "fields": {
+        "ID_Commissione": {
+          "id": "fldduD2yGgg5ooVSo",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "ID_Ordine": {
+          "id": "fldVBnrujZJSavXF0",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblkqfCMabBpVD1fP",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldZCBePkAYMaODUL"
+          }
+        },
+        "ID_Venditore": {
+          "id": "fldcgx9z01MkxV2uY",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl141xF7ZQskCqGh",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fld5vnck9OAmFgDrj"
+          }
+        },
+        "Importo_Vendita": {
+          "id": "fldIhn4XKXq2y2XaG",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Percentuale_Commissione": {
+          "id": "fldG68DX0OaI5AFvW",
+          "type": "number",
+          "options": {
+            "precision": 2
+          }
+        },
+        "Importo_Commissione": {
+          "id": "fld8RnUcpQTGA80zh",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Data_Maturazione": {
+          "id": "fldqZV2CbUJduUDR9",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            }
+          }
+        },
+        "Data_Pagamento": {
+          "id": "fld2ma2KCLV4rX4uC",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            }
+          }
+        },
+        "Stato_Pagamento": {
+          "id": "fldrETFE4izxd4XEQ",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selIPexi3N8lugzlh",
+                "name": "Da_Pagare",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selYJiDuem6vyAIL9",
+                "name": "Pagato",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selLmfqCSWR8a37Qe",
+                "name": "Sospeso",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selAlyIkEOWkciSYi",
+                "name": "Annullato",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Modalita_Pagamento": {
+          "id": "fldLOqQgik5WjzZGE",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selFdF1uyyqjEspMk",
+                "name": "Bonifico",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selWZQ1Yi5nPutKSH",
+                "name": "Contanti",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selTXWKdLlu4tA4Yq",
+                "name": "Assegno",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selXMGcjc8D9erSko",
+                "name": "Trattenuta",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Numero_Bonifico": {
+          "id": "fld5g4LSmO5epKyXF",
+          "type": "singleLineText"
+        },
+        "IBAN_Destinazione": {
+          "id": "fldk8AATAaPf211Ih",
+          "type": "singleLineText"
+        },
+        "Note_Pagamento": {
+          "id": "fldpDOagN29h8ImUj",
+          "type": "multilineText"
+        },
+        "Riferimento_Contabile": {
+          "id": "fldHxUx8wEgzVXOGU",
+          "type": "singleLineText"
+        },
+        "Trimestre_Competenza": {
+          "id": "flddHdcI7UK3hDeCt",
+          "type": "singleLineText"
+        },
+        "Anno_Competenza": {
+          "id": "fldcpjfnTaWNAnq4b",
+          "type": "number",
+          "options": {
+            "precision": 0
+          }
+        },
+        "Data_Creazione": {
+          "id": "fldZom2FDILD0cVi1",
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "Europe/Rome"
+          }
+        },
+        "URL_Ricevuta_Commissione": {
+          "id": "fldkTQd5ekgYQMFZO",
+          "type": "url"
+        },
+        "URL_Documento_Pagamento": {
+          "id": "fld5Vp3xeR4Wx09I4",
+          "type": "url"
+        }
+      }
+    },
+    "Payment_Transactions": {
+      "id": "tbl2bzbSxMDch72CY",
+      "fields": {
+        "ID_Transazione": {
+          "id": "fldA4ErjpIsMCCmtF",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "ID_Ordine": {
+          "id": "fldpkihjNEE12t6r4",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblkqfCMabBpVD1fP",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldwAKt1c4Mw7M1ra"
+          }
+        },
+        "Importo": {
+          "id": "fldXf4lCwTrk4Zibu",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Data_Transazione": {
+          "id": "fldhUF5Jx0FhJ9d8F",
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "Europe/Rome"
+          }
+        },
+        "Tipo_Transazione": {
+          "id": "fldhYMNN6aio3BsbG",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selLhd57zxXfaEf5B",
+                "name": "Acconto",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selgB100FrWto4ffS",
+                "name": "Saldo",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selvE3NbjmQA72etv",
+                "name": "Pagamento_Completo",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selIHJ5fZ1eA2nbYD",
+                "name": "Rimborso",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selMEUE6bL8EGOiHW",
+                "name": "Storno",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Modalita_Pagamento": {
+          "id": "fld2UPiUFEi6toAZ1",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "seliNI51ezglG3khh",
+                "name": "Contanti",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selccGojROi2WlWnW",
+                "name": "Bonifico",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selOKHjKjkTZ0UpoM",
+                "name": "Carta_Credito",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selo18T8FJw8EArMR",
+                "name": "Carta_Debito",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selh5WEcGiop9W8B4",
+                "name": "PayPal",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel2W2ikBNAe3FsqZ",
+                "name": "Assegno",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selVIWL6BFUnM4Tjt",
+                "name": "Finanziamento",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Stato_Transazione": {
+          "id": "fldICiPK2q9t3OMpm",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selLAu3P88kOemVHE",
+                "name": "Pending",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selx3UfevP4HE3W7Y",
+                "name": "Completata",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selrDpVvN8xfb9l3k",
+                "name": "Fallita",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selST7VcCUCn0d698",
+                "name": "Annullata",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sela1GDRveZFactGv",
+                "name": "Rimborsata",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        "Riferimento_Esterno": {
+          "id": "fldcQcaJZ6I7VRJHe",
+          "type": "singleLineText"
+        },
+        "ID_Transazione_Gateway": {
+          "id": "fldAxGfsPwRmXKqFo",
+          "type": "singleLineText"
+        },
+        "Codice_Autorizzazione": {
+          "id": "fldbIaeAkNeKAlq3i",
+          "type": "singleLineText"
+        },
+        "Numero_Ricevuta": {
+          "id": "fldVoHEVeRlCNtNBC",
+          "type": "singleLineText"
+        },
+        "IBAN_Mittente": {
+          "id": "fldrVa2azls9lGiKe",
+          "type": "singleLineText"
+        },
+        "Nome_Titolare": {
+          "id": "fldA6wWnvw9yEDIPq",
+          "type": "singleLineText"
+        },
+        "Commissioni_Gateway": {
+          "id": "fldiRhsuYt9AV5K44",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Tasso_Cambio": {
+          "id": "fldHsauxSn8ijnArZ",
+          "type": "number",
+          "options": {
+            "precision": 4
+          }
+        },
+        "Valuta_Originale": {
+          "id": "fldSmvxOyFIuf5F5Q",
+          "type": "singleLineText"
+        },
+        "Importo_Originale": {
+          "id": "fldhUgjbntWh29NFd",
+          "type": "number",
+          "options": {
+            "precision": 2
+          }
+        },
+        "Note_Transazione": {
+          "id": "fldMQHHx8hz5V1Sbp",
+          "type": "multilineText"
+        },
+        "Data_Accredito": {
+          "id": "fldFDNrX2RxQO2Gix",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "european",
+              "format": "D/M/YYYY"
+            }
+          }
+        },
+        "Verificata": {
+          "id": "fldrWXMCtaOOYsDth",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        "Riconciliata": {
+          "id": "fldDnCqmbf8ZppYyF",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "blueBright"
+          }
+        },
+        "Log_Errori": {
+          "id": "fld4WDRq6VYdljqfA",
+          "type": "multilineText"
+        },
+        "URL_Ricevuta": {
+          "id": "fldNns13uGEBU0Y7n",
+          "type": "url"
+        },
+        "URL_Screenshot_Gateway": {
+          "id": "fld3Kvr2PGtXr0B82",
+          "type": "url"
+        },
+        "URL_Documento_Rimborso": {
+          "id": "fldEG1rO1KX1iqEyw",
+          "type": "url"
+        },
+        "URL_Bonifico_Prova": {
+          "id": "fldiDFMIMOnGNWKJM",
+          "type": "url"
+        }
+      }
+    },
+    "Marketing Sources": {
+      "id": "tblXyEscyPcP8TMLG",
+      "fields": {
+        "ID": {
+          "id": "fldAqFocZFBn3UJ8O",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Name": {
+          "id": "fldJZYoCAdEj60B6y",
+          "type": "singleLineText"
+        },
+        "Description": {
+          "id": "fld0of25wN3iu2SNQ",
+          "type": "multilineText"
+        },
+        "Active": {
+          "id": "fldgBYMJHwR66A3E3",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        "Color": {
+          "id": "fldigQ6L5BB9HpOpD",
+          "type": "singleLineText"
+        },
+        "Lead": {
+          "id": "fldr9lUxIj5ZNkXYT",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKIZ9CDjcQorONA",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldCoDBMqa36c2jJ2"
+          }
+        },
+        "Marketing Costs": {
+          "id": "fldhFomevkCPjRHIF",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblHSmuFlSpKWAEjS",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldO0HxlGYuQXht9w"
+          }
+        }
+      }
+    },
+    "Marketing Costs": {
+      "id": "tblHSmuFlSpKWAEjS",
+      "fields": {
+        "ID": {
+          "id": "fldoWWh8HjyisSZPA",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Name": {
+          "id": "fldBjbpHFY8ic0RVg",
+          "type": "singleLineText"
+        },
+        "Fonte": {
+          "id": "fldO0HxlGYuQXht9w",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblXyEscyPcP8TMLG",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldhFomevkCPjRHIF"
+          }
+        },
+        "Budget": {
+          "id": "flduII49FCduShbI8",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Data Inizio": {
+          "id": "fldTlvlbFgmy1pDwz",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          }
+        },
+        "Data Fine": {
+          "id": "fldUbGwQL7QF0A2Xb",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          }
+        },
+        "Note": {
+          "id": "fldstm7FIpjOhWVfp",
+          "type": "multilineText"
+        },
+        "Spese Mensili": {
+          "id": "fldRoukIRCYIW3C3h",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblB6nZouVblmbzZu",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldKxNBDWoFZPUPpe"
+          }
+        }
+      }
+    },
+    "Spese Mensili": {
+      "id": "tblB6nZouVblmbzZu",
+      "fields": {
+        "ID": {
+          "id": "fldupc5idytieOG31",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Campagna": {
+          "id": "fldKxNBDWoFZPUPpe",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblHSmuFlSpKWAEjS",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldRoukIRCYIW3C3h"
+          }
+        },
+        "Importo Speso": {
+          "id": "fldFb5hRcCOh5UepS",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "€"
+          }
+        },
+        "Note": {
+          "id": "fldoZAUR4rbGiS6ic",
+          "type": "multilineText"
+        },
+        "Data Inizio": {
+          "id": "fldpjti3etPXrtNbw",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          }
+        },
+        "Data Fine": {
+          "id": "fldyiCelW1lRds8IG",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          }
+        }
+      }
+    },
+    "AI_Conversations": {
+      "id": "tblGJg2qS58L91AH4",
+      "fields": {
+        "ID": {
+          "id": "fldF87Vnu8SK8LEAn",
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "RECORD_ID()",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        "Tenant_ID": {
+          "id": "fld6OuEfjeDWWM8R5",
+          "type": "singleLineText"
+        },
+        "User_ID": {
+          "id": "fldzxprYS764UClo9",
+          "type": "singleLineText"
+        },
+        "Context": {
+          "id": "fld60la8UgxB1L4xy",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selVTXh3KxMfmx5jg",
+                "name": "Globale",
+                "color": "blueLight2"
+              },
+              {
+                "id": "seluc8edWQV8uj40a",
+                "name": "Attività",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selizmXjiAkV7poMl",
+                "name": "Lead",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selbt4xuRtk8yud8c",
+                "name": "Ordine",
+                "color": "greenLight2"
+              },
+              {
+                "id": "sel4ogHFSHpciGfFj",
+                "name": "Cliente",
+                "color": "yellowLight2"
+              }
+            ]
+          }
+        },
+        "Context_ID": {
+          "id": "fldwsvVWjrZB1L4Db",
+          "type": "singleLineText"
+        },
+        "Messages": {
+          "id": "fld6m3m2bXBRTZSjA",
+          "type": "multilineText"
+        },
+        "Summary": {
+          "id": "fld05KkGDzJeSU0Sj",
+          "type": "multilineText"
+        },
+        "Created_At": {
+          "id": "fldbHyR6zasrxEGIH",
+          "type": "createdTime",
+          "options": {
+            "result": {
+              "type": "dateTime",
+              "options": {
+                "dateFormat": {
+                  "name": "local",
+                  "format": "l"
+                },
+                "timeFormat": {
+                  "name": "24hour",
+                  "format": "HH:mm"
+                },
+                "timeZone": "client"
+              }
+            }
+          }
+        },
+        "Updated_At": {
+          "id": "fldtkcrfz3evoQMDc",
+          "type": "lastModifiedTime",
+          "options": {
+            "isValid": true,
+            "referencedFieldIds": [],
+            "result": {
+              "type": "dateTime",
+              "options": {
+                "dateFormat": {
+                  "name": "local",
+                  "format": "l"
+                },
+                "timeFormat": {
+                  "name": "24hour",
+                  "format": "HH:mm"
+                },
+                "timeZone": "client"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

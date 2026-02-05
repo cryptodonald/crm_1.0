@@ -1,0 +1,295 @@
+/**
+ * Generatore automatico di TypeScript types da Airtable Metadata API
+ * 
+ * Questo script:
+ * 1. Fetcha lo schema completo da Airtable Metadata API
+ * 2. Genera types TypeScript accurati per ogni tabella
+ * 3. Include tutte le opzioni dei campi select
+ * 4. Salva il risultato in src/types/airtable.generated.ts
+ * 
+ * Esegui con: npm run generate:types
+ */
+
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs';
+
+dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
+
+if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+  console.error('❌ AIRTABLE_API_KEY e AIRTABLE_BASE_ID devono essere definiti');
+  process.exit(1);
+}
+
+interface AirtableField {
+  id: string;
+  name: string;
+  type: string;
+  options?: any;
+}
+
+interface AirtableTable {
+  id: string;
+  name: string;
+  fields: AirtableField[];
+}
+
+interface AirtableSchema {
+  tables: AirtableTable[];
+}
+
+/**
+ * Fetch dello schema completo da Metadata API
+ */
+async function fetchSchema(): Promise<AirtableSchema> {
+  const url = `https://api.airtable.com/v0/meta/bases/${AIRTABLE_BASE_ID}/tables`;
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Metadata API error: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Converti tipo Airtable in tipo TypeScript
+ */
+function airtableTypeToTS(field: AirtableField): string {
+  switch (field.type) {
+    case 'singleLineText':
+    case 'multilineText':
+    case 'email':
+    case 'url':
+    case 'phoneNumber':
+      return 'string';
+    
+    case 'number':
+    case 'currency':
+    case 'percent':
+    case 'rating':
+      return 'number';
+    
+    case 'checkbox':
+      return 'boolean';
+    
+    case 'singleSelect':
+      // Genera union type delle opzioni
+      if (field.options?.choices) {
+        const choices = field.options.choices
+          .map((choice: any) => `'${choice.name}'`)
+          .join(' | ');
+        return choices;
+      }
+      return 'string';
+    
+    case 'multipleSelects':
+      // Array di opzioni
+      if (field.options?.choices) {
+        const choices = field.options.choices
+          .map((choice: any) => `'${choice.name}'`)
+          .join(' | ');
+        return `Array<${choices}>`;
+      }
+      return 'string[]';
+    
+    case 'date':
+      return 'string'; // ISO date string
+    
+    case 'dateTime':
+      return 'string'; // ISO datetime string
+    
+    case 'multipleRecordLinks':
+      return 'string[]'; // Array di record IDs
+    
+    case 'multipleAttachments':
+      return 'Array<{ id: string; url: string; filename: string; size: number; type: string }>';
+    
+    case 'formula':
+    case 'rollup':
+    case 'count':
+    case 'multipleLookupValues':
+      // Dipende dal risultato della formula
+      if (field.options?.result?.type) {
+        return airtableTypeToTS({ ...field, type: field.options.result.type });
+      }
+      return 'any';
+    
+    default:
+      return 'any';
+  }
+}
+
+/**
+ * Determina se un campo è opzionale
+ */
+function isFieldOptional(field: AirtableField): boolean {
+  // Formula e lookup sono sempre presenti (anche se vuoti)
+  if (['formula', 'rollup', 'count', 'multipleLookupValues'].includes(field.type)) {
+    return false;
+  }
+  
+  // Tutti gli altri campi sono tecnicamente opzionali in Airtable
+  return true;
+}
+
+/**
+ * Genera interfaccia TypeScript per una tabella
+ */
+function generateTableInterface(table: AirtableTable): string {
+  const interfaceName = `Airtable${table.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+  
+  let code = `/**\n`;
+  code += ` * ${table.name} table\n`;
+  code += ` * Table ID: ${table.id}\n`;
+  code += ` * Generated from Airtable Metadata API\n`;
+  code += ` */\n`;
+  code += `export interface ${interfaceName} {\n`;
+  code += `  id: string;\n`;
+  code += `  createdTime: string;\n`;
+  code += `  fields: {\n`;
+  
+  for (const field of table.fields) {
+    const optional = isFieldOptional(field) ? '?' : '';
+    const tsType = airtableTypeToTS(field);
+    
+    // Commento con info campo
+    code += `    /** ${field.type} field (${field.id}) */\n`;
+    
+    // Gestisci nomi con spazi/caratteri speciali
+    const fieldName = field.name.includes(' ') || field.name.includes('-')
+      ? `'${field.name}'`
+      : field.name;
+    
+    code += `    ${fieldName}${optional}: ${tsType};\n`;
+  }
+  
+  code += `  };\n`;
+  code += `}\n`;
+  
+  return code;
+}
+
+/**
+ * Genera file TypeScript completo
+ */
+function generateTypesFile(schema: AirtableSchema): string {
+  let code = `/**\n`;
+  code += ` * Airtable Types - Auto-generated\n`;
+  code += ` * \n`;
+  code += ` * DO NOT EDIT THIS FILE MANUALLY!\n`;
+  code += ` * Generated from Airtable Metadata API\n`;
+  code += ` * Generated at: ${new Date().toISOString()}\n`;
+  code += ` * Base ID: ${AIRTABLE_BASE_ID}\n`;
+  code += ` * \n`;
+  code += ` * To regenerate: npm run generate:types\n`;
+  code += ` */\n\n`;
+  
+  // Genera interfaccia per ogni tabella
+  for (const table of schema.tables) {
+    code += generateTableInterface(table);
+    code += '\n';
+  }
+  
+  // Aggiungi mappa di lookup per table IDs
+  code += `/**\n`;
+  code += ` * Table ID constants\n`;
+  code += ` */\n`;
+  code += `export const AIRTABLE_TABLE_IDS = {\n`;
+  for (const table of schema.tables) {
+    const constName = table.name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    code += `  ${constName}: '${table.id}',\n`;
+  }
+  code += `} as const;\n\n`;
+  
+  // Aggiungi mappa table name -> type
+  code += `/**\n`;
+  code += ` * Table name to type mapping\n`;
+  code += ` */\n`;
+  code += `export type AirtableTableTypes = {\n`;
+  for (const table of schema.tables) {
+    const interfaceName = `Airtable${table.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+    code += `  '${table.name}': ${interfaceName};\n`;
+  }
+  code += `};\n`;
+  
+  return code;
+}
+
+/**
+ * Genera anche un file JSON con lo schema completo per riferimento
+ */
+function generateSchemaReference(schema: AirtableSchema): string {
+  const reference: any = {
+    generatedAt: new Date().toISOString(),
+    baseId: AIRTABLE_BASE_ID,
+    tables: {},
+  };
+  
+  for (const table of schema.tables) {
+    reference.tables[table.name] = {
+      id: table.id,
+      fields: table.fields.reduce((acc: any, field) => {
+        acc[field.name] = {
+          id: field.id,
+          type: field.type,
+          options: field.options,
+        };
+        return acc;
+      }, {}),
+    };
+  }
+  
+  return JSON.stringify(reference, null, 2);
+}
+
+async function main() {
+  console.log('🚀 Generazione types TypeScript da Airtable...\n');
+  
+  // 1. Fetch schema
+  console.log('📡 Fetching schema from Metadata API...');
+  const schema = await fetchSchema();
+  console.log(`✅ Trovate ${schema.tables.length} tabelle\n`);
+  
+  // 2. Genera types TypeScript
+  console.log('⚙️  Generazione types TypeScript...');
+  const typesCode = generateTypesFile(schema);
+  
+  // 3. Salva types
+  const typesPath = path.join(__dirname, '..', 'src', 'types', 'airtable.generated.ts');
+  fs.mkdirSync(path.dirname(typesPath), { recursive: true });
+  fs.writeFileSync(typesPath, typesCode, 'utf-8');
+  console.log(`✅ Types salvati in: ${typesPath}\n`);
+  
+  // 4. Genera schema reference JSON
+  console.log('📋 Generazione schema reference...');
+  const schemaRef = generateSchemaReference(schema);
+  const schemaPath = path.join(__dirname, '..', 'src', 'lib', 'airtable-schema.json');
+  fs.mkdirSync(path.dirname(schemaPath), { recursive: true });
+  fs.writeFileSync(schemaPath, schemaRef, 'utf-8');
+  console.log(`✅ Schema reference salvato in: ${schemaPath}\n`);
+  
+  // 5. Salva anche schema completo in docs
+  const docsPath = path.join(__dirname, '..', 'docs', 'airtable-metadata-schema.json');
+  fs.writeFileSync(docsPath, JSON.stringify(schema, null, 2), 'utf-8');
+  console.log(`✅ Schema completo salvato in: ${docsPath}\n`);
+  
+  console.log('✨ Generazione completata!\n');
+  console.log('📝 Summary:');
+  console.log(`   - ${schema.tables.length} tabelle`);
+  console.log(`   - ${schema.tables.reduce((sum, t) => sum + t.fields.length, 0)} campi totali`);
+  console.log('');
+}
+
+main().catch((error) => {
+  console.error('❌ Errore durante la generazione:', error);
+  process.exit(1);
+});
