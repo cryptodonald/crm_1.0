@@ -465,7 +465,7 @@ export async function healthCheck(): Promise<{
   airtable: { healthy: boolean; latency?: number; error?: string };
 }> {
   // Test Postgres
-  let pgHealth = { healthy: false, latency: 0, error: '' };
+  let pgHealth: { healthy: boolean; latency?: number; error?: string } = { healthy: false, error: '' };
   try {
     const start = Date.now();
     const pool = getPgPool();
@@ -476,7 +476,7 @@ export async function healthCheck(): Promise<{
   }
   
   // Test Airtable
-  let atHealth = { healthy: false, latency: 0, error: '' };
+  let atHealth: { healthy: boolean; latency?: number; error?: string } = { healthy: false, error: '' };
   try {
     const start = Date.now();
     const tableId = process.env.AIRTABLE_LEADS_TABLE_ID!;
