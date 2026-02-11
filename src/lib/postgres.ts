@@ -52,11 +52,13 @@ function getPool(): Pool {
       throw new Error('POSTGRES_URL environment variable not set');
     }
 
-    // Ensure SSL mode is set for Supabase
-    if (!connectionString.includes('sslmode=')) {
-      const separator = connectionString.includes('?') ? '&' : '?';
-      connectionString = `${connectionString}${separator}sslmode=require`;
-    }
+    // CRITICAL: Strip sslmode from connection string.
+    // pg@8.18 treats sslmode=require as verify-full, which causes
+    // 'self-signed certificate in certificate chain' errors with Supabase.
+    // SSL is configured exclusively via the `ssl` option object below.
+    const url = new URL(connectionString);
+    url.searchParams.delete('sslmode');
+    connectionString = url.toString();
 
     console.log('[Postgres] Initializing connection pool...');
 
@@ -68,7 +70,7 @@ function getPool(): Pool {
       connectionTimeoutMillis: 10000, // Reduce timeout after warm-up
       statement_timeout: 30000,
       ssl: {
-        rejectUnauthorized: false, // Allow self-signed certs from Supabase
+        rejectUnauthorized: false, // Supabase pooler uses self-signed certs
       },
     });
 
