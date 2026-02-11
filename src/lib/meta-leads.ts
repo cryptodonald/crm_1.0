@@ -185,10 +185,10 @@ const STANDARD_FIELD_KEYS = new Set([
  *
  * All non-standard (custom) fields are concatenated into `needs`.
  */
-export function mapMetaFieldsToLead(
+export async function mapMetaFieldsToLead(
   metaData: MetaLeadData,
   sourceId: string | null
-): MappedLead {
+): Promise<MappedLead> {
   const fields = new Map<string, string>();
 
   // Flatten field_data into a simple key-value map
@@ -230,25 +230,16 @@ export function mapMetaFieldsToLead(
     || fields.get('postal_code');
   const postalCode = postalCodeRaw ? parseInt(postalCodeRaw, 10) : null;
 
-  // ── Needs: all custom fields → concatenated ────────────────────────
-  // Labels for human-readable output
-  const CUSTOM_LABELS: Record<string, string> = {
-    'cosa_stai_cercando?': 'Cerca',
-    'qual_è_la_tua_esigenza_principale?': 'Esigenza',
-    'che_posizione_assumi_prevalentemente_quando_dormi?': 'Posizione',
-    'che_livello_di_rigidità_preferisci?': 'Rigidità',
-  };
-
-  const needsParts: string[] = [];
+  // ── Needs: collect custom fields ──────────────────────────────────
+  const customFields: Record<string, string> = {};
   for (const [key, value] of fields.entries()) {
     if (STANDARD_FIELD_KEYS.has(key)) continue;
-    // Skip test lead dummy data
     if (value.startsWith('<test lead:')) continue;
-
-    const label = CUSTOM_LABELS[key];
-    needsParts.push(label ? `${label}: ${value}` : value);
+    customFields[key] = value;
   }
-  const needs = needsParts.length > 0 ? needsParts.join(' | ') : null;
+  const needs = Object.keys(customFields).length > 0
+    ? await rewriteNeeds(customFields)
+    : null;
 
   return {
     name: fullName,
@@ -262,6 +253,70 @@ export function mapMetaFieldsToLead(
     source_id: sourceId,
     status: 'Nuovo',
   };
+}
+
+// ============================================================================
+// AI Rewrite: Needs Field
+// ============================================================================
+
+/**
+ * Use OpenRouter AI to rewrite raw custom form fields into a clean
+ * Italian sentence for the CRM "esigenza" field.
+ * Falls back to simple concatenation if AI is unavailable.
+ */
+async function rewriteNeeds(
+  customFields: Record<string, string>
+): Promise<string> {
+  // Build fallback first
+  const fallback = Object.values(customFields).join(' | ');
+
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return fallback;
+
+  const fieldsSummary = Object.entries(customFields)
+    .map(([key, value]) => `- ${key.replace(/_/g, ' ').replace(/\?$/, '')}: ${value}`)
+    .join('\n');
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        max_tokens: 150,
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Sei un assistente CRM. Riscrivi le risposte del modulo in UNA frase pulita in italiano. '
+              + 'Usa solo le informazioni fornite, non inventare nulla. '
+              + 'Scrivi in terza persona ("Il cliente..."). Sii conciso e naturale. '
+              + 'Non aggiungere saluti, prefissi o spiegazioni.',
+          },
+          {
+            role: 'user',
+            content: `Risposte dal modulo lead:\n${fieldsSummary}`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('[Meta Leads] OpenRouter error:', response.status);
+      return fallback;
+    }
+
+    const data = await response.json();
+    const rewritten = data.choices?.[0]?.message?.content?.trim();
+    return rewritten || fallback;
+  } catch (err) {
+    console.error('[Meta Leads] OpenRouter rewrite failed:', err);
+    return fallback;
+  }
 }
 
 // ============================================================================

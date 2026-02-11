@@ -98,8 +98,8 @@ export async function POST(request: NextRequest) {
           // 5. Fetch full lead data from Graph API
           const metaLeadData = await fetchLeadData(leadgenId, pageAccessToken);
 
-          // 6. Map Meta fields → CRM schema
-          const mapped = mapMetaFieldsToLead(metaLeadData, sourceId);
+          // 6. Map Meta fields → CRM schema (async: AI rewrites needs)
+          const mapped = await mapMetaFieldsToLead(metaLeadData, sourceId);
 
           // 7. Check for duplicates
           const existing = await checkDuplicate(mapped.email, mapped.phone);
