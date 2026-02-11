@@ -1,13 +1,12 @@
-import useSWR from 'swr';
-import { useState } from 'react';
-import type { AirtableNotes } from '@/types/airtable.generated';
+import useSWR, { useSWRConfig } from 'swr';
+import type { Note as PostgresNote } from '@/types/database';
 
-interface Note extends AirtableNotes {}
+type Note = PostgresNote;
 
 interface UseNotesReturn {
   notes: Note[] | undefined;
   isLoading: boolean;
-  error: any;
+  error: Error | undefined;
   createNote: (data: CreateNoteData) => Promise<Note>;
   updateNote: (noteId: string, data: UpdateNoteData) => Promise<Note>;
   deleteNote: (noteId: string) => Promise<void>;
@@ -16,15 +15,13 @@ interface UseNotesReturn {
 }
 
 interface CreateNoteData {
-  leadId: string;
+  lead_id: string;
   content: string;
-  type?: 'Riflessione' | 'Promemoria' | 'Follow-up' | 'Info Cliente';
   pinned?: boolean;
 }
 
 interface UpdateNoteData {
   content?: string;
-  type?: 'Riflessione' | 'Promemoria' | 'Follow-up' | 'Info Cliente';
   pinned?: boolean;
 }
 
@@ -38,10 +35,10 @@ const fetcher = async (url: string) => {
 };
 
 export function useNotes(leadId: string | undefined): UseNotesReturn {
-  const [isCreating, setIsCreating] = useState(false);
+  const { mutate: globalMutate } = useSWRConfig();
 
   const { data, error, mutate } = useSWR<Note[]>(
-    leadId ? `/api/notes?leadId=${leadId}` : null,
+    leadId ? `/api/notes?lead_id=${leadId}` : null,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -49,8 +46,46 @@ export function useNotes(leadId: string | undefined): UseNotesReturn {
     }
   );
 
+  // Helper: aggiorna tutte le cache /api/notes (CRITICAL-001 pattern matching)
+  const mutateAllNotes = (
+    updater: (current: Note[] | undefined) => Note[] | undefined,
+    options: { revalidate: boolean } = { revalidate: false }
+  ) => {
+    globalMutate(
+      (key) => typeof key === 'string' && key.startsWith('/api/notes'),
+      updater,
+      { revalidate: options.revalidate }
+    );
+  };
+
+  // Helper: rollback — revalida tutte le cache /api/notes
+  const rollbackNotes = () => {
+    globalMutate(
+      (key) => typeof key === 'string' && key.startsWith('/api/notes')
+    );
+  };
+
   const createNote = async (noteData: CreateNoteData): Promise<Note> => {
-    setIsCreating(true);
+    // Crea nota ottimistica con ID temporaneo
+    const tempId = `temp-${Date.now()}`;
+    const optimisticNote: Note = {
+      id: tempId,
+      lead_id: noteData.lead_id,
+      content: noteData.content,
+      pinned: noteData.pinned ?? false,
+      user_id: null,
+      airtable_id: '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      author_name: null, // Risolto dal server dopo POST
+    };
+
+    // Optimistic update: aggiungi in testa a tutte le cache
+    mutateAllNotes((current) => {
+      if (!current) return current;
+      return [optimisticNote, ...current];
+    });
+
     try {
       const res = await fetch('/api/notes', {
         method: 'POST',
@@ -59,18 +94,23 @@ export function useNotes(leadId: string | undefined): UseNotesReturn {
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to create note');
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to create note');
       }
 
       const { note } = await res.json();
-      
-      // Optimistic update: add to local cache
-      mutate((current) => [note, ...(current || [])], false);
-      
+
+      // Sostituisci nota temporanea con quella reale dal server
+      mutateAllNotes((current) => {
+        if (!current) return current;
+        return current.map((n) => (n.id === tempId ? note : n));
+      });
+
       return note;
-    } finally {
-      setIsCreating(false);
+    } catch (error) {
+      // Rollback: rimuovi nota temporanea e revalida
+      rollbackNotes();
+      throw error;
     }
   };
 
@@ -78,41 +118,63 @@ export function useNotes(leadId: string | undefined): UseNotesReturn {
     noteId: string,
     updateData: UpdateNoteData
   ): Promise<Note> => {
-    const res = await fetch(`/api/notes/${noteId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updateData),
+    // Optimistic update: applica modifiche immediatamente
+    mutateAllNotes((current) => {
+      if (!current) return current;
+      return current.map((n) =>
+        n.id === noteId ? { ...n, ...updateData, updated_at: new Date().toISOString() } : n
+      );
     });
 
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to update note');
+    try {
+      const res = await fetch(`/api/notes/${noteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to update note');
+      }
+
+      const { note } = await res.json();
+
+      // Aggiorna con dati reali dal server
+      mutateAllNotes((current) => {
+        if (!current) return current;
+        return current.map((n) => (n.id === noteId ? note : n));
+      });
+
+      return note;
+    } catch (error) {
+      // Rollback: revalida per ripristinare stato precedente
+      rollbackNotes();
+      throw error;
     }
-
-    const { note } = await res.json();
-
-    // Optimistic update: update in local cache
-    mutate(
-      (current) =>
-        current?.map((n) => (n.id === noteId ? note : n)) || [],
-      false
-    );
-
-    return note;
   };
 
   const deleteNote = async (noteId: string): Promise<void> => {
-    const res = await fetch(`/api/notes/${noteId}`, {
-      method: 'DELETE',
+    // Optimistic update: rimuovi immediatamente
+    mutateAllNotes((current) => {
+      if (!current) return current;
+      return current.filter((n) => n.id !== noteId);
     });
 
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to delete note');
-    }
+    try {
+      const res = await fetch(`/api/notes/${noteId}`, {
+        method: 'DELETE',
+      });
 
-    // Optimistic update: remove from local cache
-    mutate((current) => current?.filter((n) => n.id !== noteId) || [], false);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to delete note');
+      }
+    } catch (error) {
+      // Rollback: revalida per ripristinare nota eliminata
+      rollbackNotes();
+      throw error;
+    }
   };
 
   const togglePin = async (

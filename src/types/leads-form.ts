@@ -1,47 +1,48 @@
 /**
  * Types per form leads
- * Basati su AirtableLead ma adattati per form input
+ * Basati su Lead ma adattati per form input
  */
 
 import { z } from 'zod';
-import type { AirtableLead } from './airtable';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { Lead, LeadStatus } from './database';
 
-// Estrai i tipi di stato e fonte dai tipi Airtable
-export type LeadStato = AirtableLead['fields']['Stato'];
+// Types based on Postgres schema
+export type LeadStato = LeadStatus;
 
 /**
- * Form data per creazione/modifica lead
- * Include campi extra che non sono nel DB Airtable
+ * Form data for lead creation/update
+ * Maps legacy Italian field names to new Postgres snake_case schema
  */
 export interface LeadFormData {
-  // Campi base (presenti in Airtable)
-  Nome: string;
-  Telefono?: string;
-  Email?: string;
-  Città?: string;
-  Esigenza?: string;
-  Stato: LeadStato;
+  // Base fields (Postgres schema)
+  Nome: string; // → name
+  Telefono?: string; // → phone
+  Email?: string; // → email
+  Città?: string; // → city
+  Esigenza?: string; // → notes
+  Stato: LeadStato; // → status
   
-  // Fonte (select da Marketing Sources)
-  Fonte?: string; // Nome fonte (es. "Sito", "Google")
-  _fonteId?: string; // ID record Marketing Sources (per API)
+  // Source (select from Marketing Sources)
+  Fonte?: string; // Source name (e.g., "Sito", "Google")
+  _fonteId?: string; // source_id (UUID)
   
-  // Campi relazione
-  AssignedTo?: string[]; // User record IDs
-  Referenze?: string[]; // Lead record IDs (referenze da altri lead)
+  // Relationships
+  AssignedTo?: string[]; // assigned_to (UUID[])
+  Referenze?: string[]; // referral_lead_id (UUID)
   
-  // Campi extra form (non in Airtable, ma usati in CRM 1.0)
-  Indirizzo?: string; // Indirizzo completo
-  CAP?: number; // Codice postale
+  // Extra form fields
+  Indirizzo?: string; // → address
+  CAP?: number; // → postal_code
   
-  // Allegati e avatar
-  Avatar?: string; // URL avatar personalizzato
-  Gender?: 'male' | 'female' | 'unknown'; // Genere rilevato con AI
-  Allegati?: AirtableAttachment[];
+  // Attachments and avatar
+  Avatar?: string; // Custom avatar URL
+  Gender?: 'male' | 'female' | 'unknown'; // AI-detected gender
+  Allegati?: AirtableAttachment[]; // Legacy: not implemented in Postgres v1
 }
 
 /**
- * Allegato Airtable
+ * Allegato (legacy)
  */
 export interface AirtableAttachment {
   id: string;
@@ -56,12 +57,25 @@ export interface AirtableAttachment {
 }
 
 /**
- * Dati default per form nuovo lead
+ * Default data for new lead form
+ * Contiene TUTTI i campi per garantire reset completo
  */
 export const DEFAULT_LEAD_DATA: Partial<LeadFormData> = {
   Nome: '',
+  Telefono: '',
+  Email: '',
+  Indirizzo: '',
+  CAP: undefined,
+  Città: '',
+  Esigenza: '',
   Stato: 'Nuovo',
   Fonte: 'Sito', // Default marketing source
+  _fonteId: undefined,
+  AssignedTo: undefined,
+  Referenze: undefined,
+  Avatar: undefined,
+  Gender: 'unknown',
+  Allegati: undefined,
 };
 
 /**
@@ -76,7 +90,7 @@ export const leadFormSchema = z.object({
   CAP: z.number().optional(),
   Città: z.string().optional(),
   Esigenza: z.string().optional(),
-  Stato: z.enum(['Nuovo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Perso', 'Sospeso']),
+  Stato: z.enum(['Nuovo', 'Attivo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Sospeso', 'Chiuso']),
   Fonte: z.string().optional(),
   _fonteId: z.string().optional(),
   AssignedTo: z.array(z.string()).optional(),

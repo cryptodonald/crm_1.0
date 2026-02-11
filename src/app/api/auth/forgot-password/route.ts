@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { findRecords } from '@/lib/airtable';
+import { getUserByEmail } from '@/lib/postgres';
 import { passwordResetTokens } from '@/lib/redis';
-import { AirtableUser } from '@/types/airtable';
 
 /**
  * POST /api/auth/forgot-password
@@ -32,14 +31,11 @@ export async function POST(request: Request) {
     }
 
     // Check if user exists (security: don't reveal if email exists or not)
-    const users = await findRecords<AirtableUser['fields']>('users', {
-      filterByFormula: `{Email} = '${email}'`,
-      maxRecords: 1,
-    });
+    const user = await getUserByEmail(email);
 
     // Always return success (security best practice)
     // Don't reveal if email exists to prevent email enumeration attacks
-    if (!users || users.length === 0) {
+    if (!user) {
       console.log(`[Password Reset] Email not found: ${email}`);
       return NextResponse.json({
         success: true,
@@ -47,10 +43,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const user = users[0];
-
     // Check if user is active
-    if (!user.fields.Attivo) {
+    if (!user.active) {
       console.log(`[Password Reset] Inactive user: ${email}`);
       // Still return success to not reveal account status
       return NextResponse.json({
@@ -104,7 +98,7 @@ export async function POST(request: Request) {
         },
       }),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Password Reset] Error:', error);
     return NextResponse.json(
       { error: 'Errore interno del server' },

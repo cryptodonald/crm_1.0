@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { ActivityFormData, ActivityStato, getActivityStatoColor } from '@/types/activities';
 import {
@@ -10,7 +10,7 @@ import {
   FormLabel,
 } from '@/components/ui/form';
 import { FormMessageSubtle } from '@/components/ui/form-message-subtle';
-import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -47,21 +47,16 @@ interface ProgrammazioneStepProps {
 
 // Stati disponibili
 const ACTIVITY_STATES: ActivityStato[] = [
-  'Da Pianificare',
-  'Pianificata',
+  'Da fare',
   'In corso',
-  'In attesa',
   'Completata',
   'Annullata',
-  'Rimandata',
 ];
 
 export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [usersPopoverOpen, setUsersPopoverOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedTime, setSelectedTime] = useState('');
-  const [isInitialized, setIsInitialized] = useState(false);
+  const isInitializedRef = useRef(false);
 
   const { control, setValue, watch } = form;
   const { users, loading: usersLoading } = useUsers();
@@ -72,32 +67,26 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
   // Convert users object to array
   const usersArray = users ? Object.values(users) : [];
 
-  // Initialize date and time when Data field changes
+  // Derive date/time from form value (no useState needed)
+  const dataValue = watch('Data');
+
+  const selectedDate = useMemo(() => {
+    if (dataValue) return new Date(dataValue);
+    return undefined;
+  }, [dataValue]);
+
+  const selectedTime = useMemo(() => {
+    if (dataValue) return format(new Date(dataValue), 'HH:mm') || '09:00';
+    return '';
+  }, [dataValue]);
+
+  // Auto-popolamento data e ora corrente alla prima apertura
   useEffect(() => {
-    const dataValue = watch('Data');
-    if (dataValue) {
-      const date = new Date(dataValue);
-      setSelectedDate(date);
-      // Assicuriamo che format restituisca sempre una stringa valida
-      const timeString = format(date, 'HH:mm');
-      setSelectedTime(timeString || '09:00');
+    if (!dataValue && !isInitializedRef.current) {
+      isInitializedRef.current = true;
+      setValue('Data', new Date().toISOString());
     }
-  }, [watch]);
-  
-  // Auto-popolamento data e ora corrente quando il form viene aperto per la prima volta
-  useEffect(() => {
-    const dataValue = watch('Data');
-    // Se non c'è già una data impostata e non abbiamo ancora inizializzato
-    if (!dataValue && !isInitialized) {
-      const now = new Date();
-      const currentTime = format(now, 'HH:mm');
-      
-      setSelectedDate(now);
-      setSelectedTime(currentTime);
-      setValue('Data', now.toISOString());
-      setIsInitialized(true);
-    }
-  }, [watch, setValue, isInitialized]);
+  }, [dataValue, setValue]);
 
   const handleDateTimeChange = (date: Date | undefined, time?: string) => {
     if (date) {
@@ -105,13 +94,8 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
       const [hours, minutes] = timeToUse.split(':').map(Number);
       const dateTime = new Date(date);
       dateTime.setHours(hours, minutes);
-      
-      setSelectedDate(date);
-      setSelectedTime(timeToUse);
       setValue('Data', dateTime.toISOString());
     } else {
-      setSelectedDate(undefined);
-      setSelectedTime(''); // Assicuriamo sempre stringa vuota, mai undefined
       setValue('Data', undefined);
     }
   };
@@ -135,7 +119,7 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
       <div className="space-y-1 pb-2">
         <h3 className="text-lg font-semibold">Programmazione</h3>
         <p className="text-sm text-muted-foreground">
-          Programma quando eseguire l'attività e chi deve occuparsene.
+          Programma quando eseguire l&apos;attività e chi deve occuparsene.
         </p>
       </div>
       
@@ -148,6 +132,7 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
             <FormField
               control={control}
               name="Data"
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Data</FormLabel>
@@ -190,13 +175,9 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
             <FormItem>
               <FormLabel>Ora</FormLabel>
               <FormControl>
-                <Input
-                  type="time"
-                  id="time-picker"
-                  value={selectedTime || ''}
-                  onChange={(e) => handleDateTimeChange(selectedDate, e.target.value)}
-                  className="w-full"
-                  placeholder="10:30"
+                <TimeSelect
+                  value={selectedTime || undefined}
+                  onChange={(time) => handleDateTimeChange(selectedDate, time)}
                 />
               </FormControl>
               <FormMessageSubtle />
@@ -214,10 +195,9 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
               <FormItem>
                 <FormLabel>Durata Stimata</FormLabel>
                 <FormControl>
-                  <Input
-                    type="time"
-                    {...field}
-                    className="w-full"
+                  <TimeSelect
+                    value={field.value || undefined}
+                    onChange={field.onChange}
                     placeholder="01:30"
                   />
                 </FormControl>
@@ -271,6 +251,7 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
           <FormField
             control={control}
             name="Assegnatario"
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Assegnatario</FormLabel>
@@ -285,7 +266,7 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           {selectedAssegnatarioUser ? (
-                            <span>{selectedAssegnatarioUser.nome}</span>
+                            <span>{selectedAssegnatarioUser.name}</span>
                           ) : (
                             <span className="text-muted-foreground">Seleziona assegnatario</span>
                           )}
@@ -312,9 +293,8 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
                                     {/* Avatar usando sistema AvatarLead */}
                                     <div className="flex-shrink-0">
                                       <AvatarLead
-                                        nome={user.nome}
-                                        customAvatar={user.avatar}
-                                        isAdmin={user.ruolo === 'Admin'}
+                                        nome={user.name}
+                                        customAvatar={user.avatarUrl}
                                         size="md"
                                       />
                                     </div>
@@ -322,13 +302,13 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
                                     {/* User Info */}
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <span className="font-medium text-sm truncate">{user.nome}</span>
+                                        <span className="font-medium text-sm truncate">{user.name}</span>
                                         <Badge variant="outline" className="text-xs">
-                                          {user.ruolo}
+                                          {user.role}
                                         </Badge>
                                       </div>
                                       <div className="text-xs text-muted-foreground truncate">
-                                        {user.telefono || user.email || 'Nessun contatto'}
+                                        {user.phone || user.email || 'Nessun contatto'}
                                       </div>
                                     </div>
                                     
@@ -355,15 +335,14 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
                   {selectedAssegnatarioUser && (
                     <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
                       <AvatarLead
-                        nome={selectedAssegnatarioUser.nome}
-                        customAvatar={selectedAssegnatarioUser.avatar}
-                        isAdmin={selectedAssegnatarioUser.ruolo === 'Admin'}
+                        nome={selectedAssegnatarioUser.name}
+                        customAvatar={selectedAssegnatarioUser.avatarUrl}
                         size="sm"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1">
-                          <span className="text-sm font-medium truncate">{selectedAssegnatarioUser.nome}</span>
-                          <Badge variant="outline" className="text-xs">{selectedAssegnatarioUser.ruolo}</Badge>
+                          <span className="text-sm font-medium truncate">{selectedAssegnatarioUser.name}</span>
+                          <Badge variant="outline" className="text-xs">{selectedAssegnatarioUser.role}</Badge>
                         </div>
                       </div>
                       <X

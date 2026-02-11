@@ -13,7 +13,6 @@ import {
   Calendar,
   Settings,
   Command,
-  Bug,
   CheckSquare,
   Palette,
 } from 'lucide-react';
@@ -97,18 +96,11 @@ const personalNavItems: NavItem[] = [
   },
   {
     title: 'Colori',
-    url: '/settings/colors',
+    url: '/colors',
     icon: Palette,
   },
 ];
 
-const developerNavItems: NavItem[] = [
-  {
-    title: 'Developer',
-    url: '/developer',
-    icon: Bug,
-  },
-];
 
 export function AppSidebarCustomFixed({
   ...props
@@ -116,6 +108,7 @@ export function AppSidebarCustomFixed({
   const { data: session } = useSession();
   
   // Verifica se l'utente è admin
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isAdmin = session?.user?.role === 'admin';
 
   return (
@@ -149,7 +142,8 @@ export function AppSidebarCustomFixed({
 
         {/* Menu principale */}
         <SidebarMenu>
-          {mainNavItems.map((item) => (
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {mainNavItems.map((item: any) => (
             <SidebarMenuItem key={item.url}>
               <SidebarMenuButton asChild>
                 <Link href={item.url}>
@@ -171,7 +165,8 @@ export function AppSidebarCustomFixed({
 
           <div className="rounded-md bg-muted/40 p-1">
             <SidebarMenu>
-              {personalNavItems.map((item) => (
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {personalNavItems.map((item: any) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>
                     <Link href={item.url}>
@@ -185,34 +180,6 @@ export function AppSidebarCustomFixed({
           </div>
         </div>
 
-        {/* Sezione Developer (solo admin) */}
-        {isAdmin && (
-          <div className="mt-3">
-            <div className="px-2 py-1.5 mb-2 flex items-center gap-2">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
-                Developer
-              </span>
-              <span className="px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 text-[10px] font-medium">
-                Admin
-              </span>
-            </div>
-
-            <div className="rounded-md bg-muted/40 p-1">
-              <SidebarMenu>
-                {developerNavItems.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild>
-                      <Link href={item.url}>
-                        <item.icon className="size-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </div>
-          </div>
-        )}
       </SidebarContent>
       
       <SidebarFooter>

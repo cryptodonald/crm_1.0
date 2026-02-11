@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { findRecords, createRecord } from '@/lib/airtable';
+import { getTasks, createTask } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
-import type { AirtableUserTask, CreateUserTaskInput } from '@/types/developer';
+import type { TaskCreateInput, TaskStatus, Priority } from '@/types/database';
 
 /**
  * GET /api/tasks
@@ -44,54 +44,34 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const statusParam = searchParams.get('status');
     const priorityParam = searchParams.get('priority');
-    const typeParam = searchParams.get('type');
-    const assignedToParam = searchParams.get('assignedTo');
-    const mineParam = searchParams.get('mine');
+    const assigned_to_id = searchParams.get('assignedTo') || searchParams.get('assigned_to_id') || undefined;
+    const lead_id = searchParams.get('lead_id') || undefined;
+    const pageParam = searchParams.get('page');
+    const limitParam = searchParams.get('limit');
 
-    // Build filter formula
-    const filters: string[] = [];
+    const status = statusParam ? statusParam.split(',') as TaskStatus[] : undefined;
+    const priority = priorityParam ? priorityParam.split(',') as Priority[] : undefined;
+    const page = pageParam ? parseInt(pageParam) : 1;
+    const limit = limitParam ? parseInt(limitParam) : 50;
 
-    if (statusParam) {
-      const statuses = statusParam.split(',');
-      const statusFilters = statuses.map(s => `{Status} = '${s}'`).join(', ');
-      filters.push(`OR(${statusFilters})`);
-    }
-
-    if (priorityParam) {
-      const priorities = priorityParam.split(',');
-      const priorityFilters = priorities.map(p => `{Priority} = '${p}'`).join(', ');
-      filters.push(`OR(${priorityFilters})`);
-    }
-
-    if (typeParam) {
-      const types = typeParam.split(',');
-      const typeFilters = types.map(t => `{Type} = '${t}'`).join(', ');
-      filters.push(`OR(${typeFilters})`);
-    }
-
-    // Filter by assignedTo or current user
-    if (mineParam === 'true' && session.user.id) {
-      filters.push(`FIND('${session.user.id}', ARRAYJOIN({AssignedTo}))`);
-    } else if (assignedToParam) {
-      filters.push(`FIND('${assignedToParam}', ARRAYJOIN({AssignedTo}))`);
-    }
-
-    const filterFormula = filters.length > 0 ? `AND(${filters.join(', ')})` : undefined;
-
-    // Fetch tasks
-    const options: any = {
-      sort: [
-        { field: 'Priority', direction: 'desc' },
-        { field: 'DueDate', direction: 'asc' }
-      ],
-    };
-    if (filterFormula) {
-      options.filterByFormula = filterFormula;
-    }
-    const tasks = await findRecords<AirtableUserTask>('userTasks', options);
+    // Fetch tasks with pagination
+    const result = await getTasks({
+      assigned_to_id,
+      lead_id,
+      status,
+      priority,
+      page,
+      limit,
+      sort_by: 'due_date',
+      sort_order: 'asc',
+    });
 
     return NextResponse.json(
-      { tasks, total: tasks.length },
+      { 
+        tasks: result.data, 
+        total: result.pagination.total,
+        pagination: result.pagination,
+      },
       {
         headers: {
           'X-RateLimit-Limit': rateLimit.toString(),
@@ -99,10 +79,10 @@ export async function GET(request: NextRequest) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] GET /api/tasks error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch tasks', code: 'FETCH_ERROR' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch tasks', code: 'FETCH_ERROR' },
       { status: 500 }
     );
   }
@@ -139,40 +119,42 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse body
-    const body: CreateUserTaskInput = await request.json();
+    const body = await request.json();
 
     // Validation
-    if (!body.Title || typeof body.Title !== 'string' || body.Title.trim().length === 0) {
+    if (!body.title || typeof body.title !== 'string' || body.title.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Title is required', code: 'VALIDATION_ERROR' },
+        { error: 'title is required', code: 'VALIDATION_ERROR' },
         { status: 400 }
       );
     }
 
-    if (!body.Type) {
+    if (!body.type) {
       return NextResponse.json(
-        { error: 'Type is required', code: 'VALIDATION_ERROR' },
+        { error: 'type is required', code: 'VALIDATION_ERROR' },
         { status: 400 }
       );
     }
+
+    // Map input to Postgres schema
+    const input: TaskCreateInput = {
+      title: body.title,
+      description: body.description || null,
+      type: body.type,
+      status: body.status || 'todo',
+      priority: body.priority || 'medium',
+      due_date: body.due_date || null,
+      created_by_id: body.created_by_id || null,
+      assigned_to_id: body.assigned_to_id || null,
+      lead_id: body.lead_id || null,
+      activity_id: body.activity_id || null,
+    };
 
     // Create task
-    const task = await createRecord<AirtableUserTask>('userTasks', {
-      Title: body.Title,
-      Description: body.Description,
-      Type: body.Type,
-      Status: body.Status || 'todo',
-      Priority: body.Priority || 'medium',
-      DueDate: body.DueDate,
-      CreatedBy: body.CreatedBy || (session.user.id ? [session.user.id] : undefined),
-      AssignedTo: body.AssignedTo || (session.user.id ? [session.user.id] : undefined),
-      RelatedLead: body.RelatedLead,
-      RelatedActivity: body.RelatedActivity,
-      RelatedOrder: body.RelatedOrder,
-    });
+    const task = await createTask(input);
 
     // TODO: Send notification if assigned to someone else
-    if (body.AssignedTo && body.AssignedTo[0] !== session.user.id) {
+    if (body.assigned_to_id && body.assigned_to_id !== session.user.id) {
       // Implement notification logic
     }
 
@@ -186,10 +168,10 @@ export async function POST(request: NextRequest) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] POST /api/tasks error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create task', code: 'CREATE_ERROR' },
+      { error: error instanceof Error ? error.message : 'Failed to create task', code: 'CREATE_ERROR' },
       { status: 500 }
     );
   }

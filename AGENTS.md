@@ -4,9 +4,20 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-CRM 2.0 is a complete rebuild of the Doctorbed CRM system with **pixel-perfect UI parity** to CRM 1.0 while fixing 5 CRITICAL and 8 HIGH priority issues. The rebuild focuses on reliability, security, and performance improvements while maintaining identical frontend appearance.
+CRM 2.0 per Doctorbed con database **PostgreSQL** (Supabase). Migrato completamente da Airtable (Feb 2026).
 
-**Key Constraint**: UI must remain EXACTLY the same as CRM 1.0. All improvements are backend/logic-focused.
+**Stack**:
+- Database: PostgreSQL 16 (Supabase) con Full-Text Search
+- Cache: Upstash Redis  
+- Framework: Next.js 16 + TypeScript strict
+- Auth: NextAuth v4
+- Deploy: Vercel
+
+**Key Features**:
+- 11 tabelle normalizzate (leads, activities, notes, users, etc.)
+- FTS ottimizzato con GIN indices
+- 50+ indici per performance
+- Schema completamente in English snake_case
 
 ## Development Commands
 
@@ -27,11 +38,11 @@ npx tsc --noEmit         # Type check without building
 
 ### Core Principles
 
-1. **Airtable as Source of Truth**: All data lives in Airtable. CRM is frontend + API layer only.
-2. **Batch Endpoints First**: Single requests return aggregated data (16x performance improvement over CRM 1.0).
-3. **Fail-Fast Validation**: Environment variables validated at startup via `src/env.ts` (CRITICAL-003).
-4. **Optimistic UI with Rollback**: All mutations use optimistic updates with automatic rollback on failure (CRITICAL-001).
-5. **Application-Level Transactions**: Compensating transactions for multi-step operations since Airtable lacks native transaction support (CRITICAL-004).
+1. **Postgres as Source of Truth**: Tutti i dati in PostgreSQL (Supabase) con schema normalizzato
+2. **Performance First**: FTS Postgres con GIN indices, Redis caching, batch operations
+3. **Fail-Fast Validation**: Environment variables validated at startup via `src/env.ts`
+4. **Optimistic UI with Rollback**: All mutations use optimistic updates with automatic rollback on failure
+5. **Type Safety**: TypeScript strict mode, Zod validation per API inputs
 
 ### Directory Structure
 
@@ -49,19 +60,17 @@ src/
 │   ├── ui/                # Radix UI + shadcn/ui primitives
 │   └── shared/            # Shared business components
 ├── lib/
-│   ├── airtable.ts        # Airtable client with retry logic
+│   ├── postgres.ts        # Postgres client + query helpers
 │   ├── cache.ts           # Redis caching (granular invalidation)
 │   ├── ratelimit.ts       # Upstash rate limiting
 │   ├── optimistic-updates.ts  # Optimistic UI pattern
-│   ├── batch-operations.ts    # Atomic batch operations
-│   ├── transactions.ts         # Application-level transactions
-│   └── audit-logger.ts         # Audit trail for critical actions
+│   └── batch-operations.ts    # Atomic batch operations
 ├── hooks/
 │   ├── use-optimistic-update.ts  # React hook for optimistic updates
 │   └── use-batch-operation.ts    # React hook for batch operations
 ├── types/
-│   └── airtable.ts        # TypeScript types for Airtable schema
-└── env.ts                 # Zod-validated environment variables (CRITICAL)
+│   └── database.ts        # TypeScript types per schema Postgres
+└── env.ts                 # Zod-validated environment variables
 ```
 
 ### Critical Patterns (MUST Follow)
@@ -75,28 +84,53 @@ import { env } from '@/env';
 ```
 
 Required variables:
-- `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID`, table IDs
+- `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING` (Supabase)
 - `NEXTAUTH_SECRET`, `JWT_SECRET`, `NEXTAUTH_URL`
 - `KV_URL`, `KV_REST_API_TOKEN` (Redis)
 - `VERCEL_BLOB_READ_WRITE_TOKEN`
-- Google OAuth credentials
+- `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`
 
 #### 2. Optimistic Updates (CRITICAL-001)
-All mutations MUST use the optimistic update pattern with automatic rollback:
+All mutations MUST use SWR optimistic updates with pattern matching:
 
 ```typescript
-// Use the hook - handles optimistic state + rollback automatically
-const { mutate, isLoading } = useOptimisticUpdate({
-  mutationFn: (data) => patchLead(id, data),
-  onError: (error) => showErrorToast('Update failed, reverted'),
-});
+// Update TUTTE le cache che matchano il pattern
+import { useSWRConfig } from 'swr';
+
+const { mutate } = useSWRConfig();
+
+// Dopo API call con successo:
+mutate(
+  (key) => typeof key === 'string' && key.startsWith('/api/leads'),
+  (current: any) => {
+    if (!current) return current;
+    
+    // Aggiorna array leads
+    if (current.leads && Array.isArray(current.leads)) {
+      return {
+        ...current,
+        leads: current.leads.map((l: Lead) => 
+          l.id === updatedLead.id ? updatedLead : l
+        ),
+      };
+    }
+    
+    // Aggiorna singolo lead
+    if (current.lead && current.lead.id === updatedLead.id) {
+      return { lead: updatedLead };
+    }
+    
+    return current;
+  },
+  { revalidate: false }
+);
 ```
 
 Pattern ensures:
-- UI updates immediately (optimistic)
-- Automatic rollback on error
-- Toast notification on failure
-- Background reconciliation
+- Aggiorna cache base `/api/leads` + tutte le varianti con query params
+- UI updates immediatamente (no flicker)
+- `revalidate: false` perché usiamo dati freschi dalla API
+- Funziona con filtri, pagination, search
 
 #### 3. Batch Operations (CRITICAL-002)
 Batch operations MUST use two-phase commit pattern:
@@ -112,25 +146,30 @@ if (result.status === 'PARTIAL') {
 }
 ```
 
-#### 4. Application-Level Transactions (CRITICAL-004)
-Multi-step operations (e.g., create order + update lead) MUST use transaction pattern:
+#### 4. SWR Cache Pattern (CRITICAL-004)
+SWR hooks e cache management:
 
 ```typescript
-const txn = new Transaction();
+// Hook base per lista con filtri
+export function useLeads(filters?: { status?: string[] }) {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set('status', filters.status.join(','));
+  
+  const url = `/api/leads${params.toString() ? `?${params}` : ''}`;
+  const { data, error, isLoading, mutate } = useSWR(url, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000,
+  });
+  
+  return { leads: data?.leads || [], total: data?.total || 0, isLoading, error, mutate };
+}
 
-txn.steps.push({
-  name: 'create-order',
-  execute: () => airtable.create('Orders', data),
-  compensate: (result) => airtable.delete('Orders', result.id)
-});
+// Pattern update globale (usare in modals/forms)
+import { useSWRConfig } from 'swr';
+const { mutate } = useSWRConfig();
 
-txn.steps.push({
-  name: 'link-to-lead',
-  execute: () => airtable.update('Leads', leadId, { Orders: [...] }),
-  compensate: () => airtable.update('Leads', leadId, { Orders: [...original] })
-});
-
-await txn.execute(); // Auto-rollback on failure
+// Invalida tutte le cache /api/leads (base + con filtri)
+mutate((key) => typeof key === 'string' && key.startsWith('/api/leads'));
 ```
 
 #### 5. Rate Limiting (CRITICAL-005)
@@ -149,7 +188,7 @@ const writeLimit = new Ratelimit({
 });
 ```
 
-Per-user limits prevent API abuse and control Airtable costs.
+Per-user limits prevent API abuse and control database load.
 
 #### 6. Cache Invalidation (HIGH-001)
 Cache keys MUST be structured and granular:
@@ -168,19 +207,24 @@ Cache TTL strategy:
 - List views: 5 minutes
 - Stats/aggregations: 2 minutes
 
-### Airtable Schema Reference
+### Postgres Schema Reference
 
-Tables with IDs (from `.env.local`):
-- **Leads** (`tblKIZ9CDjcQorONA`): Core lead management
-- **Activities** (`tblbcuRXKrWvne0Wy`): Activities/tasks linked to leads
-- **Orders** (`tblkqfCMabBpVD1fP`): Orders linked to leads
-- **Products** (`tblEFvr3aT2jQdYUL`): Product catalog
-- **Users** (`tbl141xF7ZQskCqGh`): System users with roles
+**11 tabelle core** (vedi `DATABASE_SCHEMA.md` per dettagli completi):
+- **leads** (581 record): Core lead management con FTS
+- **activities** (~1500): Attività linked a leads
+- **notes** (~500): Note con highlight flag
+- **users** (2): System users (admin/sales)
+- **marketing_sources** (6): Lead sources (Meta, Instagram, Google)
+- **automations** (4): Workflow automation
+- **automation_triggers**, **automation_actions**, **automation_logs**
+- **tasks** (1): User tasks/todos
+- **user_preferences** (35): UI color customization
 
 Key relationships:
-- Lead → Orders (1:N)
-- Lead → Activities (1:N)
-- Order → Products (N:M via OrderItems)
+- Lead → Activities (1:N via `activities.lead_id`)
+- Lead → Notes (1:N via `notes.lead_id`)
+- Lead → MarketingSource (N:1 via `leads.source_id`)
+- Lead → Lead (self-reference via `leads.referral_lead_id` for referral chains)
 
 ### UI Parity Requirements
 
@@ -244,7 +288,7 @@ All prices/amounts stored as **integers (cents)** to avoid floating-point errors
 
 #### Health Check Endpoint
 `GET /api/health` validates:
-- Airtable API connectivity
+- PostgreSQL connectivity (pooled + non-pooled)
 - Redis/KV connection
 - JWT secret configured
 - Environment variables valid
@@ -338,7 +382,7 @@ Retention: 1 year
 
 ### When to STOP and Ask
 
-- Airtable schema unclear or contradicts assumptions
+- Database schema unclear or contradicts assumptions
 - Business workflow ambiguity
 - CRM 1.0 behavior contradicts written spec
 - Performance vs. correctness trade-off
@@ -349,14 +393,12 @@ Retention: 1 year
 
 ### Reference Documentation
 
-External docs (one level up: `../docs/`):
-- `REBUILD_PLAN.md`: Complete 27-day rebuild plan with phases
-- `QUESTIONS.md`: 20 resolved business logic questions
-- `UI_INVENTORY.md`: Detailed 14-page UI specification
-- `FEATURE_KEEP_DROP_LATER.md`: Scope matrix (what's in/out of MVP)
-- `AUDIT_INSIGHTS.md`: Learnings from CRM 1.0 issues
-
-CRM 1.0 reference codebase: `../crm_1.0/` (for UI comparison, logic reference only)
+- `DATABASE_SCHEMA.md`: Schema Postgres completo (11 tabelle, FK, indici, query examples)
+- `UI_GUIDELINES.md`: Linee guida UI, componenti shadcn/ui, Radix UI, Tailwind patterns
+- `SETUP.md`: Setup completo nuovo ambiente di sviluppo
+- `src/types/database.ts`: TypeScript interfaces per tutte le tabelle
+- `README.md`: Quick start, stack, env vars
+- `.env.example`: Template environment variables
 
 ### Stack Details
 
@@ -366,15 +408,83 @@ CRM 1.0 reference codebase: `../crm_1.0/` (for UI comparison, logic reference on
 - **Styling**: Tailwind CSS v4
 - **UI Components**: Radix UI + shadcn/ui
 - **Auth**: NextAuth v4
-- **Data**: Airtable (no local database)
+- **Database**: PostgreSQL 16 (Supabase)
 - **Cache**: Upstash Redis
 - **Storage**: Vercel Blob
 - **Deployment**: Vercel
 
 ### Known Constraints
 
-1. **Airtable lacks transactions**: Use application-level transaction pattern
-2. **Rate limiting sensitive**: Upstash config must be correct (was disabled in CRM 1.0)
-3. **No database migrations**: Airtable schema is source of truth, coordinate changes carefully
-4. **Vercel serverless limits**: Cold starts, 10s timeout for Hobby plan, 60s for Pro
-5. **Import alias**: Use `@/*` for all imports (configured in tsconfig.json)
+1. **Postgres pooling**: Use `POSTGRES_URL` (pooled) per API routes, `POSTGRES_URL_NON_POOLING` per migrations
+2. **Rate limiting**: Upstash Redis per-user limits attivi
+3. **Vercel serverless limits**: Cold starts, 10s timeout per Hobby plan, 60s per Pro
+4. **Database migrations**: Schema changes via SQL migration scripts (non automatiche)
+5. **Import alias**: Use `@/*` per all imports (configured in tsconfig.json)
+
+### Common Pitfalls & Fixes
+
+#### 1. Null vs Undefined in Forms (FIXED)
+PostgreSQL returns `null` for empty fields, but Zod `z.string().optional()` accepts only `string | undefined`.
+
+**Fix**: Convert `null → undefined` when initializing forms:
+```typescript
+const resetValues = {
+  Nome: lead.name || '',
+  Email: lead.email ?? undefined,  // ← Converti null a undefined
+  CAP: lead.postal_code ?? undefined,
+  // ...
+};
+```
+
+#### 2. source_id is String, NOT Array (FIXED)
+Schema: `source_id: UUID | null` (single string)
+
+```typescript
+// ❌ WRONG - tratta come array
+const fonteId = lead.source_id?.[0];
+
+// ✅ CORRECT - è già una stringa
+const fonteId = lead.source_id;
+const fonteName = fonteId ? sourcesLookup[fonteId] : '';
+```
+
+#### 3. Form State Persistence in Modals (FIXED)
+Quando modal viene aperto per lead diverso, form mantiene valori precedenti.
+
+**Fix**: useEffect che resetta form atomicamente:
+```typescript
+useEffect(() => {
+  if (open) {
+    // 1. Reset form
+    form.reset(initialValues);
+    
+    // 2. Set computed fields (dopo reset)
+    if (fonteName) {
+      form.setValue('Fonte', fonteName, { shouldValidate: false });
+    }
+  }
+}, [lead.id, open, fonteName]); // Dipende da lead.id per reset su cambio lead
+```
+
+#### 4. SWR Cache con Query Params (FIXED)
+`mutate('/api/leads')` aggiorna solo cache base, non `/api/leads?page=1&limit=10`.
+
+**Fix**: Pattern matching per aggiornare tutte le varianti:
+```typescript
+mutate(
+  (key) => typeof key === 'string' && key.startsWith('/api/leads'),
+  // ... updater function
+);
+```
+
+#### 5. Debug Logging in Production
+Evita log verbosi in produzione. Usa condizionale:
+```typescript
+if (process.env.NODE_ENV === 'development') {
+  console.log('[Debug] ...');
+}
+```
+
+Mantieni solo:
+- `console.error()` per errori
+- `console.warn()` per warning critici

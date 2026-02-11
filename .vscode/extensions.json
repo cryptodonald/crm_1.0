@@ -1,0 +1,48 @@
+{
+  "recommendations": [
+    // Essential
+    "esbenp.prettier-vscode",           // Prettier - Code formatter
+    "dbaeumer.vscode-eslint",           // ESLint - Linter
+    "bradlc.vscode-tailwindcss",        // Tailwind CSS IntelliSense
+    
+    // TypeScript
+    "ms-vscode.vscode-typescript-next", // TypeScript Nightly
+    
+    // Git
+    "eamodio.gitlens",                  // GitLens - Git supercharged
+    "mhutchie.git-graph",               // Git Graph - Visualize git history
+    
+    // Development
+    "usernamehw.errorlens",             // ErrorLens - Inline errors
+    "christian-kohler.path-intellisense", // Path autocomplete
+    "zignd.html-css-class-completion",  // CSS class autocomplete
+    
+    // Next.js / React
+    "dsznajder.es7-react-js-snippets",  // React snippets
+    
+    // Database
+    "mtxr.sqltools",                    // SQL Tools
+    "mtxr.sqltools-driver-pg",          // PostgreSQL driver for SQL Tools
+    
+    // Utilities
+    "yoavbls.pretty-ts-errors",         // Pretty TypeScript Errors
+    "naumovs.color-highlight",          // Color highlighter
+    "mikestead.dotenv",                 // .env syntax highlighting
+    "redhat.vscode-yaml",               // YAML support
+    
+    // AI Assistant (Optional)
+    "github.copilot",                   // GitHub Copilot
+    "github.copilot-chat",              // GitHub Copilot Chat
+    
+    // Documentation
+    "yzhang.markdown-all-in-one",       // Markdown All in One
+    
+    // Theme (Optional)
+    "pkief.material-icon-theme"         // Material Icon Theme
+  ],
+  "unwantedRecommendations": [
+    "hookyqr.beautify",                 // Conflicts with Prettier
+    "dbaeumer.jshint",                  // Conflicts with ESLint
+    "ms-vscode.vscode-typescript-tslint-plugin" // TSLint deprecated
+  ]
+}

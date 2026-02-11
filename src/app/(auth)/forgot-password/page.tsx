@@ -51,8 +51,8 @@ export default function ForgotPasswordPage() {
       }
 
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'Errore imprevisto. Riprova.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Errore imprevisto. Riprova.');
     } finally {
       setIsLoading(false);
     }
@@ -81,13 +81,13 @@ export default function ForgotPasswordPage() {
             <CardContent className="space-y-4">
               <Alert variant="default" className="border-green-200 bg-green-50">
                 <AlertDescription className="text-green-800">
-                  Se esiste un account con l'email <strong className="break-all">{email}</strong>, riceverai un link per reimpostare la password.
+                  Se esiste un account con l&apos;email <strong className="break-all">{email}</strong>, riceverai un link per reimpostare la password.
                 </AlertDescription>
               </Alert>
 
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>Il link è valido per 1 ora.</p>
-                <p>Non hai ricevuto l'email? Controlla la cartella spam.</p>
+                <p>Non hai ricevuto l&apos;email? Controlla la cartella spam.</p>
               </div>
 
               <Button
@@ -116,7 +116,7 @@ export default function ForgotPasswordPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">CRM 2.0</h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Recupera l'accesso al tuo account
+            Recupera l&apos;accesso al tuo account
           </p>
         </div>
 

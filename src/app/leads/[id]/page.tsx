@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
 import { PageBreadcrumb } from '@/components/layout/page-breadcrumb';
@@ -26,7 +26,7 @@ import useSWR, { mutate } from 'swr';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
-import type { AirtableLead, AirtableNotes } from '@/types/airtable.generated';
+import type { Lead, Note } from '@/types/database';
 
 interface LeadDetailPageProps {
   params: Promise<{ id: string }>;
@@ -36,18 +36,23 @@ const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch lead');
   const data = await res.json();
-  return data.lead as AirtableLead;
+  return data.lead as Lead;
 };
 
 export default function LeadDetailPage({ params }: LeadDetailPageProps) {
   const { id } = use(params);
   const router = useRouter();
   const [showAddNote, setShowAddNote] = useState(false);
-  const [editingNote, setEditingNote] = useState<AirtableNotes | undefined>(undefined);
+  const [editingNote, setEditingNote] = useState<Note | undefined>(undefined);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddActivity, setShowAddActivity] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [editingActivity, setEditingActivity] = useState<any | undefined>(undefined);
   const [activeSection, setActiveSection] = useState<LeadSection>('overview');
+  const [mounted, setMounted] = useState(false);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setMounted(true); }, []);
 
   const { data: lead, isLoading, error } = useSWR(
     `/api/leads/${id}`,
@@ -60,53 +65,13 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
   const { activities } = useActivities(id);
   const { deleteActivity } = useDeleteActivity();
 
-  if (isLoading) {
-    return (
-      <AppLayoutCustom>
-        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          <PageBreadcrumb pageName="Dettaglio Lead" />
-          <div className="px-4 lg:px-6 space-y-6">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-96 w-full" />
-          </div>
-        </div>
-      </AppLayoutCustom>
-    );
-  }
-
-  if (error || !lead) {
-    return (
-      <AppLayoutCustom>
-        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          <PageBreadcrumb pageName="Dettaglio Lead" />
-          <div className="px-4 lg:px-6">
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-destructive">
-                  {error?.message || 'Lead non trovato'}
-                </p>
-                <Button
-                  onClick={() => router.push('/leads')}
-                  variant="outline"
-                  className="mt-4"
-                >
-                  Torna alla lista
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </AppLayoutCustom>
-    );
-  }
-
-  // Get source info
-  const fonteId =
-    lead?.fields.Fonte?.[0];
+  // Get source info (safe even when lead is null)
+  const fonteId = lead?.source_id;
   const sourceName = fonteId ? sourcesLookup[fonteId] : undefined;
   const sourceColor = fonteId ? sourcesColorLookup[fonteId] : undefined;
 
   const renderContent = () => {
+    if (!lead) return null;
     switch (activeSection) {
       case 'overview':
         return (
@@ -121,7 +86,7 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                     <div>
                       <p className="text-sm text-muted-foreground">Attività</p>
                       <p className="text-2xl font-bold">
-                        {Array.isArray(lead.fields['Attività']) ? lead.fields['Attività'].length : 0}
+                        {activities?.length || 0}
                       </p>
                     </div>
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -139,7 +104,7 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                     <div>
                       <p className="text-sm text-muted-foreground">Ordini</p>
                       <p className="text-2xl font-bold">
-                        {Array.isArray(lead.fields.Orders) ? lead.fields.Orders.length : 0}
+                        {0}
                       </p>
                     </div>
                     <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -169,7 +134,7 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
             </div>
 
             {/* Esigenza */}
-            {lead.fields.Esigenza && (
+            {lead.needs && (
               <Card>
                 <CardContent className="pt-6">
                   <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
@@ -179,7 +144,7 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                     Esigenza Iniziale
                   </h3>
                   <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                    {lead.fields.Esigenza}
+                    {lead.needs}
                   </p>
                 </CardContent>
               </Card>
@@ -195,7 +160,7 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                   Informazioni Anagrafiche
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {lead.fields.Telefono && (
+                  {lead.phone && (
                     <div className="flex items-start gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -204,12 +169,12 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Telefono</p>
-                        <p className="text-sm font-medium font-mono">{lead.fields.Telefono}</p>
+                        <p className="text-sm font-medium font-mono">{lead.phone}</p>
                       </div>
                     </div>
                   )}
                   
-                  {lead.fields.Email && (
+                  {lead.email && (
                     <div className="flex items-start gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -218,12 +183,12 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground mb-1">Email</p>
-                        <p className="text-sm font-medium truncate">{lead.fields.Email}</p>
+                        <p className="text-sm font-medium truncate">{lead.email}</p>
                       </div>
                     </div>
                   )}
                   
-                  {(lead.fields.Indirizzo || lead.fields.Città || lead.fields.CAP) && (
+                  {(lead.address || lead.city || lead.postal_code) && (
                     <div className="flex items-start gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -234,12 +199,12 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground mb-1">Indirizzo</p>
                         <div className="text-sm font-medium space-y-0.5">
-                          {lead.fields.Indirizzo && (
-                            <p>{lead.fields.Indirizzo}</p>
+                          {lead.address && (
+                            <p>{lead.address}</p>
                           )}
                           <p>
-                            {lead.fields.CAP && <span>{lead.fields.CAP} </span>}
-                            {lead.fields.Città && <span>{lead.fields.Città}</span>}
+                            {lead.postal_code && <span>{lead.postal_code} </span>}
+                            {lead.city && <span>{lead.city}</span>}
                           </p>
                         </div>
                       </div>
@@ -259,7 +224,7 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                   Cronologia
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {lead.createdTime && (
+                  {lead.created_at && (
                     <div className="flex items-start gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -269,13 +234,13 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Creato il</p>
                         <p className="text-sm font-medium">
-                          {format(new Date(lead.createdTime), 'dd MMMM yyyy, HH:mm', { locale: it })}
+                          {format(new Date(lead.created_at), 'dd MMMM yyyy, HH:mm', { locale: it })}
                         </p>
                       </div>
                     </div>
                   )}
                   
-                  {lead.fields.Data && (
+                  {lead.updated_at && (
                     <div className="flex items-start gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -283,9 +248,9 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                         </svg>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Data Lead</p>
+                        <p className="text-xs text-muted-foreground mb-1">Aggiornato il</p>
                         <p className="text-sm font-medium">
-                          {format(new Date(lead.fields.Data), 'dd MMMM yyyy', { locale: it })}
+                          {format(new Date(lead.updated_at), 'dd MMMM yyyy, HH:mm', { locale: it })}
                         </p>
                       </div>
                     </div>
@@ -301,9 +266,9 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
           <div className="p-6">
             <LeadTimeline
               leadId={id}
-              leadEsigenza={lead.fields.Esigenza}
-              leadCreatedAt={lead.createdTime}
-              activities={[]}
+              leadEsigenza={lead.needs || ''}
+              leadCreatedAt={typeof lead.created_at === 'string' ? lead.created_at : lead.created_at?.toISOString()}
+              activities={activities || []}
               onAddNote={() => {
                 setEditingNote(undefined);
                 setShowAddNote(true);
@@ -377,99 +342,125 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
           <PageBreadcrumb pageName="Dettaglio Lead" />
         </div>
 
-        <div className="flex-shrink-0 px-4 lg:px-6 pb-4">
-          <LeadProfileHeader
-            lead={lead}
-            sourceName={sourceName}
-            sourceColor={sourceColor}
-            onEdit={() => setShowEditModal(true)}
-            onDelete={() => router.push('/leads')}
-          />
-        </div>
-
-        <div className="flex-1 px-4 lg:px-6 pb-6 min-h-0">
-          <div className="h-full border rounded-lg overflow-hidden">
-            <ResizablePanelGroup 
-              direction="horizontal" 
-              className="h-full"
-              onLayout={(sizes) => {
-                // Salva le dimensioni nel localStorage per persistenza
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('lead-detail-sidebar-size', JSON.stringify(sizes[0]));
-                }
-              }}
-            >
-              <ResizablePanel 
-                defaultSize={typeof window !== 'undefined' && localStorage.getItem('lead-detail-sidebar-size') 
-                  ? Number(localStorage.getItem('lead-detail-sidebar-size')) 
-                  : 20
-                } 
-                minSize={12} 
-                maxSize={35}
-                collapsible={true}
-                collapsedSize={4}
-              >
-                <div className="h-full bg-muted/50">
-                  <LeadSidebarNav
-                    activeSection={activeSection}
-                    onSectionChange={setActiveSection}
-                    noteCount={notes?.length}
-                    activityCount={Array.isArray(lead.fields['Attività']) ? lead.fields['Attività'].length : 0}
-                    orderCount={Array.isArray(lead.fields.Orders) ? lead.fields.Orders.length : 0}
-                    fileCount={0}
-                  />
-                </div>
-              </ResizablePanel>
-
-              <ResizableHandle className="relative w-px bg-border data-[resize-handle-active]:bg-primary transition-all">
-                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-3 flex items-center justify-center">
-                  <div className="w-1 h-10 rounded-full bg-border hover:bg-primary transition-colors" />
-                </div>
-              </ResizableHandle>
-
-              <ResizablePanel defaultSize={80} minSize={50}>
-                <div className="h-full bg-card overflow-auto">
-                  {renderContent()}
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+        {/* Loading state - mostra finché non siamo mounted O dati non disponibili */}
+        {(!mounted || (isLoading && !lead)) && (
+          <div className="flex-shrink-0 px-4 lg:px-6 pb-4 space-y-6">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-96 w-full" />
           </div>
-        </div>
+        )}
 
-        <AddNoteDialog
-          open={showAddNote}
-          onOpenChange={(open) => {
-            setShowAddNote(open);
-            if (!open) setEditingNote(undefined);
-          }}
-          leadId={id}
-          editingNote={editingNote}
-        />
+        {/* Error state */}
+        {mounted && !isLoading && (error || !lead) && (
+          <div className="flex-shrink-0 px-4 lg:px-6 pb-4">
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-destructive">
+                  {error?.message || 'Lead non trovato'}
+                </p>
+                <Button
+                  onClick={() => router.push('/leads')}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  Torna alla lista
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-        {/* Edit Lead Modal */}
-        <EditLeadModal
-          open={showEditModal}
-          onOpenChange={setShowEditModal}
-          lead={lead}
-          onSuccess={() => {
-            // Ricarica i dati del lead
-            mutate(`/api/leads/${id}`);
-          }}
-        />
+        {/* Loaded state */}
+        {mounted && lead && (
+          <>
+            <div className="flex-shrink-0 px-4 lg:px-6 pb-4">
+              <LeadProfileHeader
+                lead={lead}
+                sourceName={sourceName}
+                sourceColor={sourceColor}
+                onEdit={() => setShowEditModal(true)}
+                onDelete={() => router.push('/leads')}
+              />
+            </div>
 
-        {/* New/Edit Activity Modal */}
-        <NewActivityModal
-          open={showAddActivity}
-          onOpenChange={(open) => {
-            setShowAddActivity(open);
-            if (!open) setEditingActivity(undefined);
-          }}
-          prefilledLeadId={id}
-          activity={editingActivity}
-          onSuccess={() => {
-            setEditingActivity(undefined);
-          }}
-        />
+            <div className="flex-1 px-4 lg:px-6 pb-6 min-h-0">
+              <div className="h-full border rounded-lg overflow-hidden">
+                <ResizablePanelGroup 
+                  direction="horizontal" 
+                  className="h-full"
+                  onLayout={(sizes) => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('lead-detail-sidebar-size', JSON.stringify(sizes[0]));
+                    }
+                  }}
+                >
+                  <ResizablePanel 
+                    defaultSize={20} 
+                    minSize={12} 
+                    maxSize={35}
+                    collapsible={true}
+                    collapsedSize={4}
+                  >
+                    <div className="h-full bg-muted/50">
+                      <LeadSidebarNav
+                        activeSection={activeSection}
+                        onSectionChange={setActiveSection}
+                        noteCount={notes?.length}
+                        activityCount={activities?.length || 0}
+                        orderCount={0}
+                        fileCount={0}
+                      />
+                    </div>
+                  </ResizablePanel>
+
+                  <ResizableHandle className="relative w-px bg-border data-[resize-handle-active]:bg-primary transition-all">
+                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-3 flex items-center justify-center">
+                      <div className="w-1 h-10 rounded-full bg-border hover:bg-primary transition-colors" />
+                    </div>
+                  </ResizableHandle>
+
+                  <ResizablePanel defaultSize={80} minSize={50}>
+                    <div className="h-full bg-card overflow-auto">
+                      {renderContent()}
+                    </div>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </div>
+            </div>
+
+            <AddNoteDialog
+              open={showAddNote}
+              onOpenChange={(open) => {
+                setShowAddNote(open);
+                if (!open) setEditingNote(undefined);
+              }}
+              leadId={id}
+              editingNote={editingNote}
+            />
+
+            <EditLeadModal
+              open={showEditModal}
+              onOpenChange={setShowEditModal}
+              lead={lead}
+              onSuccess={() => {
+                mutate(`/api/leads/${id}`);
+              }}
+            />
+
+            <NewActivityModal
+              open={showAddActivity}
+              onOpenChange={(open) => {
+                setShowAddActivity(open);
+                if (!open) setEditingActivity(undefined);
+              }}
+              prefilledLeadId={id}
+              activity={editingActivity}
+              onSuccess={() => {
+                setEditingActivity(undefined);
+              }}
+            />
+          </>
+        )}
       </div>
     </AppLayoutCustom>
   );

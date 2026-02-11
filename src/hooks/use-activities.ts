@@ -1,10 +1,11 @@
 import useSWR, { useSWRConfig } from 'swr';
 import { useState } from 'react';
-import type { AirtableActivity } from '@/types/airtable.generated';
+import type { Activity } from '@/types/database';
 
 interface UseActivitiesReturn {
-  activities: AirtableActivity[] | undefined;
+  activities: Activity[] | undefined;
   isLoading: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error: any;
   mutate: () => void;
 }
@@ -15,12 +16,12 @@ const fetcher = async (url: string) => {
     throw new Error('Failed to fetch activities');
   }
   const data = await res.json();
-  return data.activities as AirtableActivity[];
+  return data.activities as Activity[];
 };
 
 export function useActivities(leadId: string | undefined): UseActivitiesReturn {
-  const { data, error, mutate } = useSWR<AirtableActivity[]>(
-    leadId ? `/api/activities?leadId=${leadId}` : null,
+  const { data, error, mutate } = useSWR<Activity[]>(
+    leadId ? `/api/activities?lead_id=${leadId}` : null,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -49,12 +50,13 @@ export function useUpdateActivity(id: string) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateActivity = async (data: any): Promise<boolean> => {
     setIsUpdating(true);
     setError(null);
 
     // Store original data for rollback (CRITICAL-001)
-    let originalActivity: AirtableActivity | null = null;
+    let originalActivity: Activity | null = null;
 
     try {
       // 1. Fetch current state for rollback
@@ -68,18 +70,16 @@ export function useUpdateActivity(id: string) {
       // Find all cache keys for activities lists that might contain this activity
       mutate(
         (key) => typeof key === 'string' && key.startsWith('/api/activities'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async (current: any) => {
           if (!current) return current;
           // Handle array response (from fetcher)
           if (Array.isArray(current)) {
-            return current.map((act: AirtableActivity) =>
+            return current.map((act: Activity) =>
               act.id === id
                 ? {
                     ...act,
-                    fields: {
-                      ...act.fields,
-                      ...data,
-                    },
+                    ...data,
                   }
                 : act
             );
@@ -105,6 +105,7 @@ export function useUpdateActivity(id: string) {
       mutate((key) => typeof key === 'string' && key.startsWith('/api/activities'));
 
       return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
 
@@ -112,10 +113,11 @@ export function useUpdateActivity(id: string) {
       if (originalActivity) {
         mutate(
           (key) => typeof key === 'string' && key.startsWith('/api/activities'),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           async (current: any) => {
             if (!current) return current;
             if (Array.isArray(current)) {
-              return current.map((act: AirtableActivity) =>
+              return current.map((act: Activity) =>
                 act.id === id ? originalActivity : act
               );
             }
@@ -164,6 +166,7 @@ export function useDeleteActivity() {
       mutate((key) => typeof key === 'string' && key.startsWith('/api/activities'));
 
       return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
       return false;
@@ -187,33 +190,30 @@ export function useCreateActivity() {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createActivity = async (data: any): Promise<AirtableActivity | null> => {
+  const createActivity = async (data: Record<string, unknown>): Promise<Activity | null> => {
     setIsCreating(true);
     setError(null);
 
-    // Genera ID temporaneo per optimistic update
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     try {
-      // 1. Optimistic update - aggiungi activity temporanea all'UI
+      // 1. Optimistic update — aggiungi activity temporanea (struttura flat Postgres)
       mutate(
         (key) => typeof key === 'string' && key.startsWith('/api/activities'),
-        async (current: any) => {
-          if (!current) return current;
-          if (Array.isArray(current)) {
-            // Aggiungi activity temporanea
-            return [
-              {
-                id: tempId,
-                fields: data,
-                createdTime: new Date().toISOString(),
-                _isOptimistic: true,
-                _tempId: tempId,
-              },
-              ...current,
-            ];
-          }
-          return current;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          if (!current || !Array.isArray(current)) return current;
+          return [
+            {
+              id: tempId,
+              ...data,
+              airtable_id: '',
+              search_vector: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as Activity,
+            ...current,
+          ];
         },
         { revalidate: false }
       );
@@ -226,47 +226,38 @@ export function useCreateActivity() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to create activity');
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to create activity');
       }
 
       const result = await res.json();
-      const newActivity = result.data;
+      const newActivity: Activity = result.activity;
 
-      // 3. Sostituisci activity temporanea con quella reale
+      // 3. Sostituisci activity temporanea con quella reale dal server
       mutate(
         (key) => typeof key === 'string' && key.startsWith('/api/activities'),
-        async (current: any) => {
-          if (!current) return current;
-          if (Array.isArray(current)) {
-            return current.map((act: any) =>
-              act.id === tempId || act._tempId === tempId
-                ? {
-                    id: newActivity.id,
-                    fields: newActivity.fields,
-                    createdTime: newActivity.createdTime,
-                  }
-                : act
-            );
-          }
-          return current;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          if (!current || !Array.isArray(current)) return current;
+          return current.map((act: Activity) =>
+            act.id === tempId ? newActivity : act
+          );
         },
         { revalidate: true }
       );
 
       return newActivity;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create activity';
+      setError(message);
 
-      // 4. Rollback - rimuovi activity temporanea
+      // 4. Rollback — rimuovi activity temporanea
       mutate(
         (key) => typeof key === 'string' && key.startsWith('/api/activities'),
-        async (current: any) => {
-          if (!current) return current;
-          if (Array.isArray(current)) {
-            return current.filter((act: any) => act.id !== tempId && act._tempId !== tempId);
-          }
-          return current;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          if (!current || !Array.isArray(current)) return current;
+          return current.filter((act: Activity) => act.id !== tempId);
         },
         { revalidate: false }
       );

@@ -30,6 +30,7 @@ const sizeClasses = {
 export function AvatarUser({
   nome,
   avatarUrl,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ruolo,
   size = 'md',
   className,

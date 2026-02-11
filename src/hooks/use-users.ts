@@ -4,12 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 
 interface UserData {
   id: string;
-  nome: string;
+  name: string;
   email?: string;
-  ruolo: string;
-  avatar?: string;
+  role: string;
   avatarUrl?: string;
-  telefono?: string;
+  phone?: string;
 }
 
 interface ApiResponse {
@@ -37,8 +36,6 @@ export function useUsers(): UseUsersReturn {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 [useUsers] Fetching users data...');
-
       const response = await fetch('/api/users', {
         method: 'GET',
         headers: {
@@ -59,7 +56,6 @@ export function useUsers(): UseUsersReturn {
         throw new Error(data.error || 'API returned unsuccessful response');
       }
 
-      console.log(`✅ [useUsers] Successfully loaded ${data.count} users`);
       setUsers(data.users);
     } catch (err) {
       const errorMessage =

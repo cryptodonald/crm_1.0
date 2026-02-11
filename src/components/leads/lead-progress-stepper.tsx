@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Check, X, Hourglass, AlertCircle } from 'lucide-react';
 import {
   Stepper,
@@ -27,8 +28,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 

@@ -17,26 +17,11 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
   // ========================================
-  // Airtable (REQUIRED)
+  // PostgreSQL (Supabase) - REQUIRED
   // ========================================
-  AIRTABLE_API_KEY: z.string().min(1, 'AIRTABLE_API_KEY is required'),
-  AIRTABLE_BASE_ID: z.string().min(1, 'AIRTABLE_BASE_ID is required'),
-  
-  // Airtable Table IDs
-  AIRTABLE_LEADS_TABLE_ID: z.string().min(1, 'AIRTABLE_LEADS_TABLE_ID is required'),
-  AIRTABLE_ACTIVITIES_TABLE_ID: z.string().min(1, 'AIRTABLE_ACTIVITIES_TABLE_ID is required'),
-  AIRTABLE_USERS_TABLE_ID: z.string().min(1, 'AIRTABLE_USERS_TABLE_ID is required'),
-  AIRTABLE_PRODUCTS_TABLE_ID: z.string().min(1, 'AIRTABLE_PRODUCTS_TABLE_ID is required'),
-  AIRTABLE_ORDERS_TABLE_ID: z.string().min(1, 'AIRTABLE_ORDERS_TABLE_ID is required'),
-  AIRTABLE_NOTES_TABLE_ID: z.string().min(1, 'AIRTABLE_NOTES_TABLE_ID is required'),
-  AIRTABLE_AUTOMATIONS_TABLE_ID: z.string().optional(),
-  AIRTABLE_COLOR_PREFERENCES_TABLE_ID: z.string().min(1, 'AIRTABLE_COLOR_PREFERENCES_TABLE_ID is required'),
-  
-  // Developer & Task Management Tables
-  AIRTABLE_DEV_ISSUES_TABLE_ID: z.string().min(1, 'AIRTABLE_DEV_ISSUES_TABLE_ID is required'),
-  AIRTABLE_USER_TASKS_TABLE_ID: z.string().min(1, 'AIRTABLE_USER_TASKS_TABLE_ID is required'),
-  AIRTABLE_NOTIFICATIONS_TABLE_ID: z.string().min(1, 'AIRTABLE_NOTIFICATIONS_TABLE_ID is required'),
-  AIRTABLE_DEV_ISSUE_COMMENTS_TABLE_ID: z.string().min(1, 'AIRTABLE_DEV_ISSUE_COMMENTS_TABLE_ID is required'),
+  POSTGRES_URL: z.string().min(1, 'POSTGRES_URL is required'),
+  POSTGRES_URL_NON_POOLING: z.string().min(1, 'POSTGRES_URL_NON_POOLING is required'),
+  POSTGRES_PRISMA_URL: z.string().optional(),
 
   // ========================================
   // Authentication (REQUIRED)
@@ -57,10 +42,11 @@ const envSchema = z.object({
   VERCEL_BLOB_READ_WRITE_TOKEN: z.string().min(1, 'VERCEL_BLOB_READ_WRITE_TOKEN is required'),
 
   // ========================================
-  // Redis/KV (OPTIONAL - for caching)
+  // Redis/KV (Upstash) - REQUIRED for caching
   // ========================================
-  KV_REST_API_URL: z.string().url().optional(),
-  KV_REST_API_TOKEN: z.string().optional(),
+  KV_URL: z.string().url('KV_URL is required'),
+  KV_REST_API_URL: z.string().url('KV_REST_API_URL is required'),
+  KV_REST_API_TOKEN: z.string().min(1, 'KV_REST_API_TOKEN is required'),
   KV_REST_API_READ_ONLY_TOKEN: z.string().optional(),
 
   // ========================================
@@ -87,7 +73,8 @@ const envSchema = z.object({
   // ========================================
   // Google Maps/Places (OPTIONAL)
   // ========================================
-  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_MAPS_API: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(), // Backwards compatibility
   GOOGLE_PLACES_API_KEY: z.string().optional(),
 
   // ========================================

@@ -92,6 +92,7 @@ export async function cachedQuery<T>(
     
     return data;
     
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     metrics.errors++;
     console.error(`[Cache ERROR] ${key}:`, error.message);
@@ -134,6 +135,7 @@ export async function invalidateCache(pattern: string) {
       console.log(`[Cache INVALIDATE] ${pattern}`);
     }
     
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error(`[Cache INVALIDATE ERROR] ${pattern}:`, error.message);
   }
@@ -180,6 +182,7 @@ export async function clearAllCache() {
     const redis = getRedis();
     await redis.flushdb();
     console.log('[Cache] Tutta la cache è stata pulita');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('[Cache FLUSH ERROR]:', error.message);
   }

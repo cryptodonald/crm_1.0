@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Table,
@@ -45,13 +45,17 @@ import {
   Edit,
   Trash2,
   X,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Phone,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Mail,
-  FileText,
   User,
   Calendar,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Hash,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Copy,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Check,
   Activity,
   AlertTriangle,
@@ -72,6 +76,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  AlertDialogMedia,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DataTablePersistentFilter } from '@/components/data-table/data-table-persistent-filter';
@@ -81,11 +87,10 @@ import { useTablePreferences } from '@/hooks/use-table-preferences';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { AvatarUser } from '@/components/ui/avatar-user';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { format, isWithinInterval, startOfDay, endOfDay, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
-// import { getLeadStatusColor, getSourceColor } from '@/lib/airtable-colors'; // Migrato a SmartBadge
-import { getSelectOptions } from '@/lib/airtable-schema-helper';
 import {
   Tooltip,
   TooltipContent,
@@ -94,11 +99,12 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { EditLeadModal } from '@/components/leads/edit-lead-modal';
+import { formatItalianPhone } from '@/lib/format-phone';
 
-import type { AirtableLead } from '@/types/airtable.generated';
+import type { Lead } from '@/types/database';
 
 // Type alias for better readability
-type LeadData = AirtableLead;
+type LeadData = Lead;
 
 interface LeadsFilters {
   stato?: string[];
@@ -108,7 +114,8 @@ interface LeadsFilters {
 }
 
 interface LeadsDataTableProps {
-  leads: LeadData[];
+  leads: LeadData[]; // Paginated leads to display
+  allLeads: LeadData[]; // All leads for stats calculation
   loading: boolean;
   filters: LeadsFilters;
   onFiltersChange: (filters: LeadsFilters) => void;
@@ -117,38 +124,39 @@ interface LeadsDataTableProps {
   sourcesColorLookup: Record<string, string | undefined>;
   onDeleteLead?: (leadId: string) => Promise<boolean>;
   onDeleteMultipleLeads?: (leadIds: string[]) => Promise<number>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateLead?: (leadId: string, updates: Partial<any>) => Promise<boolean>;
+  // Client-side pagination props
+  currentPage: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (itemsPerPage: number) => void;
   className?: string;
 }
 
-// Carica dinamicamente gli stati disponibili dallo schema Airtable
+// Stati disponibili (da database schema)
 function getStatiDisponibili(): string[] {
-  try {
-    const options = getSelectOptions('Lead', 'Stato');
-    if (!options || options.length === 0) {
-      throw new Error('Schema non disponibile o vuoto');
-    }
-    return options.map(opt => opt.name);
-  } catch (error) {
-    console.error('Errore caricamento stati da schema:', error);
-    // Fallback solo se lo schema non è disponibile
-    return ['Nuovo', 'Attivo', 'Qualificato', 'Cliente', 'Chiuso', 'Sospeso'];
-  }
+  // Direct return - stati dal DB Postgres
+  return ['Nuovo', 'Attivo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Chiuso', 'Sospeso'];
 }
 
 // Configurazione colonne visibili
 const DEFAULT_VISIBLE_COLUMNS = {
   cliente: true,
-  contatti: true,
+  stato: true,
+  fonte: true,
+  citta: true,
+  telefono: true,
+  email: false,
   data: true,
   attivita: true,
-  relazioni: true,
-  assegnatario: true,
-  documenti: true,
+  assegnatario: false,
+  relazioni: false,
 };
 
 export function LeadsDataTable({
   leads,
+  allLeads,
   loading,
   filters,
   onFiltersChange,
@@ -157,11 +165,82 @@ export function LeadsDataTable({
   sourcesColorLookup,
   onDeleteLead,
   onDeleteMultipleLeads,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onUpdateLead,
+  currentPage,
+  itemsPerPage,
+  onPageChange,
+  onItemsPerPageChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   className,
 }: LeadsDataTableProps) {
   const router = useRouter();
   const { preferences, isLoaded, updateItemsPerPage, updateVisibleColumns } = useTablePreferences();
+  
+  // Client-side stats calculation from all leads
+  const { byStatus, bySource } = useMemo(() => {
+    const statusCounts: Record<string, number> = {};
+    const sourceCounts: Record<string, number> = {};
+    
+    // Apply same filters as main table (except the dimension being counted)
+    allLeads.forEach(lead => {
+      // For status counts: apply fonte/date/search filters, but NOT status filter
+      let includeInStatus = true;
+      if (filters.fonte && filters.fonte.length > 0 && lead.source_id && !filters.fonte.includes(lead.source_id)) {
+        includeInStatus = false;
+      }
+      if (filters.dateRange?.from || filters.dateRange?.to) {
+        const leadDate = lead.created_at ? new Date(lead.created_at) : null;
+        if (!leadDate ||
+            (filters.dateRange.from && leadDate < filters.dateRange.from) ||
+            (filters.dateRange.to && leadDate > filters.dateRange.to)) {
+          includeInStatus = false;
+        }
+      }
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        if (!(lead.name?.toLowerCase().includes(searchLower) ||
+              lead.phone?.includes(filters.search) ||
+              lead.email?.toLowerCase().includes(searchLower) ||
+              lead.city?.toLowerCase().includes(searchLower))) {
+          includeInStatus = false;
+        }
+      }
+      
+      if (includeInStatus && lead.status) {
+        statusCounts[lead.status] = (statusCounts[lead.status] || 0) + 1;
+      }
+      
+      // For source counts: apply stato/date/search filters, but NOT fonte filter
+      let includeInSource = true;
+      if (filters.stato && filters.stato.length > 0 && lead.status && !filters.stato.includes(lead.status)) {
+        includeInSource = false;
+      }
+      if (filters.dateRange?.from || filters.dateRange?.to) {
+        const leadDate = lead.created_at ? new Date(lead.created_at) : null;
+        if (!leadDate ||
+            (filters.dateRange.from && leadDate < filters.dateRange.from) ||
+            (filters.dateRange.to && leadDate > filters.dateRange.to)) {
+          includeInSource = false;
+        }
+      }
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        if (!(lead.name?.toLowerCase().includes(searchLower) ||
+              lead.phone?.includes(filters.search) ||
+              lead.email?.toLowerCase().includes(searchLower) ||
+              lead.city?.toLowerCase().includes(searchLower))) {
+          includeInSource = false;
+        }
+      }
+      
+      if (includeInSource && lead.source_id) {
+        sourceCounts[lead.source_id] = (sourceCounts[lead.source_id] || 0) + 1;
+      }
+    });
+    
+    return { byStatus: statusCounts, bySource: sourceCounts };
+  }, [allLeads, filters]);
   
   // Carica stati dinamicamente dallo schema
   const statiDisponibili = useMemo(() => getStatiDisponibili(), []);
@@ -169,8 +248,7 @@ export function LeadsDataTable({
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleColumns, setVisibleColumns] = useState(DEFAULT_VISIBLE_COLUMNS);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const hasInitializedColumns = React.useRef(false);
   
   // Dialog eliminazione
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -178,8 +256,13 @@ export function LeadsDataTable({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedContact, setCopiedContact] = useState<{ leadId: string; type: 'phone' | 'email' } | null>(null);
   const [activitiesPopoverOpen, setActivitiesPopoverOpen] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [activitiesData, setActivitiesData] = useState<Record<string, any[]>>({});
-  const [usersLookup, setUsersLookup] = useState<Record<string, { id: string; nome: string; email?: string; ruolo: string; avatar?: string; avatarUrl?: string }>>({});
+  const [usersLookup, setUsersLookup] = useState<Record<string, { id: string; name: string; email?: string; role: string; avatar?: string; avatarUrl?: string }>>({});
+  const [leadsLookup, setLeadsLookup] = useState<Record<string, { id: string; name: string; gender?: string }>>({});
+  
+  // Input ref for focus management
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Modal modifica lead
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -188,14 +271,79 @@ export function LeadsDataTable({
   // Menu contestuale (tasto destro)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; leadId: string } | null>(null);
 
-  // Apply preferences after loading
+  // Apply preferences after loading with one-time migration for new column structure
   React.useEffect(() => {
-    if (isLoaded && preferences) {
-      setVisibleColumns(preferences.visibleColumns as typeof DEFAULT_VISIBLE_COLUMNS);
-      setItemsPerPage(preferences.itemsPerPage);
+    if (isLoaded && preferences && !hasInitializedColumns.current) {
+      const MIGRATION_KEY = 'leads-table-migration-v1';
+      const hasMigrated = localStorage.getItem(MIGRATION_KEY);
+      
+      if (!hasMigrated) {
+        // One-time migration: split contatti into telefono/email, hide assegnatario/relazioni
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const oldPrefs = preferences.visibleColumns as any;
+        const migratedColumns = {
+          ...DEFAULT_VISIBLE_COLUMNS,
+          ...oldPrefs,
+          // If old 'contatti' existed, apply to both telefono and email
+          telefono: oldPrefs.contatti !== undefined ? oldPrefs.contatti : true,
+          email: false,
+          assegnatario: false,
+          relazioni: false,
+        };
+        // Remove old 'contatti' key if exists
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (migratedColumns as any).contatti;
+        
+        setVisibleColumns(migratedColumns);
+        updateVisibleColumns(migratedColumns as Record<string, boolean>);
+        localStorage.setItem(MIGRATION_KEY, 'true');
+      } else {
+        // Normal load: merge saved preferences with defaults to ensure all keys exist
+        const mergedColumns = {
+          ...DEFAULT_VISIBLE_COLUMNS,
+          ...(preferences.visibleColumns as typeof DEFAULT_VISIBLE_COLUMNS),
+        };
+        setVisibleColumns(mergedColumns);
+      }
+      
+      hasInitializedColumns.current = true;
+      
+      // Notify parent of itemsPerPage from preferences
+      if (preferences.itemsPerPage !== itemsPerPage) {
+        onItemsPerPageChange(preferences.itemsPerPage);
+      }
     }
-  }, [isLoaded, preferences]);
+  }, [isLoaded, preferences, itemsPerPage, onItemsPerPageChange, updateVisibleColumns]);
 
+  // Activities count now comes from SQL aggregation in getLeads() - no separate fetch needed!
+  
+  // Create leads lookup from current leads (no fetch needed - referral info already in API response!)
+  React.useEffect(() => {
+    if (!leads || leads.length === 0) return;
+    
+    const lookup: Record<string, { id: string; name: string; gender?: string }> = {};
+    
+    // Add current page leads to lookup
+    leads.forEach(lead => {
+      lookup[lead.id] = {
+        id: lead.id,
+        name: lead.name || 'Sconosciuto',
+        gender: lead.gender || undefined
+      };
+      
+      // Add referral lead info if present (from SQL subquery)
+      if (lead.referral_lead_id && lead.referral_lead_name) {
+        lookup[lead.referral_lead_id] = {
+          id: lead.referral_lead_id,
+          name: lead.referral_lead_name,
+          gender: lead.referral_lead_gender || undefined
+        };
+      }
+    });
+    
+    setLeadsLookup(lookup);
+  }, [leads]);
+  
   // Fetch users for Assegnatario column
   React.useEffect(() => {
     const fetchUsers = async () => {
@@ -214,70 +362,49 @@ export function LeadsDataTable({
     fetchUsers();
   }, []);
 
-  // Filter and paginate leads
-  const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
-      const matchesSearch =
-        !searchTerm ||
-        lead.fields.Nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.fields.Email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.fields.Telefono?.includes(searchTerm) ||
-        lead.fields.ID?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesStato =
-        !filters.stato ||
-        filters.stato.length === 0 ||
-        (lead.fields.Stato && filters.stato.includes(lead.fields.Stato));
-
-      const matchesFonte =
-        !filters.fonte ||
-        filters.fonte.length === 0 ||
-        (lead.fields.Fonte && lead.fields.Fonte.some(f => filters.fonte?.includes(f)));
-
-      const matchesDateRange =
-        !filters.dateRange?.from ||
-        (lead.fields.Data && (() => {
-          const leadDate = new Date(lead.fields.Data);
-          const from = startOfDay(filters.dateRange.from!);
-          const to = filters.dateRange.to ? endOfDay(filters.dateRange.to) : endOfDay(filters.dateRange.from!);
-          return isWithinInterval(leadDate, { start: from, end: to });
-        })());
-
-      return matchesSearch && matchesStato && matchesFonte && matchesDateRange;
-    });
-  }, [leads, searchTerm, filters.stato, filters.fonte, filters.dateRange]);
-
-  const paginatedLeads = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredLeads.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredLeads, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  // Server-side search and pagination: use leads directly (already filtered by API)
+  const paginatedLeads = leads;
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   // Crea una mappa di tutti i lead per lookup veloce (incluse le referenze)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const leadsMap = useMemo(() => {
     const map: Record<string, { Nome: string; Gender?: 'male' | 'female' | 'unknown' }> = {};
     leads.forEach(lead => {
       map[lead.id] = {
-        Nome: lead.fields.Nome || '',
-        Gender: lead.fields.Gender || 'unknown'
+        Nome: lead.name || '',
+        Gender: (lead.gender as 'male' | 'female') || 'unknown'
       };
     });
     return map;
   }, [leads]);
 
+  // Preserve focus during search operations
+  useEffect(() => {
+    if (searchTerm && document.activeElement !== searchInputRef.current) {
+      // Restore focus after re-render (client-side filtering is instant)
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads]); // Re-focus after data updates
+  
   // Handlers
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1);
+    // Instant search - no debounce needed (client-side filtering)
+    handleFilterChange('search', value || undefined);
+    onPageChange(1); // Reset to page 1 on search
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFilterChange = (key: keyof LeadsFilters, value: any) => {
     onFiltersChange({
       ...filters,
       [key]: value,
     });
-    setCurrentPage(1);
+    onPageChange(1); // Reset to page 1 on filter change
   };
 
   const handleSelectLead = (leadId: string, checked: boolean) => {
@@ -353,24 +480,31 @@ export function LeadsDataTable({
     }
   };
 
-  const loadActivitiesForLead = async (leadId: string, activityIds: string[]) => {
+  const loadActivitiesForLead = async (leadId: string) => {
     // Se già caricato, non ricaricare
     if (activitiesData[leadId]) return;
 
     try {
-      // Carica le attività in batch
-      const promises = activityIds.slice(0, 5).map(id => 
-        fetch(`/api/activities/${id}`).then(res => res.ok ? res.json() : null)
-      );
-      const results = await Promise.all(promises);
-      const validActivities = results.filter(a => a !== null);
+      // Carica le attività dal database per questo lead (prime 5)
+      const response = await fetch(`/api/activities?lead_id=${leadId}`);
+      if (!response.ok) throw new Error('Failed to fetch activities');
+      
+      const data = await response.json();
+      const activities = data.activities || [];
+      
+      // Prendi solo le prime 5 per il popover
+      const limitedActivities = activities.slice(0, 5);
       
       setActivitiesData(prev => ({
         ...prev,
-        [leadId]: validActivities
+        [leadId]: limitedActivities
       }));
     } catch (error) {
       console.error('Error loading activities:', error);
+      setActivitiesData(prev => ({
+        ...prev,
+        [leadId]: []
+      }));
     }
   };
   
@@ -443,17 +577,22 @@ export function LeadsDataTable({
           <div className="relative w-full sm:w-64">
             <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
+              ref={searchInputRef}
               placeholder="Cerca Leads..."
               value={searchTerm}
               onChange={e => handleSearch(e.target.value)}
               className="pr-9 pl-9"
+              autoComplete="off"
             />
             {searchTerm && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="hover:bg-muted absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2 p-0"
-                onClick={() => handleSearch('')}
+                onClick={() => {
+                  handleSearch('');
+                  searchInputRef.current?.focus();
+                }}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -466,7 +605,7 @@ export function LeadsDataTable({
             options={statiDisponibili.map(stato => ({
               label: stato,
               value: stato,
-              count: leads.filter(l => l.fields.Stato === stato).length,
+              count: byStatus[stato] || 0,
             }))}
             selectedValues={filters.stato || []}
             onSelectionChange={values => {
@@ -486,7 +625,7 @@ export function LeadsDataTable({
             options={Object.entries(sourcesLookup).map(([id, name]) => ({
               label: name,
               value: id,
-              count: leads.filter(l => l.fields.Fonte?.includes(id)).length,
+              count: bySource[id] || 0,
             }))}
             selectedValues={filters.fonte || []}
             onSelectionChange={values => {
@@ -529,7 +668,7 @@ export function LeadsDataTable({
               onClick={() => {
                 setSearchTerm('');
                 onFiltersChange({});
-                setCurrentPage(1);
+                onPageChange(1);
               }}
               className="h-8 px-2 lg:px-3"
             >
@@ -543,25 +682,33 @@ export function LeadsDataTable({
             title="Colonne"
             options={[
               { label: 'Cliente', value: 'cliente' },
-              { label: 'Contatti', value: 'contatti' },
+              { label: 'Stato', value: 'stato' },
+              { label: 'Fonte', value: 'fonte' },
+              { label: 'Città', value: 'citta' },
+              { label: 'Telefono', value: 'telefono' },
+              { label: 'Email', value: 'email' },
               { label: 'Data', value: 'data' },
               { label: 'Attività', value: 'attivita' },
-              { label: 'Relazioni', value: 'relazioni' },
               { label: 'Assegnatario', value: 'assegnatario' },
-              { label: 'Documenti', value: 'documenti' },
+              { label: 'Relazioni', value: 'relazioni' },
             ]}
             selectedValues={Object.entries(visibleColumns)
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               .filter(([_, visible]) => visible)
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               .map(([column, _]) => column)}
             onSelectionChange={values => {
               const newVisibleColumns = {
                 cliente: values.includes('cliente'),
-                contatti: values.includes('contatti'),
+                stato: values.includes('stato'),
+                fonte: values.includes('fonte'),
+                citta: values.includes('citta'),
+                telefono: values.includes('telefono'),
+                email: values.includes('email'),
                 data: values.includes('data'),
                 attivita: values.includes('attivita'),
-                relazioni: values.includes('relazioni'),
                 assegnatario: values.includes('assegnatario'),
-                documenti: values.includes('documenti'),
+                relazioni: values.includes('relazioni'),
               };
               handleVisibleColumnsChange(newVisibleColumns);
             }}
@@ -586,14 +733,34 @@ export function LeadsDataTable({
                   Cliente
                 </TableHead>
               )}
+              {visibleColumns.stato && (
+                <TableHead className="text-foreground font-semibold">
+                  Stato
+                </TableHead>
+              )}
+              {visibleColumns.fonte && (
+                <TableHead className="text-foreground font-semibold">
+                  Fonte
+                </TableHead>
+              )}
+              {visibleColumns.citta && (
+                <TableHead className="text-foreground font-semibold">
+                  Città
+                </TableHead>
+              )}
+              {visibleColumns.telefono && (
+                <TableHead className="text-foreground font-semibold">
+                  Telefono
+                </TableHead>
+              )}
+              {visibleColumns.email && (
+                <TableHead className="text-foreground font-semibold">
+                  Email
+                </TableHead>
+              )}
               {visibleColumns.data && (
                 <TableHead className="text-foreground font-semibold">
                   Data
-                </TableHead>
-              )}
-              {visibleColumns.contatti && (
-                <TableHead className="text-foreground font-semibold">
-                  Contatti
                 </TableHead>
               )}
               {visibleColumns.attivita && (
@@ -601,26 +768,21 @@ export function LeadsDataTable({
                   Attività
                 </TableHead>
               )}
-              {visibleColumns.relazioni && (
-                <TableHead className="text-foreground font-semibold">
-                  Relazioni
-                </TableHead>
-              )}
               {visibleColumns.assegnatario && (
                 <TableHead className="text-foreground font-semibold">
                   Assegnatario
                 </TableHead>
               )}
-              {visibleColumns.documenti && (
+              {visibleColumns.relazioni && (
                 <TableHead className="text-foreground font-semibold">
-                  Documenti
+                  Relazioni
                 </TableHead>
               )}
               <TableHead className="text-foreground w-[50px] font-semibold"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLeads.length === 0 ? (
+            {paginatedLeads.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="h-24 text-center">
                   <div className="text-muted-foreground flex flex-col items-center justify-center">
@@ -631,8 +793,8 @@ export function LeadsDataTable({
               </TableRow>
             ) : (
               paginatedLeads.map(lead => {
-                // Ottieni ID fonte, nome e colore
-                const fonteId = lead.fields.Fonte && Array.isArray(lead.fields.Fonte) && lead.fields.Fonte.length > 0 ? lead.fields.Fonte[0] : null;
+                // Ottieni ID fonte, nome e colore (source_id è UUID singolo, non array)
+                const fonteId = lead.source_id;
                 const fonteName = fonteId ? sourcesLookup[fonteId] : null;
                 const fonteColorHex = fonteId ? sourcesColorLookup[fonteId] : undefined;
                 
@@ -651,11 +813,11 @@ export function LeadsDataTable({
                       onCheckedChange={checked =>
                         handleSelectLead(lead.id, !!checked)
                       }
-                      aria-label={`Seleziona ${lead.fields.Nome}`}
+                      aria-label={`Seleziona ${lead.name}`}
                     />
                   </TableCell>
                   
-                  {/* Colonna Cliente: Avatar + Nome + Badges */}
+                  {/* Colonna Cliente: Avatar + Nome */}
                   {visibleColumns.cliente && (
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -667,8 +829,8 @@ export function LeadsDataTable({
                                 className="cursor-pointer"
                               >
                                 <AvatarLead 
-                                  nome={lead.fields.Nome || ''} 
-                                  gender={lead.fields.Gender} 
+                                  nome={lead.name || ''} 
+                                  gender={lead.gender as 'male' | 'female' | 'unknown'} 
                                   size="md" 
                                 />
                               </div>
@@ -681,38 +843,107 @@ export function LeadsDataTable({
                           </Tooltip>
                         </TooltipProvider>
                         
-                        <div className="flex flex-col">
-                          {/* Nome e Città sulla stessa riga */}
-                          <div className="flex items-baseline gap-2">
-                            <a
-                              href={`/leads/${lead.id}`}
-                              className="text-sm font-medium text-foreground hover:text-primary hover:underline"
-                            >
-                              {lead.fields.Nome}
-                            </a>
-                            {lead.fields.Città && (
-                              <span className="text-xs font-normal text-muted-foreground">
-                                {lead.fields.Città}
-                              </span>
-                            )}
-                          </div>
-                          
-                          {/* Badge Stato e Fonte */}
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <LeadStatusBadge 
-                              status={lead.fields.Stato || 'Nuovo'} 
-                              className="text-xs"
-                            />
-                            {fonteName && (
-                              <LeadSourceBadge 
-                                source={fonteName}
-                                sourceColorFromDB={fonteColorHex}
-                                className="text-xs"
-                              />
-                            )}
-                          </div>
-                        </div>
+                        <a
+                          href={`/leads/${lead.id}`}
+                          className="text-sm font-medium text-foreground hover:text-primary hover:underline"
+                        >
+                          {lead.name}
+                        </a>
                       </div>
+                    </TableCell>
+                  )}
+                  
+                  {/* Colonna Stato */}
+                  {visibleColumns.stato && (
+                    <TableCell>
+                      <LeadStatusBadge 
+                        status={lead.status || 'Nuovo'} 
+                        className="text-xs"
+                      />
+                    </TableCell>
+                  )}
+                  
+                  {/* Colonna Fonte */}
+                  {visibleColumns.fonte && (
+                    <TableCell>
+                      {fonteName ? (
+                        <LeadSourceBadge 
+                          source={fonteName}
+                          sourceColorFromDB={fonteColorHex}
+                          className="text-xs"
+                        />
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                  )}
+                  
+                  {/* Colonna Città */}
+                  {visibleColumns.citta && (
+                    <TableCell className="text-sm">
+                      {lead.city ? (
+                        <span className="text-foreground">{lead.city}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
+                  
+                  {/* Colonna Telefono */}
+                  {visibleColumns.telefono && (
+                    <TableCell>
+                      {lead.phone ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                className="text-sm cursor-pointer hover:text-primary transition-colors"
+                                onClick={(e) => handleCopyContact(lead.id, 'phone', lead.phone!, e)}
+                              >
+                                {formatItalianPhone(lead.phone)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">
+                                {copiedContact?.leadId === lead.id && copiedContact?.type === 'phone'
+                                  ? 'Telefono copiato!'
+                                  : 'Clicca per copiare telefono'}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                  )}
+                  
+                  {/* Colonna Email */}
+                  {visibleColumns.email && (
+                    <TableCell>
+                      {lead.email ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                className="text-sm cursor-pointer hover:text-primary transition-colors truncate max-w-[200px] block"
+                                onClick={(e) => handleCopyContact(lead.id, 'email', lead.email!, e)}
+                              >
+                                {lead.email}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">
+                                {copiedContact?.leadId === lead.id && copiedContact?.type === 'email'
+                                  ? 'Email copiata!'
+                                  : 'Clicca per copiare email'}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Nessuna</span>
+                      )}
                     </TableCell>
                   )}
                   
@@ -722,62 +953,10 @@ export function LeadsDataTable({
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>
-                          {lead.fields.Data
-                            ? format(new Date(lead.fields.Data), 'd MMM yyyy', { locale: it })
+                          {lead.created_at
+                            ? format(new Date(lead.created_at), 'd MMM yyyy', { locale: it })
                             : '—'}
                         </span>
-                      </div>
-                    </TableCell>
-                  )}
-                  
-                  {/* Colonna Contatti: Icone + Valori */}
-                  {visibleColumns.contatti && (
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {lead.fields.Telefono && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div 
-                                  className="flex items-center gap-2 text-sm cursor-pointer hover:text-primary transition-colors group"
-                                  onClick={(e) => handleCopyContact(lead.id, 'phone', lead.fields.Telefono!, e)}
-                                >
-                                  <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                  <span className="font-mono tracking-tight">{lead.fields.Telefono}</span>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">
-                                  {copiedContact?.leadId === lead.id && copiedContact?.type === 'phone'
-                                    ? 'Telefono copiato!'
-                                    : 'Clicca per copiare telefono'}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        {lead.fields.Email && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div 
-                                  className="flex items-center gap-2 text-sm cursor-pointer hover:text-primary transition-colors group min-w-0"
-                                  onClick={(e) => handleCopyContact(lead.id, 'email', lead.fields.Email!, e)}
-                                >
-                                  <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                  <span className="truncate max-w-[220px] font-normal">{lead.fields.Email}</span>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">
-                                  {copiedContact?.leadId === lead.id && copiedContact?.type === 'email'
-                                    ? 'Email copiata!'
-                                    : 'Clicca per copiare email'}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
                       </div>
                     </TableCell>
                   )}
@@ -786,9 +965,8 @@ export function LeadsDataTable({
                   {visibleColumns.attivita && (
                     <TableCell>
                       {(() => {
-                        // Supporta sia Activities che Attività per compatibilità
-                        const activities = lead.fields.Activities || (lead.fields as any)['Attività'] || [];
-                        const hasActivities = Array.isArray(activities) && activities.length > 0;
+                        const activitiesCount = lead.activities_count || 0;
+                        const hasActivities = activitiesCount > 0;
                         
                         return hasActivities ? (
                         <Popover 
@@ -796,7 +974,7 @@ export function LeadsDataTable({
                           onOpenChange={(open) => {
                             if (open) {
                               setActivitiesPopoverOpen(lead.id);
-                              loadActivitiesForLead(lead.id, activities);
+                              loadActivitiesForLead(lead.id);
                             } else {
                               setActivitiesPopoverOpen(null);
                             }
@@ -810,10 +988,10 @@ export function LeadsDataTable({
                               <div className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors">
                                 <Activity className="h-4 w-4 text-foreground" />
                                 <span className="text-sm font-medium text-foreground">
-                                  {activities.length}
+                                  {activitiesCount}
                                 </span>
                                 <span className="text-xs text-foreground">
-                                  {activities.length === 1 ? 'attività' : 'attività'}
+                                  {activitiesCount === 1 ? 'attività' : 'attività'}
                                 </span>
                               </div>
                             </Button>
@@ -824,16 +1002,16 @@ export function LeadsDataTable({
                               <div className="px-4 py-3 border-b">
                                 <h4 className="font-semibold text-sm">Attività recenti</h4>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                  {activities.length} {activities.length === 1 ? 'attività' : 'attività'} totali
+                                  {activitiesCount} {activitiesCount === 1 ? 'attività' : 'attività'} totali
                                 </p>
                               </div>
                               
                               {/* Lista attività */}
                               <div className="max-h-[300px] overflow-y-auto">
-                                {activities.length > 5 && (
+                                {activitiesCount > 5 && (
                                   <div className="px-4 py-2 bg-muted/30 border-b">
                                     <p className="text-xs text-muted-foreground">
-                                      Mostrando le prime 5 di {activities.length} attività
+                                      Mostrando le prime 5 di {activitiesCount} attività
                                     </p>
                                   </div>
                                 )}
@@ -847,14 +1025,16 @@ export function LeadsDataTable({
                                     <p className="text-sm text-muted-foreground">Nessuna attività trovata</p>
                                   </div>
                                 ) : (
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                   activitiesData[lead.id].map((activity: any) => {
-                                    const activityDate = activity.fields?.Data ? new Date(activity.fields.Data) : null;
+                                    const activityDate = activity.activity_date ? new Date(activity.activity_date) : null;
                                     const relativeTime = activityDate ? formatDistanceToNow(activityDate, { addSuffix: true, locale: it }) : null;
-                                    const tipo = activity.fields?.Tipo || 'Attività';
-                                    const titolo = activity.fields?.Titolo;
-                                    const priorita = activity.fields?.['Priorità'];
-                                    const esito = activity.fields?.Esito;
-                                    const stato = activity.fields?.Stato;
+                                    const tipo = activity.type || 'Attività';
+                                    const titolo = activity.title;
+                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                    const priorita = activity.priority;
+                                    const esito = activity.outcome;
+                                    const stato = activity.status;
                                     
                                     return (
                                       <div 
@@ -900,9 +1080,9 @@ export function LeadsDataTable({
                                             )}
                                             
                                             {/* Note */}
-                                            {activity.fields?.Note && (
+                                            {activity.notes && (
                                               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                                {activity.fields.Note}
+                                                {activity.notes}
                                               </p>
                                             )}
                                           </div>
@@ -940,80 +1120,11 @@ export function LeadsDataTable({
                     </TableCell>
                   )}
                   
-                  {/* Colonna Relazioni */}
-                  {visibleColumns.relazioni && (
-                    <TableCell>
-                      {(() => {
-                        const referenze = lead.fields.Referenza || [];
-                        const nomiReferenze = lead.fields['Nome referenza'];
-                        
-                        // Converti nomiReferenze in array se è una stringa
-                        const nomiArray = typeof nomiReferenze === 'string' 
-                          ? nomiReferenze.split(',').map(n => n.trim()) 
-                          : Array.isArray(nomiReferenze) 
-                            ? nomiReferenze 
-                            : [];
-                        
-                        const hasReferenze = referenze.length > 0 && nomiArray.length > 0;
-                        
-                        return hasReferenze ? (
-                          <div className="flex items-center gap-2">
-                            {nomiArray.slice(0, 2).map((nome, idx) => {
-                              const referenzaId = referenze[idx];
-                              const referenzaData = leadsMap[referenzaId];
-                              const gender = referenzaData?.Gender || 'unknown';
-                              
-                              return (
-                                <a
-                                  key={idx}
-                                  href={`/leads/${referenzaId}`}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    router.push(`/leads/${referenzaId}`);
-                                  }}
-                                  className="flex items-center gap-1.5 hover:bg-muted/50 px-2 py-1 rounded-md transition-colors cursor-pointer"
-                                >
-                                  <AvatarLead
-                                    nome={referenzaData?.Nome || nome}
-                                    gender={gender}
-                                    size="sm"
-                                  />
-                                  <span className="text-xs text-foreground hover:text-primary transition-colors">{nome}</span>
-                                </a>
-                              );
-                            })}
-                            {nomiArray.length > 2 && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 cursor-help">
-                                      +{nomiArray.length - 2}
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <div className="max-w-xs">
-                                      <p className="text-xs font-semibold mb-1">Altre referenze:</p>
-                                      {nomiArray.slice(2).map((nome, idx) => (
-                                        <p key={idx} className="text-xs text-muted-foreground">{nome}</p>
-                                      ))}
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Nessuna</span>
-                        );
-                      })()}
-                    </TableCell>
-                  )}
-                  
                   {/* Colonna Assegnatario */}
                   {visibleColumns.assegnatario && (
                     <TableCell>
                       {(() => {
-                        const assignedToIds = lead.fields.Assegnatario || [];
+                        const assignedToIds = lead.assigned_to || [];
                         const hasAssignedUsers = assignedToIds.length > 0;
                         
                         return hasAssignedUsers ? (
@@ -1036,12 +1147,12 @@ export function LeadsDataTable({
                                   className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
                                 >
                                   <AvatarUser
-                                    nome={userData.nome}
+                                    nome={userData.name}
                                     avatarUrl={userData.avatarUrl}
-                                    ruolo={userData.ruolo}
+                                    ruolo={userData.role}
                                     size="sm"
                                   />
-                                  <span className="text-xs text-foreground">{userData.nome}</span>
+                                  <span className="text-xs text-foreground">{userData.name}</span>
                                 </div>
                               );
                             })}
@@ -1060,7 +1171,7 @@ export function LeadsDataTable({
                                         const userData = usersLookup[userId];
                                         return (
                                           <p key={idx} className="text-xs text-muted-foreground">
-                                            {userData?.nome || 'Sconosciuto'}
+                                            {userData?.name || 'Sconosciuto'}
                                           </p>
                                         );
                                       })}
@@ -1077,15 +1188,36 @@ export function LeadsDataTable({
                     </TableCell>
                   )}
                   
-                  {/* Colonna Documenti */}
-                  {visibleColumns.documenti && (
+                  {/* Colonna Relazioni */}
+                  {visibleColumns.relazioni && (
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground truncate max-w-[200px]">
-                          {lead.fields.Note ? lead.fields.Note.slice(0, 50) + '...' : 'Nessun documento'}
-                        </span>
-                      </div>
+                      {(() => {
+                        const referralLeadId = lead.referral_lead_id;
+                        const hasReferral = !!referralLeadId;
+                        const referralLead = referralLeadId ? leadsLookup[referralLeadId] : null;
+                        
+                        return hasReferral && referralLead ? (
+                          <a
+                            href={`/leads/${referralLeadId}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              router.push(`/leads/${referralLeadId}`);
+                            }}
+                            className="flex items-center gap-1.5 hover:bg-muted/50 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                          >
+                            <AvatarLead
+                              nome={referralLead.name}
+                              gender={referralLead.gender as 'male' | 'female' | 'unknown' || 'unknown'}
+                              size="sm"
+                            />
+                            <span className="text-xs text-foreground hover:text-primary transition-colors">
+                              {referralLead.name}
+                            </span>
+                          </a>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Nessuna</span>
+                        );
+                      })()}
                     </TableCell>
                   )}
                   
@@ -1144,7 +1276,7 @@ export function LeadsDataTable({
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              {filteredLeads.length} {filteredLeads.length === 1 ? 'risultato' : 'risultati'}
+              {totalCount} {totalCount === 1 ? 'risultato' : 'risultati'}
             </p>
           )}
         </div>
@@ -1160,8 +1292,7 @@ export function LeadsDataTable({
               value={itemsPerPage.toString()}
               onValueChange={(value) => {
                 const newValue = Number(value);
-                setItemsPerPage(newValue);
-                setCurrentPage(1);
+                onItemsPerPageChange(newValue);
                 updateItemsPerPage(newValue);
               }}
             >
@@ -1187,7 +1318,7 @@ export function LeadsDataTable({
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+                    if (currentPage > 1) onPageChange(currentPage - 1);
                   }}
                   aria-disabled={currentPage === 1}
                   className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
@@ -1201,7 +1332,7 @@ export function LeadsDataTable({
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      setCurrentPage(1);
+                      onPageChange(1);
                     }}
                   >
                     1
@@ -1223,7 +1354,7 @@ export function LeadsDataTable({
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      setCurrentPage(currentPage - 1);
+                      onPageChange(currentPage - 1);
                     }}
                   >
                     {currentPage - 1}
@@ -1249,7 +1380,7 @@ export function LeadsDataTable({
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      setCurrentPage(currentPage + 1);
+                      onPageChange(currentPage + 1);
                     }}
                   >
                     {currentPage + 1}
@@ -1271,7 +1402,7 @@ export function LeadsDataTable({
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      setCurrentPage(totalPages);
+                      onPageChange(totalPages);
                     }}
                   >
                     {totalPages}
@@ -1284,7 +1415,7 @@ export function LeadsDataTable({
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+                    if (currentPage < totalPages) onPageChange(currentPage + 1);
                   }}
                   aria-disabled={currentPage === totalPages}
                   className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
@@ -1312,7 +1443,7 @@ export function LeadsDataTable({
           >
             <div className="p-1">
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                {lead.fields.Nome}
+                {lead.name}
               </div>
               <div className="h-px bg-border my-1" />
               <button
@@ -1354,27 +1485,31 @@ export function LeadsDataTable({
 
       {/* Delete Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Conferma eliminazione
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Sei sicuro di voler eliminare {selectedLeads.length === 1 ? 'questo lead' : `questi ${selectedLeads.length} lead`}?
-              <br />
-              <br />
-              <span className="text-destructive font-medium">Questa azione è irreversibile</span> e eliminerà anche tutte le attività, note e ordini associati.
-            </AlertDialogDescription>
+        <AlertDialogContent size="sm" className="p-4 gap-3">
+          <AlertDialogHeader className="!grid-rows-none !place-items-start space-y-1 pb-0 text-left">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted mt-0.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <AlertDialogTitle className="text-base font-semibold">
+                  {selectedLeads.length === 1 ? 'Eliminare il lead?' : `Eliminare ${selectedLeads.length} lead?`}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm mt-1">
+                  <span className="text-destructive font-medium">Questa azione è irreversibile</span> e eliminerà anche tutte le attività, note e ordini associati.
+                </AlertDialogDescription>
+              </div>
+            </div>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+          <AlertDialogFooter className="bg-muted/50 -mx-4 -mb-4 px-4 py-3 border-t mt-2 !flex !flex-row !justify-end gap-2">
+            <AlertDialogCancel size="sm" disabled={isDeleting}>Annulla</AlertDialogCancel>
             <AlertDialogAction
+              size="sm"
+              variant="destructive"
               onClick={handleConfirmDelete}
               disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/90"
             >
-              {isDeleting ? 'Eliminazione...' : 'Elimina definitivamente'}
+              {isDeleting ? 'Eliminazione...' : 'Elimina'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

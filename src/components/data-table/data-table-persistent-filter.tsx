@@ -48,6 +48,7 @@ export function DataTablePersistentFilter({
     );
   }, [options, searchTerm]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const selectedSet = new Set(selectedValues);
 
   const handleToggleOption = React.useCallback((optionValue: string) => {

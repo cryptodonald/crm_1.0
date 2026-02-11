@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { base } from '@/lib/airtable';
-
-const MARKETING_SOURCES_TABLE_ID = process.env.AIRTABLE_MARKETING_SOURCES_TABLE_ID || 'tblXyEscyPcP8TMLG';
+import { getMarketingSources } from '@/lib/postgres';
 
 /**
  * GET /api/marketing-sources
- * Fetch all marketing sources
+ * Fetch all active marketing sources
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: NextRequest) {
   try {
     // Auth check
@@ -17,30 +16,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all marketing sources
-    const records = await base(MARKETING_SOURCES_TABLE_ID)
-      .select({
-        fields: ['ID', 'Name', 'Color', 'Description', 'Active'],
-        filterByFormula: '{Active} = TRUE()', // Solo fonti attive
-      })
-      .all();
-
-    const sources = records.map((record) => ({
-      id: record.id,
-      name: record.fields.Name as string,
-      color: record.fields.Color as string | undefined,
-      description: record.fields.Description as string | undefined,
-      active: record.fields.Active as boolean | undefined,
-    }));
+    // Fetch all active marketing sources (sorted by name)
+    const sources = await getMarketingSources();
 
     return NextResponse.json({
       sources,
       total: sources.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] GET /api/marketing-sources error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch marketing sources' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch marketing sources' },
       { status: 500 }
     );
   }

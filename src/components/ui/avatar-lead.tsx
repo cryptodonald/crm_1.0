@@ -16,8 +16,6 @@ interface AvatarLeadProps {
   customAvatar?: string;
   /** Gender noto (male/female/unknown) per forzare avatar specifico */
   gender?: Gender;
-  /** Se l'utente è admin */
-  isAdmin?: boolean;
   /** Dimensione dell'avatar */
   size?: 'sm' | 'md' | 'lg' | 'xl';
   /** Classe CSS aggiuntiva */
@@ -35,7 +33,6 @@ export function AvatarLead({
   nome,
   customAvatar,
   gender,
-  isAdmin = false,
   size = 'md',
   className,
 }: AvatarLeadProps) {
@@ -43,7 +40,7 @@ export function AvatarLead({
   const fallbackColor = getAvatarFallbackColor(nome, gender);
   
   // Determina l'avatar da usare (priorità: custom > default basato su genere)
-  const avatarSrc = customAvatar || getAvatarPath(nome, isAdmin, gender);
+  const avatarSrc = customAvatar || getAvatarPath(nome, gender);
 
   return (
     <Avatar className={cn(sizeClasses[size], className)}>

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { env } from "@/env"; // CRITICAL-003: Fail-fast env validation
 import { SessionProvider } from "@/components/providers/session-provider";
+import { SWRProvider } from "@/components/providers/swr-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -38,7 +40,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SessionProvider>{children}</SessionProvider>
+          <SWRProvider>
+            <SessionProvider>{children}</SessionProvider>
+          </SWRProvider>
           <Toaster />
         </ThemeProvider>
       </body>

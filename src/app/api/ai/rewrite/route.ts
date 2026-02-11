@@ -1,100 +1,72 @@
+/**
+ * API Route: AI Text Rewrite
+ * 
+ * Riscrive testi usando OpenRouter (GPT-4 o modello configurato)
+ * Usato per migliorare note di esigenza, note lead, ecc.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+// Modelli disponibili su OpenRouter (configurabili)
+const DEFAULT_MODEL = 'openai/gpt-4o-mini'; // Più economico e veloce
+
+interface RewriteRequest {
+  text: string;
+  context?: 'esigenza_lead' | 'note_lead' | 'note_attivita' | 'generic';
+  tone?: 'professional' | 'casual' | 'concise';
+}
+
+/**
+ * POST /api/ai/rewrite
+ * 
+ * Body:
+ * - text: string (testo da riscrivere)
+ * - context: string (contesto: esigenza_lead, note_lead, etc.)
+ * - tone: string (tono: professional, casual, concise)
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { text, context, noteType } = await request.json();
+    if (!OPENROUTER_API_KEY) {
+      return NextResponse.json(
+        { 
+          error: 'OpenRouter API key not configured',
+          details: 'OPENROUTER_API_KEY missing in environment variables'
+        },
+        { status: 500 }
+      );
+    }
 
-    if (!text || typeof text !== 'string') {
+    const body: RewriteRequest = await request.json();
+    const { text, context = 'generic', tone = 'professional' } = body;
+
+    if (!text || text.trim().length === 0) {
       return NextResponse.json(
         { error: 'Text is required' },
         { status: 400 }
       );
     }
 
-    const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-    const USE_DEMO_MODE = false; // Usa GPT-4o-mini
-    
-    if (!OPENROUTER_API_KEY || USE_DEMO_MODE) {
-      console.log('[AI Rewrite] Using demo mode (OpenRouter disabled)');
-      // Fallback: versione demo - formattazione base del testo
-      const sentences = text.trim().split(/[.!?]+/);
-      const rewrittenSentences = sentences
-        .filter(s => s.trim().length > 0)
-        .map(s => {
-          const trimmed = s.trim();
-          return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
-        });
-      
-      const demoRewrite = rewrittenSentences.join('. ') + '.';
-      
-      return NextResponse.json({
-        success: true,
-        rewrittenText: demoRewrite,
-        originalText: text,
-        demo: true,
-      });
-    }
-
-    // Definisci il prompt in base al contesto
-    let systemPrompt = '';
-    if (context === 'note') {
-      const notePrompts: Record<string, string> = {
-        Riflessione: 'Riscrivi il seguente testo come una riflessione professionale chiara e ben strutturata per un CRM. Mantieni il tono professionale ma accessibile. NON aggiungere dettagli superflui o ovvi. Mantieni la lunghezza simile all\'originale.',
-        Promemoria: 'Riscrivi il seguente testo come un promemoria chiaro e actionable. Usa bullet points se necessario e assicurati che sia conciso. NON ampliare il contenuto, mantieni SOLO le informazioni essenziali.',
-        'Follow-up': 'Riscrivi il seguente testo come una nota di follow-up professionale. Evidenzia le azioni da compiere e le tempistiche. NON aggiungere dettagli ovvi o introduzioni. Mantieni il focus sull\'essenziale.',
-        'Info Cliente': 'Riscrivi il seguente testo come informazioni sul cliente ben organizzate e facili da leggere. Mantieni SOLO i fatti rilevanti. NON aggiungere supposizioni o dettagli superflui.'
-      };
-      systemPrompt = notePrompts[noteType] || 'Riscrivi il seguente testo in modo professionale e chiaro per una nota CRM. NON ampliare il contenuto.';
-      systemPrompt += ' IMPORTANTE: correggi grammatica e ortografia, migliora la chiarezza, ma NON aggiungere informazioni che non sono nel testo originale. Mantieni la lunghezza simile. Rispondi SOLO con il testo riscritto, senza introduzioni o commenti.';
-    } else if (context === 'esigenza_lead') {
-      systemPrompt = `Sei un assistente che aiuta a riformulare le esigenze dei lead in modo professionale e chiaro.
-Riscrivi il testo fornito rendendolo:
-- Più professionale e conciso
-- Chiaro e specifico
-- Focalizzato sui bisogni del cliente
-- Privo di errori grammaticali
-
-Rispondi SOLO con il testo riscritto, senza introduzioni o spiegazioni.`;
-    } else if (context === 'task_completo') {
-      systemPrompt = `Sei un assistente che ottimizza task operativi mantenendoli CONCISI.
-Riceverai un task con formato:
-Titolo: [titolo attuale]
-Descrizione: [descrizione attuale]
-
-Regole IMPORTANTI:
-1. TITOLO: verbo all'infinito + oggetto (max 6-8 parole). Esempi: "Chiamare CC Cover per ritardi ordini", "Inviare preventivo a Mario Rossi"
-2. DESCRIZIONE: mantieni BREVE e DIRETTA. Correggi grammatica/ortografia, ma NON aggiungere dettagli superflui o ovvi. Max 1-2 frasi.
-3. Se il testo originale è già chiaro, miglioralo minimamente senza appesantire.
-
-Rispondi ESATTAMENTE in questo formato:
-Titolo: [titolo ottimizzato]
-Descrizione: [descrizione ottimizzata]
-
-NON aggiungere introduzioni, note, o dettagli ovvi come "assicurarsi di annotare", "importante ottenere informazioni", ecc.`;
-    } else {
-      systemPrompt = 'Riscrivi il seguente testo in modo più chiaro e professionale. Rispondi SOLO con il testo riscritto.';
-    }
+    // Costruisci il prompt basato sul contesto
+    const systemPrompt = getSystemPrompt(context, tone);
+    const userPrompt = `Riscrivi il seguente testo migliorandolo:\n\n${text}`;
 
     // Chiamata a OpenRouter
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch(OPENROUTER_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-        'X-Title': 'CRM 2.0 - Lead Rewriter',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://crm.doctorbed.app',
+        'X-Title': 'CRM Doctorbed - AI Rewrite',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini', // Migliore qualità/prezzo per riscrittura
+        model: DEFAULT_MODEL,
         messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: text,
-          },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
         ],
         temperature: 0.7,
         max_tokens: 500,
@@ -104,30 +76,68 @@ NON aggiungere introduzioni, note, o dettagli ovvi come "assicurarsi di annotare
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('[AI Rewrite] OpenRouter error:', errorData);
-      throw new Error('Failed to rewrite text with AI');
+      throw new Error(`OpenRouter API error: ${response.status}`);
     }
 
     const data = await response.json();
     const rewrittenText = data.choices?.[0]?.message?.content?.trim();
 
     if (!rewrittenText) {
-      throw new Error('No rewritten text in response');
+      throw new Error('No rewritten text received from OpenRouter');
     }
 
     return NextResponse.json({
       success: true,
       rewrittenText,
-      originalText: text,
+      originalLength: text.length,
+      rewrittenLength: rewrittenText.length,
     });
 
-  } catch (error: any) {
-    console.error('[AI Rewrite] Error:', error);
+  } catch (error: unknown) {
+    console.error('[API] POST /api/ai/rewrite error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to rewrite text',
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
   }
+}
+
+/**
+ * Costruisce il system prompt basato sul contesto
+ */
+function getSystemPrompt(context: string, tone: string): string {
+  const basePrompt = 'Sei un assistente esperto nella riscrittura di testi per CRM aziendali.';
+  
+  let contextPrompt = '';
+  switch (context) {
+    case 'esigenza_lead':
+      contextPrompt = 'Riscrivi l\'esigenza del cliente in forma COMPATTA e sintetica. RIASSUMI mantenendo SOLO i punti chiave. Massimo 2-3 frasi brevi. Elimina ridondanze e dettagli superflui. NON aggiungere informazioni.';
+      break;
+    case 'note_lead':
+      contextPrompt = 'Riscrivi le note del lead in modo ultra-conciso. Mantieni solo le informazioni essenziali. Massimo 2-3 frasi.';
+      break;
+    case 'note_attivita':
+      contextPrompt = 'Riscrivi le note dell\'attività in modo sintetico. Evidenzia solo azioni chiave e prossimi passi. Massimo 2-3 frasi.';
+      break;
+    default:
+      contextPrompt = 'Riscrivi il testo in modo più chiaro e compatto.';
+  }
+
+  let tonePrompt = '';
+  switch (tone) {
+    case 'professional':
+      tonePrompt = 'Tono professionale ma diretto.';
+      break;
+    case 'casual':
+      tonePrompt = 'Tono informale appropriato.';
+      break;
+    case 'concise':
+      tonePrompt = 'Massima sintesi. Solo informazioni essenziali.';
+      break;
+  }
+
+  return `${basePrompt}\n\n${contextPrompt}\n${tonePrompt}\n\nREGOLE FERREE:\n1. NON INVENTARE nulla: usa ESCLUSIVAMENTE le informazioni presenti nel testo originale\n2. NON aggiungere dettagli, interpretazioni, ipotesi o informazioni nuove\n3. Riassumi e riorganizza il messaggio migliorando la leggibilità\n4. Mantieni TUTTI i particolari e i dati presenti nell'originale, senza perderne nessuno\n5. Elimina solo ripetizioni e riformulazioni ridondanti\n6. Massimo 2-3 frasi compatte\n7. Rispondi SOLO con il testo riscritto, senza introduzioni, commenti o formattazioni`;
 }

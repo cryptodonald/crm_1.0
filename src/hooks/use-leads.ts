@@ -10,8 +10,8 @@
 
 import useSWR, { useSWRConfig } from 'swr';
 import { useState } from 'react';
-import type { AirtableLead } from '@/types/airtable';
-import type { CreateLeadInput, UpdateLeadInput } from '@/lib/validation/leads';
+import type { Lead } from '@/types/database';
+// Note: CreateLeadInput and UpdateLeadInput types are inferred from API body for now
 
 /**
  * Fetcher function for SWR
@@ -33,24 +33,31 @@ const fetcher = async (url: string) => {
  */
 export function useLeads(filters?: {
   status?: string[];
-  fonte?: string;
+  source_id?: string; // Changed from fonte
+  assigned_to?: string;
+  city?: string;
   search?: string;
   dateFrom?: string;
   dateTo?: string;
+  page?: number;
   limit?: number;
 }) {
   const params = new URLSearchParams();
   
   if (filters?.status) params.set('status', filters.status.join(','));
-  if (filters?.fonte) params.set('fonte', filters.fonte);
+  if (filters?.source_id) params.set('source_id', filters.source_id);
+  if (filters?.assigned_to) params.set('assigned_to', filters.assigned_to);
+  if (filters?.city) params.set('city', filters.city);
   if (filters?.search) params.set('search', filters.search);
   if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
   if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+  if (filters?.page) params.set('page', filters.page.toString());
   if (filters?.limit) params.set('limit', filters.limit.toString());
 
   const url = `/api/leads${params.toString() ? `?${params.toString()}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<{ leads: AirtableLead[]; total: number }>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error, isLoading, mutate } = useSWR<{ leads: Lead[]; total: number; pagination: any }>(
     url,
     fetcher,
     {
@@ -63,6 +70,7 @@ export function useLeads(filters?: {
   return {
     leads: data?.leads || [],
     total: data?.total || 0,
+    pagination: data?.pagination,
     isLoading,
     error,
     mutate,
@@ -76,7 +84,7 @@ export function useLeads(filters?: {
  * const { lead, isLoading, error, mutate } = useLead('rec123');
  */
 export function useLead(id: string | null) {
-  const { data, error, isLoading, mutate } = useSWR<{ lead: AirtableLead }>(
+  const { data, error, isLoading, mutate } = useSWR<{ lead: Lead }>(
     id ? `/api/leads/${id}` : null,
     fetcher,
     {
@@ -105,7 +113,8 @@ export function useCreateLead() {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createLead = async (data: CreateLeadInput): Promise<AirtableLead | null> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createLead = async (data: any): Promise<Lead | null> => {
     setIsCreating(true);
     setError(null);
 
@@ -127,6 +136,7 @@ export function useCreateLead() {
       mutate((key) => typeof key === 'string' && key.startsWith('/api/leads'));
 
       return result.lead;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
       return null;
@@ -150,12 +160,13 @@ export function useUpdateLead(id: string) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateLead = async (data: UpdateLeadInput): Promise<boolean> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updateLead = async (data: any): Promise<boolean> => {
     setIsUpdating(true);
     setError(null);
 
     // Store original data for rollback (CRITICAL-001)
-    let originalLead: AirtableLead | null = null;
+    let originalLead: Lead | null = null;
 
     try {
       // 1. Fetch current state for rollback
@@ -168,6 +179,7 @@ export function useUpdateLead(id: string) {
       // 2. Optimistic update - update UI immediately
       mutate(
         `/api/leads/${id}`,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (current: any) => {
           if (!current) return current;
           return {
@@ -200,6 +212,7 @@ export function useUpdateLead(id: string) {
       mutate((key) => typeof key === 'string' && key.startsWith('/api/leads'));
 
       return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
 
@@ -248,6 +261,7 @@ export function useDeleteLead() {
       mutate((key) => typeof key === 'string' && key.startsWith('/api/leads'));
 
       return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
       return false;
@@ -296,6 +310,7 @@ export function useBatchDeleteLeads() {
       mutate((key) => typeof key === 'string' && key.startsWith('/api/leads'));
 
       return result;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
       return null;

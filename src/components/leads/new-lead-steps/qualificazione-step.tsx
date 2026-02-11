@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { useState, useEffect, useMemo } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { LeadFormDataInferred, LEAD_VALIDATION_RULES } from '@/types/leads-form';
 import {
@@ -8,6 +9,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   FormMessage,
 } from '@/components/ui/form';
 import { FormMessageSubtle } from '@/components/ui/form-message-subtle';
@@ -36,12 +38,12 @@ import {
 } from '@/components/ui/popover';
 import { Check, ChevronDown, X, User, Users, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatItalianPhone } from '@/lib/format-phone';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { useUsers } from '@/hooks/use-users';
 import { useMarketingSources } from '@/hooks/use-marketing-sources';
 import { useLeads } from '@/hooks/use-leads';
 import { LeadStatusBadge, LeadSourceBadge } from '@/components/ui/smart-badge';
-import { getSelectOptions } from '@/lib/airtable-schema-helper';
 import { toast } from 'sonner';
 
 interface QualificazioneStepProps {
@@ -52,23 +54,48 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
   const [assegnatarioOpen, setAssegnatarioOpen] = useState(false);
   const [referenzeOpen, setReferenzeOpen] = useState(false);
   const [isRewritingEsigenza, setIsRewritingEsigenza] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [leadSearchQuery, setLeadSearchQuery] = useState('');
 
   const { control, setValue, watch } = form;
   const { users, loading: usersLoading } = useUsers();
   const { sources, isLoading: sourcesLoading } = useMarketingSources();
-  const { leads, isLoading: leadsLoading } = useLeads();
+  // Carica TUTTI i lead (581) per Referenze search - no pagination
+  const { leads, isLoading: leadsLoading } = useLeads({ limit: 1000 });
 
   // Carica stati dinamicamente dallo schema
-  const leadStati = getSelectOptions('Lead', 'Stato')?.map(opt => opt.name) || [];
+  const leadStati = ['Nuovo', 'Attivo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Sospeso', 'Chiuso'];
 
   // Watch per valori selezionati
   const selectedAssegnatario = watch('AssignedTo');
   const selectedReferenze = watch('Referenze') || [];
 
   // Convert users object to array
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const usersArray = users ? Object.values(users) : [];
   
-  console.log('[QualificazioneStep] Users:', { users, usersArray, usersLoading });
+  // Client-side filtering for users
+  const filteredUsers = useMemo(() => {
+    if (!userSearchQuery.trim()) return usersArray;
+    const query = userSearchQuery.toLowerCase();
+    return usersArray.filter(user => 
+      user.name?.toLowerCase().includes(query) ||
+      user.email?.toLowerCase().includes(query) ||
+      user.phone?.toLowerCase().includes(query)
+    );
+  }, [usersArray, userSearchQuery]);
+  
+  // Client-side filtering for leads
+  const filteredLeads = useMemo(() => {
+    if (!leadSearchQuery.trim()) return leads;
+    const query = leadSearchQuery.toLowerCase();
+    return leads.filter(lead => 
+      lead.name?.toLowerCase().includes(query) ||
+      lead.phone?.toLowerCase().includes(query) ||
+      lead.email?.toLowerCase().includes(query) ||
+      lead.city?.toLowerCase().includes(query)
+    );
+  }, [leads, leadSearchQuery]);
 
   const handleAssegnatarioSelect = (userId: string) => {
     setValue('AssignedTo', [userId]);
@@ -176,7 +203,7 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {leadStati.map((stato) => (
+                    {leadStati.map((stato: string) => (
                       <SelectItem key={stato} value={stato}>
                         <LeadStatusBadge status={stato} />
                       </SelectItem>
@@ -273,11 +300,12 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
           />
 
         {/* Assegnatario e Referenze - Grid 2 colonne */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 items-start">
             {/* Assegnatario */}
             <FormField
               control={control}
               name="AssignedTo"
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               render={({ field }) => (
               <FormItem>
                 <FormLabel>Assegnatario</FormLabel>
@@ -287,29 +315,57 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                       <Button
                         variant="outline"
                         role="combobox"
-                        className="w-full justify-between"
+                        className="w-full justify-between h-auto py-2"
                       >
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          {selectedAssegnatarioUser ? (
-                            <span>{selectedAssegnatarioUser.nome}</span>
-                          ) : (
+                        {selectedAssegnatarioUser ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            {selectedAssegnatarioUser.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img 
+                                src={selectedAssegnatarioUser.avatarUrl} 
+                                alt={selectedAssegnatarioUser.name}
+                                className="h-6 w-6 rounded-full object-cover"
+                              />
+                            ) : (
+                              <AvatarLead
+                                nome={selectedAssegnatarioUser.name}
+                                size="sm"
+                              />
+                            )}
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="font-medium truncate">{selectedAssegnatarioUser.name}</span>
+                              <Badge variant="outline" className="text-xs flex-shrink-0">
+                                {selectedAssegnatarioUser.role}
+                              </Badge>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">Seleziona assegnatario</span>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-full p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Cerca utente..." />
-                        <CommandList>
+                    <PopoverContent 
+                      className="w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)] p-0" 
+                      align="start"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      <Command shouldFilter={false} className="max-h-[400px]">
+                        <CommandInput
+                          placeholder="Cerca utente..." 
+                          value={userSearchQuery}
+                          onValueChange={setUserSearchQuery}
+                        />
+                        <CommandList style={{ maxHeight: '300px', overflowY: 'scroll' }}>
                           <CommandEmpty>
                             {usersLoading ? "Caricamento utenti..." : "Nessun utente trovato."}
                           </CommandEmpty>
                           {!usersLoading && (
                             <CommandGroup>
-                              {usersArray.map((user) => (
+                              {filteredUsers.map((user) => (
                                 <CommandItem
                                   key={user.id}
                                   onSelect={() => handleAssegnatarioSelect(user.id)}
@@ -317,22 +373,32 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                                 >
                                   <div className="flex items-center gap-3 w-full">
                                     <div className="flex-shrink-0">
-                                      <AvatarLead
-                                        nome={user.nome}
-                                        isAdmin={user.ruolo === 'Admin'}
-                                        size="md"
-                                      />
+                                      {user.avatarUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img 
+                                          src={user.avatarUrl} 
+                                          alt={user.name}
+                                          className="h-8 w-8 rounded-full object-cover"
+                                        />
+                                      ) : (
+                                        <AvatarLead
+                                          nome={user.name}
+                                          size="md"
+                                        />
+                                      )}
                                     </div>
                                     
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <span className="font-medium text-sm truncate">{user.nome}</span>
+                                        <span className="font-medium text-sm truncate">
+                                          {user.name}
+                                        </span>
                                         <Badge variant="outline" className="text-xs">
-                                          {user.ruolo}
+                                          {user.role}
                                         </Badge>
                                       </div>
                                       <div className="text-xs text-muted-foreground truncate">
-                                        {user.telefono || user.email || 'Nessun contatto'}
+                                        {formatItalianPhone(user.phone) || user.email || 'Nessun contatto'}
                                       </div>
                                     </div>
                                     
@@ -359,22 +425,22 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                   {selectedAssegnatarioUser && (
                     <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
                       {selectedAssegnatarioUser.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img 
                           src={selectedAssegnatarioUser.avatarUrl} 
-                          alt={selectedAssegnatarioUser.nome}
+                          alt={selectedAssegnatarioUser.name}
                           className="h-8 w-8 rounded-full object-cover"
                         />
                       ) : (
                         <AvatarLead
-                          nome={selectedAssegnatarioUser.nome}
-                          isAdmin={selectedAssegnatarioUser.ruolo === 'Admin'}
+                          nome={selectedAssegnatarioUser.name}
                           size="sm"
                         />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1">
-                          <span className="text-sm font-medium truncate">{selectedAssegnatarioUser.nome}</span>
-                          <Badge variant="outline" className="text-xs">{selectedAssegnatarioUser.ruolo}</Badge>
+                          <span className="text-sm font-medium truncate">{selectedAssegnatarioUser.name}</span>
+                          <Badge variant="outline" className="text-xs">{selectedAssegnatarioUser.role}</Badge>
                         </div>
                       </div>
                       <X
@@ -393,6 +459,7 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
             <FormField
               control={control}
               name="Referenze"
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Referenze</FormLabel>
@@ -402,47 +469,76 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                         <Button
                           variant="outline"
                           role="combobox"
-                          className="w-full justify-between"
+                          className="w-full justify-between h-auto py-2"
                         >
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            {selectedReferenze.length > 0 ? (
-                              <span>{selectedReferenze.length} selezionate</span>
-                            ) : (
+                          {selectedReferenze.length > 0 ? (
+                            <div className="flex items-center gap-2 flex-1">
+                              <div className="flex -space-x-2">
+                                {selectedReferenze.slice(0, 3).map((refNome) => {
+                                  const refLead = leads.find(l => l.name === refNome);
+                                  return (
+                                    <AvatarLead
+                                      key={refNome}
+                                      nome={refNome}
+                                      gender={refLead?.gender as 'male' | 'female' | 'unknown'}
+                                      size="sm"
+                                      className="border-2 border-background"
+                                    />
+                                  );
+                                })}
+                              </div>
+                              <span className="font-medium">
+                                {selectedReferenze.length} {selectedReferenze.length === 1 ? 'referenza' : 'referenze'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-muted-foreground" />
                               <span className="text-muted-foreground">Seleziona referenze</span>
-                            )}
-                          </div>
+                            </div>
+                          )}
                           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-full p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Cerca lead..." />
-                          <CommandList>
+                      <PopoverContent 
+                        className="w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)] p-0" 
+                        align="start"
+                        onWheel={(e) => e.stopPropagation()}
+                      >
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Cerca lead..." 
+                            value={leadSearchQuery}
+                            onValueChange={setLeadSearchQuery}
+                          />
+                          <CommandList style={{ maxHeight: '300px', overflowY: 'scroll' }}>
                             <CommandEmpty>
                               {leadsLoading ? "Caricamento leads..." : "Nessun lead trovato."}
                             </CommandEmpty>
                             {!leadsLoading && (
                               <CommandGroup>
-                                {leads.map((lead) => (
+                                {filteredLeads.map((lead) => (
                                   <CommandItem
                                     key={lead.id}
-                                    onSelect={() => handleReferenzaToggle(lead.fields.Nome || lead.id)}
+                                    onSelect={() => handleReferenzaToggle(lead.name || lead.id)}
                                     className="cursor-pointer"
                                   >
                                     <div className="flex items-center gap-3 w-full">
                                       <AvatarLead
-                                        nome={lead.fields.Nome || 'Lead'}
-                                        gender={lead.fields.Gender}
-                                        size="sm"
+                                        nome={lead.name || 'Lead'}
+                                        gender={lead.gender as 'male' | 'female' | 'unknown'}
+                                        size="md"
                                       />
                                       <div className="flex-1 min-w-0">
-                                        <span className="text-sm truncate">{lead.fields.Nome || 'Lead senza nome'}</span>
+                                        <div className="font-medium text-sm truncate">{lead.name || 'Lead senza nome'}</div>
+                                        {lead.phone && (
+                                          <div className="text-xs text-muted-foreground truncate">{formatItalianPhone(lead.phone)}</div>
+                                        )}
                                       </div>
                                       <Check
                                         className={cn(
                                           "h-4 w-4 flex-shrink-0",
-                                          selectedReferenze.includes(lead.fields.Nome || lead.id)
+                                          selectedReferenze.includes(lead.name || lead.id)
                                             ? "opacity-100" 
                                             : "opacity-0"
                                         )}
@@ -462,13 +558,13 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
                     {selectedReferenze.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {selectedReferenze.map((refNome) => {
-                          const refLead = leads.find(l => l.fields.Nome === refNome);
+                          const refLead = leads.find(l => l.name === refNome);
                           return (
                             <div key={refNome} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
                               <AvatarLead
                                 nome={refNome}
-                                gender={refLead?.fields?.Gender}
-size="sm"
+                                gender={refLead?.gender as 'male' | 'female' | 'unknown'}
+                                size="sm"
                               />
                               <span className="text-sm font-medium">{refNome}</span>
                               <X

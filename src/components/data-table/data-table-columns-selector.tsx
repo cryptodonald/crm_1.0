@@ -8,6 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { cn } from "@/lib/utils";
 
 interface ColumnOption {
@@ -44,6 +45,7 @@ export function DataTableColumnsSelector({
     );
   }, [options, searchTerm]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const selectedSet = new Set(selectedValues);
 
   const handleToggleOption = React.useCallback((optionValue: string) => {

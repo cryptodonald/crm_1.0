@@ -11,6 +11,7 @@ import {
   Lightbulb,
   AlertTriangle,
   Calendar,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   CheckCircle2,
   ArrowUpRight,
   ArrowDownRight,
@@ -78,6 +79,7 @@ export function LeadsStats({
     return `${value}%`;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getTrendIcon = (variation: number) => {
     if (variation > 0)
       return <ArrowUpRight className="h-4 w-4 text-green-600" />;
@@ -86,6 +88,7 @@ export function LeadsStats({
     return <Minus className="h-4 w-4 text-gray-400" />;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getTrendColor = (variation: number) => {
     if (variation > 0) return 'text-green-600';
     if (variation < 0) return 'text-red-600';

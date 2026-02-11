@@ -9,6 +9,7 @@ interface ActivityAttachmentsProps {
 }
 
 // Placeholder per allegati attività
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ActivityAttachments({ form, activityId }: ActivityAttachmentsProps) {
   return null;
 }

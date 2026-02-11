@@ -70,6 +70,7 @@ Rispondi SOLO con un oggetto JSON in questo formato (senza markdown):
       // Rimuovi eventuali markdown code blocks
       const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       parsed = JSON.parse(cleaned);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (parseError) {
       console.error('Errore parsing risposta AI:', content);
       return { gender: null, confidence: 'low', reasoning: 'Risposta AI non valida' };

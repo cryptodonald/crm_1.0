@@ -68,7 +68,7 @@ const TYPE_ICONS = {
 };
 
 interface TaskCardProps {
-  task: AirtableUserTask;
+  task: AirtableUserTask; // Legacy type name (uses Postgres Task internally)
   asHandle?: boolean;
   onEdit?: (task: AirtableUserTask) => void;
   onDelete?: (task: AirtableUserTask) => void;
@@ -82,8 +82,8 @@ function TaskCard({ task, asHandle, onEdit, onDelete, currentUserId, currentUser
   const isCreator = task.fields.CreatedBy?.includes(currentUserId || '');
   const isAdmin = currentUserRole === 'admin';
   const canManage = isCreator || isAdmin;
-  const Icon = TYPE_ICONS[task.fields.Type as keyof typeof TYPE_ICONS];
-  const isOverdue = task.fields.DueDate && isPast(new Date(task.fields.DueDate)) && task.fields.Status !== 'done';
+  const Icon = TYPE_ICONS[task.type as keyof typeof TYPE_ICONS];
+  const isOverdue = task.due_date && isPast(new Date(task.due_date)) && task.status !== 'done';
   
   // Get assigned user info
   const assignedUserId = task.fields.AssignedTo?.[0];
@@ -95,12 +95,12 @@ function TaskCard({ task, asHandle, onEdit, onDelete, currentUserId, currentUser
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2 flex-1 min-w-0">
             {Icon && <Icon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />}
-            <span className="line-clamp-2 font-medium text-sm">{task.fields.Title}</span>
+            <span className="line-clamp-2 font-medium text-sm">{task.title}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {task.fields.Priority && (
+            {task.priority && (
               <TaskPriorityBadge
-                priority={task.fields.Priority}
+                priority={task.priority}
                 className="pointer-events-none h-5 rounded-sm px-1.5 text-[11px]"
               />
             )}
@@ -134,16 +134,18 @@ function TaskCard({ task, asHandle, onEdit, onDelete, currentUserId, currentUser
           </div>
         </div>
 
-        {task.fields.Description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{task.fields.Description}</p>
+        {task.description && (
+          <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
         )}
 
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <TaskTypeBadge
-              type={task.fields.Type}
-              className="text-[10px] h-4 px-1 shrink-0"
-            />
+            {task.type && (
+              <TaskTypeBadge
+                type={task.type}
+                className="text-[10px] h-4 px-1 shrink-0"
+              />
+            )}
             {assignedUser && (
               <div className="flex items-center gap-1.5 min-w-0">
                 <Avatar className="h-5 w-5 shrink-0">
@@ -161,12 +163,12 @@ function TaskCard({ task, asHandle, onEdit, onDelete, currentUserId, currentUser
             )}
           </div>
 
-          {task.fields.DueDate && (
+          {task.due_date && (
             <time
               className={`text-[10px] tabular-nums whitespace-nowrap shrink-0 ${isOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}
             >
               {isOverdue && '⚠️ '}
-              {format(new Date(task.fields.DueDate), 'dd MMM yyyy', { locale: it })}
+              {format(new Date(task.due_date), 'dd MMM yyyy', { locale: it })}
             </time>
           )}
         </div>
@@ -183,7 +185,7 @@ function TaskCard({ task, asHandle, onEdit, onDelete, currentUserId, currentUser
 
 interface TaskColumnProps {
   value: string;
-  tasks: AirtableUserTask[];
+  tasks: AirtableUserTask[]; // Legacy type name (uses Postgres Task internally)
   isOverlay?: boolean;
   onEdit?: (task: AirtableUserTask) => void;
   onDelete?: (task: AirtableUserTask) => void;
@@ -246,8 +248,8 @@ export default function TasksPage() {
   const filteredTasks = React.useMemo(() => {
     if (!tasks) return [];
     return tasks.filter((task) => {
-      const matchesPriority = priorityFilter === 'all' || task.fields.Priority === priorityFilter;
-      const matchesType = typeFilter === 'all' || task.fields.Type === typeFilter;
+      const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+      const matchesType = typeFilter === 'all' || task.type === typeFilter;
       return matchesPriority && matchesType;
     });
   }, [tasks, priorityFilter, typeFilter]);
@@ -261,7 +263,7 @@ export default function TasksPage() {
     };
 
     filteredTasks.forEach((task) => {
-      const status = task.fields.Status || 'todo';
+      const status = task.status || 'todo';
       if (grouped[status]) {
         grouped[status].push(task);
       }
@@ -271,6 +273,7 @@ export default function TasksPage() {
   }, [filteredTasks]);
 
   const handleMove = React.useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (event: any) => {
       const { overContainer } = event;
       const taskId = event.event.active.id as string;
@@ -280,6 +283,7 @@ export default function TasksPage() {
       if (!task) return;
 
       // Update status only
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = { Status: overContainer };
 
       // Update task status via API
@@ -313,18 +317,20 @@ export default function TasksPage() {
         
         // Revalidate data
         mutate();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error('Error updating task:', error);
         toast.error('Errore di rete durante l\'aggiornamento');
         mutate(); // Rollback
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [filteredTasks]
   );
 
   // Calculate overdue tasks
   const overdueTasks = filteredTasks.filter(
-    (t) => t.fields.Status !== 'done' && t.fields.DueDate && isPast(new Date(t.fields.DueDate))
+    (t) => t.status !== 'done' && t.due_date && isPast(new Date(t.due_date))
   ).length;
 
   // Check permissions: can manage if creator or admin
@@ -473,7 +479,7 @@ export default function TasksPage() {
         <EditTaskModal
           task={editingTask}
           open={!!editingTask}
-          onOpenChange={(open) => !open && setEditingTask(null)}
+          onOpenChange={(open: boolean) => !open && setEditingTask(null)}
           onSuccess={() => mutate()}
         />
       )}
@@ -484,7 +490,7 @@ export default function TasksPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
             <AlertDialogDescription>
-              Sei sicuro di voler eliminare il task "{deletingTask?.fields.Title}"?
+              Sei sicuro di voler eliminare il task &quot;{deletingTask?.fields.Title}&quot;?
               Questa azione non può essere annullata.
             </AlertDialogDescription>
           </AlertDialogHeader>

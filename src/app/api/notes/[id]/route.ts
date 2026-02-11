@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
-import Airtable from 'airtable';
-import { env } from '@/env';
-import type { AirtableNotes } from '@/types/airtable.generated';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { updateNote, deleteNote } from '@/lib/postgres';
+import { checkRateLimit } from '@/lib/ratelimit';
+import type { NoteUpdateInput } from '@/types/database';
+
+const uuidSchema = z.string().uuid('Invalid UUID format');
 
 const updateNoteSchema = z.object({
   content: z.string().min(1).optional(),
-  type: z.enum(['Riflessione', 'Promemoria', 'Follow-up', 'Info Cliente']).optional(),
   pinned: z.boolean().optional(),
 });
 
@@ -22,11 +23,27 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Rate limit check
+    const { success, limit: rateLimit, remaining } = await checkRateLimit(session.user.email, 'write');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
+
     const { id: noteId } = await params;
+
+    // Validate UUID format
+    const uuidResult = uuidSchema.safeParse(noteId);
+    if (!uuidResult.success) {
+      return NextResponse.json(
+        { error: 'Note ID must be a valid UUID' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const validation = updateNoteSchema.safeParse(body);
 
@@ -37,35 +54,34 @@ export async function PATCH(
       );
     }
 
-    const updates: Record<string, any> = {};
-    if (validation.data.content !== undefined) updates.Content = validation.data.content;
-    if (validation.data.type !== undefined) updates.Type = validation.data.type;
-    if (validation.data.pinned !== undefined) updates.Pinned = validation.data.pinned;
+    // Map to Postgres schema
+    const input: NoteUpdateInput = {};
+    if (validation.data.content !== undefined) input.content = validation.data.content;
+    if (validation.data.pinned !== undefined) input.pinned = validation.data.pinned;
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(input).length === 0) {
       return NextResponse.json(
         { error: 'No valid fields to update' },
         { status: 400 }
       );
     }
 
-    const airtable = new Airtable({ apiKey: env.AIRTABLE_API_KEY });
-    const base = airtable.base(env.AIRTABLE_BASE_ID);
-    const notesTable = base(env.AIRTABLE_NOTES_TABLE_ID);
+    const note = await updateNote(noteId, input);
 
-    const updatedRecord = await notesTable.update(noteId, updates);
-
-    const note: AirtableNotes = {
-      id: updatedRecord.id,
-      createdTime: updatedRecord._rawJson.createdTime,
-      fields: updatedRecord.fields as AirtableNotes['fields'],
-    };
-
-    return NextResponse.json({ note }, { status: 200 });
-  } catch (error: any) {
+    return NextResponse.json(
+      { note },
+      {
+        status: 200,
+        headers: {
+          'X-RateLimit-Limit': rateLimit.toString(),
+          'X-RateLimit-Remaining': remaining.toString(),
+        },
+      }
+    );
+  } catch (error: unknown) {
     console.error('[API Notes PATCH] Error:', error);
     
-    if (error?.statusCode === 404) {
+    if (error instanceof Error && error.message.includes('not found')) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
 
@@ -86,27 +102,41 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: noteId } = await params;
-    const airtable = new Airtable({ apiKey: env.AIRTABLE_API_KEY });
-    const base = airtable.base(env.AIRTABLE_BASE_ID);
-    const notesTable = base(env.AIRTABLE_NOTES_TABLE_ID);
+    // Rate limit check
+    const { success, limit: rateLimit, remaining } = await checkRateLimit(session.user.email, 'write');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
 
-    await notesTable.destroy(noteId);
+    const { id: noteId } = await params;
+
+    // Validate UUID format
+    const deleteUuidResult = uuidSchema.safeParse(noteId);
+    if (!deleteUuidResult.success) {
+      return NextResponse.json(
+        { error: 'Note ID must be a valid UUID' },
+        { status: 400 }
+      );
+    }
+
+    await deleteNote(noteId);
 
     return NextResponse.json(
-      { message: 'Note deleted successfully', id: noteId },
-      { status: 200 }
+      { success: true, message: 'Note deleted successfully', id: noteId },
+      {
+        status: 200,
+        headers: {
+          'X-RateLimit-Limit': rateLimit.toString(),
+          'X-RateLimit-Remaining': remaining.toString(),
+        },
+      }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API Notes DELETE] Error:', error);
-
-    if (error?.statusCode === 404) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
-    }
 
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
@@ -19,21 +20,22 @@ import { toast } from 'sonner';
 import { detectGenderWithAI } from '@/lib/avatar-utils';
 import { AnagraficaStep } from './new-lead-steps/anagrafica-step';
 import { QualificazioneStep } from './new-lead-steps/qualificazione-step';
-import { DocumentiStep } from './new-lead-steps/documenti-step';
 import { AITextParser } from './ai-text-parser';
 import { useMarketingSources } from '@/hooks/use-marketing-sources';
 import { useLeads } from '@/hooks/use-leads';
+import { useSWRConfig } from 'swr';
+import type { Lead } from '@/types/database';
 
 interface NewLeadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (lead: any) => void;
 }
 
 const STEPS = [
   { id: 1, name: 'Anagrafica' },
   { id: 2, name: 'Qualificazione' },
-  { id: 3, name: 'Documenti' },
 ];
 
 export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProps) {
@@ -44,6 +46,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
   
   const { sources } = useMarketingSources();
   const { leads: allLeads } = useLeads();
+  const { mutate } = useSWRConfig();
 
   const form = useForm<LeadFormDataInferred>({
     resolver: zodResolver(leadFormSchema),
@@ -104,6 +107,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAIParsedData = (data: any) => {
     console.log('[NewLeadModal] AI parsed data:', data);
     
@@ -115,9 +119,21 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
     if (data.CAP) form.setValue('CAP', data.CAP);
     if (data.Esigenza) form.setValue('Esigenza', data.Esigenza);
     
+    // Fonte: verifica che esista nel database
+    if (data.Fonte) {
+      const fonteExists = sources.some(s => s.name === data.Fonte);
+      if (fonteExists) {
+        form.setValue('Fonte', data.Fonte);
+        console.log('[NewLeadModal] Fonte impostata:', data.Fonte);
+      } else {
+        console.warn('[NewLeadModal] Fonte non trovata nel database:', data.Fonte);
+      }
+    }
+    
     // Toast di conferma
+    const campiImportati = Object.keys(data).filter(k => data[k]).length;
     toast.success('Dati importati!', {
-      description: 'Controlla i campi e completa le informazioni mancanti.',
+      description: `${campiImportati} campi estratti. Controlla e completa le informazioni.`,
     });
   };
 
@@ -135,11 +151,16 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
   };
 
   const onSubmit = async (data: LeadFormDataInferred) => {
+    if (isSubmitting) return; // Previeni doppio submit
     setIsSubmitting(true);
+    
+    // Genera ID temporaneo
+    const tempId = `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    
     try {
-      console.log('[NewLeadModal] Submitting lead:', data);
+      console.log('[NewLeadModal] Submitting lead (optimistic):', data);
       
-      // Convert Fonte name to ID (typecast doesn't work for computed primary fields)
+      // Convert Fonte name to ID
       let fonteIds: string[] | undefined = undefined;
       if (data.Fonte) {
         const fonte = sources.find(s => s.name === data.Fonte);
@@ -152,23 +173,107 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       let referenzaIds: string[] | undefined = undefined;
       if (data.Referenze && data.Referenze.length > 0) {
         referenzaIds = data.Referenze.map(refName => {
-          const refLead = allLeads?.find(l => l.fields.Nome === refName);
+          const refLead = allLeads?.find(l => l.name === refName);
           return refLead?.id || '';
         }).filter(id => id !== '');
       }
       
-      // Prepare payload with IDs and map to Airtable field names
-      const { _fonteId, Fonte, Referenze, AssignedTo, ...cleanData } = data;
+      // Prepare payload with English field names
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _fonteId, Fonte, Referenze, AssignedTo, Nome, Telefono, Email, Indirizzo, CAP, Città, Esigenza, Stato, Gender, ...rest } = data;
+      
+      // Normalize phone: add +39 if missing
+      let normalizedPhone = Telefono;
+      if (Telefono) {
+        const cleanPhone = Telefono.replace(/[\s\-\(\)]/g, '');
+        if (!cleanPhone.startsWith('+')) {
+          normalizedPhone = '+39' + cleanPhone;
+        } else {
+          normalizedPhone = cleanPhone;
+        }
+      }
+      
       const payload = {
-        ...cleanData,
-        Fonte: fonteIds,
-        Referenza: referenzaIds,
-        Assegnatario: AssignedTo,
+        name: Nome,
+        phone: normalizedPhone,
+        email: Email,
+        address: Indirizzo,
+        postal_code: CAP,
+        city: Città,
+        needs: Esigenza,
+        status: Stato || 'Nuovo',
+        gender: Gender,
+        source_id: fonteIds?.[0] || null,
+        assigned_to: AssignedTo || null,
+        referral_lead_id: referenzaIds?.[0] || null,
       };
       
-      console.log('[NewLeadModal] Payload with IDs:', payload);
+      // Crea lead ottimistico con timestamp correnti
+      const now = new Date().toISOString();
+      const optimisticLead: Lead = {
+        id: tempId,
+        airtable_id: '', // Campo legacy, vuoto per nuovi lead
+        name: Nome,
+        phone: normalizedPhone ?? null,
+        email: Email ?? null,
+        address: Indirizzo ?? null,
+        postal_code: CAP ?? null,
+        city: Città ?? null,
+        needs: Esigenza ?? null,
+        status: Stato || 'Nuovo',
+        gender: Gender || 'unknown',
+        source_id: fonteIds?.[0] || null,
+        assigned_to: AssignedTo || null,
+        referral_lead_id: referenzaIds?.[0] || null,
+        created_at: now,
+        updated_at: now,
+        attachments: null,
+        search_vector: null,
+        // Campi opzionali da JOIN queries
+        activities_count: 0,
+        referral_lead_name: null,
+        referral_lead_gender: null,
+      };
       
-      // Invia richiesta
+      console.log('[NewLeadModal] Optimistic lead created with temp ID:', tempId);
+      
+      // FASE 1: Snapshot cache corrente per rollback
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+      let _snapshot: any = null;
+      mutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/leads'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          _snapshot = current; // Salva snapshot
+          return current; // Non modificare ancora
+        },
+        { revalidate: false }
+      );
+      
+      // FASE 2: Update UI IMMEDIATO (optimistic)
+      mutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/leads'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          if (!current) return current;
+          
+          // Aggiungi lead ottimistico all'inizio della lista
+          if (current.leads && Array.isArray(current.leads)) {
+            return {
+              ...current,
+              leads: [optimisticLead, ...current.leads],
+              total: (current.total || 0) + 1,
+            };
+          }
+          
+          return current;
+        },
+        { revalidate: false }
+      );
+      
+      console.log('[NewLeadModal] Cache updated optimistically');
+      
+      // FASE 3: Chiamata API in background
       const response = await fetch('/api/leads', {
         method: 'POST',
         headers: {
@@ -184,29 +289,71 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
 
       const result = await response.json();
       
-      // API ritorna { lead } in caso di successo (status 201)
       if (!result.lead) {
         throw new Error('Risposta API non valida');
       }
 
-      console.log('[NewLeadModal] Lead creato con successo:', result.lead.id);
+      console.log('[NewLeadModal] API success, replacing temp ID with real ID:', result.lead.id);
+      
+      // FASE 4: Sostituisci lead temporaneo con lead reale
+      mutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/leads'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          if (!current) return current;
+          
+          // Sostituisci temp lead con lead reale dal server
+          if (current.leads && Array.isArray(current.leads)) {
+            return {
+              ...current,
+              leads: current.leads.map((l: Lead) => 
+                l.id === tempId ? result.lead : l
+              ),
+            };
+          }
+          
+          return current;
+        },
+        { revalidate: false }
+      );
       
       toast.success('Lead creato con successo');
       
-      // Reset form ai valori di default
+      // Reset form e chiudi modal
       form.reset(DEFAULT_LEAD_DATA);
       setCurrentStep(1);
       setDetectedGender('unknown');
-      
       onOpenChange(false);
       
-      // Chiama callback per refresh lista
+      // Callback per compatibilità
       if (onSuccess) {
         onSuccess(result.lead);
       }
       
     } catch (error) {
-      console.error('[NewLeadModal] Error:', error);
+      console.error('[NewLeadModal] Error, rolling back optimistic update:', error);
+      
+      // ROLLBACK: Ripristina snapshot originale
+      mutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/leads'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          // Rimuovi lead temporaneo dalla cache
+          if (!current) return current;
+          
+          if (current.leads && Array.isArray(current.leads)) {
+            return {
+              ...current,
+              leads: current.leads.filter((l: Lead) => l.id !== tempId),
+              total: Math.max((current.total || 1) - 1, 0),
+            };
+          }
+          
+          return current;
+        },
+        { revalidate: false }
+      );
+      
       const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
       toast.error('Errore nella creazione', {
         description: errorMessage,
@@ -236,6 +383,9 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
               Passo {currentStep} di {STEPS.length}
             </div>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Form per creare un nuovo lead. Passo {currentStep} di {STEPS.length}.
+          </DialogDescription>
         </DialogHeader>
 
         {/* AI Import Button (solo step 1) */}
@@ -277,10 +427,9 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
         {/* Step Content */}
         <div className="flex-1 overflow-y-auto px-1">
           <Form {...form}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
               {currentStep === 1 && <AnagraficaStep form={form} />}
               {currentStep === 2 && <QualificazioneStep form={form} />}
-              {currentStep === 3 && <DocumentiStep form={form} />}
             </form>
           </Form>
         </div>

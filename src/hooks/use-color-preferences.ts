@@ -1,6 +1,7 @@
 import useSWR from 'swr';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { EntityType } from '@/lib/color-preferences';
+import { getDefaultColors } from '@/lib/default-badge-colors';
 
 interface UseColorPreferencesOptions {
   entityType: EntityType;
@@ -54,6 +55,15 @@ export function useColorPreferences({
       revalidateOnReconnect: false,
     }
   );
+  
+  // Merge default colors con user customizations
+  const mergedColors = useMemo(() => {
+    const defaults = getDefaultColors(entityType);
+    const userColors = data?.colors || {};
+    
+    // User colors override defaults
+    return { ...defaults, ...userColors };
+  }, [entityType, data?.colors]);
 
   const saveColor = async (entityValue: string, colorClass: string) => {
     setIsSaving(true);
@@ -103,7 +113,7 @@ export function useColorPreferences({
   };
 
   return {
-    colors: data?.colors,
+    colors: mergedColors,
     isLoading: isLoading || isSaving,
     error,
     saveColor,

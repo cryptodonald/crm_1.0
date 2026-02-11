@@ -1,24 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { 
   ActivityFormData, 
   ActivityEsito, 
   ActivityProssimaAzione, 
-  ActivityObiettivo, 
   getActivityEsitoColor,
-  getActivityObiettivoColor,
 } from '@/types/activities';
 import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   FormMessage,
 } from '@/components/ui/form';
 import { FormMessageSubtle } from '@/components/ui/form-message-subtle';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -33,117 +31,98 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
+import { TimeSelect } from '@/components/ui/time-select';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { AINotesField } from '../ai-notes-field';
 
 interface RisultatiStepProps {
   form: UseFormReturn<ActivityFormData>;
+  isEditMode?: boolean;
 }
 
-// Esiti disponibili
+// Esiti disponibili (12)
 const ACTIVITY_RESULTS: ActivityEsito[] = [
-  'Contatto riuscito',
-  'Nessuna risposta',
-  'Numero errato',
-  'Non disponibile',
-  'Non presentato',
-  'Molto interessato',
-  'Interessato',
-  'Poco interessato',
-  'Non interessato',
-  'Informazioni raccolte',
-  'Preventivo richiesto',
-  'Preventivo inviato',
+  'Non risponde',
+  'Da ricontattare',
+  'Qualificato',
   'Appuntamento fissato',
+  'Preventivo inviato',
   'Ordine confermato',
+  'Non interessato',
   'Opportunità persa',
-  'Servizio completato',
   'Problema risolto',
-  'Cliente soddisfatto',
+  'Feedback raccolto',
   'Recensione ottenuta',
+  'Altro',
 ];
 
 // Prossime azioni disponibili
 const NEXT_ACTIONS: ActivityProssimaAzione[] = [
   'Chiamata',
-  'WhatsApp',
+  'Messaggistica',
   'Email',
-  'SMS',
   'Consulenza',
   'Follow-up',
-  'Nessuna',
+  'Altro',
 ];
 
-// Obiettivi disponibili per la prossima azione
-const ACTIVITY_OBJECTIVES: ActivityObiettivo[] = [
-  'Primo contatto',
-  'Qualificazione lead',
-  'Presentazione prodotto',
-  'Invio preventivo',
-  'Follow-up preventivo',
-  'Negoziazione',
-  'Chiusura ordine',
-  'Fissare appuntamento',
-  'Confermare appuntamento',
-  'Promemoria appuntamento',
-  'Consegna prodotto',
-  'Assistenza tecnica',
-  'Controllo soddisfazione',
-  'Upsell Cross-sell',
-  'Richiesta recensione',
-];
 
-export function RisultatiStep({ form }: RisultatiStepProps) {
+export function RisultatiStep({ form, isEditMode = false }: RisultatiStepProps) {
   const [nextDatePopoverOpen, setNextDatePopoverOpen] = useState(false);
-  const [selectedNextDate, setSelectedNextDate] = useState<Date>();
-  const [selectedNextTime, setSelectedNextTime] = useState('');
 
   const { control, setValue, watch } = form;
 
-  // Initialize next date and time when 'Data prossima azione' field changes
-  useEffect(() => {
-    const nextDataValue = watch('Data prossima azione');
-    if (nextDataValue) {
-      const date = new Date(nextDataValue);
-      setSelectedNextDate(date);
-      setSelectedNextTime(format(date, 'HH:mm'));
-    }
-  }, [watch]);
+  // Derive next date/time from form value
+  const nextDataValue = watch('Data prossima azione');
+
+  const selectedNextDate = useMemo(() => {
+    if (nextDataValue) return new Date(nextDataValue);
+    return undefined;
+  }, [nextDataValue]);
+
+  const selectedNextTime = useMemo(() => {
+    if (nextDataValue) return format(new Date(nextDataValue), 'HH:mm');
+    return '';
+  }, [nextDataValue]);
 
   const handleNextDateTimeChange = (date: Date | undefined, time?: string) => {
     if (date) {
-      const timeToUse = time || selectedNextTime || '09:00';
+      // Se non c'è un orario, usa l'ora corrente come default
+      const timeToUse = time || selectedNextTime || format(new Date(), 'HH:mm');
       const [hours, minutes] = timeToUse.split(':').map(Number);
       const dateTime = new Date(date);
       dateTime.setHours(hours, minutes);
-      
-      setSelectedNextDate(date);
-      setSelectedNextTime(timeToUse);
       setValue('Data prossima azione', dateTime.toISOString());
     } else {
-      setSelectedNextDate(undefined);
-      setSelectedNextTime('');
       setValue('Data prossima azione', undefined);
     }
   };
+
+  const resetNextAction = () => {
+    setValue('Prossima azione', undefined);
+    setValue('Data prossima azione', undefined);
+    setValue('Note prossima azione', undefined);
+  };
+
+  const prossimaAzione = watch('Prossima azione');
 
   return (
     <div className="space-y-6">
       <div className="space-y-1 pb-2">
         <h3 className="text-lg font-semibold">Risultati</h3>
         <p className="text-sm text-muted-foreground">
-          Documenta l'esito dell'attività e pianifica le prossime azioni.
+          Documenta l&apos;esito dell&apos;attività e pianifica le prossime azioni.
         </p>
       </div>
       
       <div className="border-t border-border/50 pt-4 space-y-6">
         
         {/* Esito e Prossima Azione */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className={cn("grid gap-4", !isEditMode && "md:grid-cols-2")}>
           {/* Esito Attività */}
           <FormField
             control={control}
@@ -182,43 +161,59 @@ export function RisultatiStep({ form }: RisultatiStepProps) {
             )}
           />
           
-          {/* Prossima Azione */}
-          <FormField
-            control={control}
-            name="Prossima azione"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Prossima Azione</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleziona prossima azione">
-                        {field.value && (
+          {/* Prossima Azione - solo in creazione */}
+          {!isEditMode && (
+            <FormField
+              control={control}
+              name="Prossima azione"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center justify-between">
+                    Prossima Azione
+                    {prossimaAzione && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={resetNextAction}
+                        className="h-5 px-1.5 text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-3 w-3 mr-0.5" />
+                        Rimuovi
+                      </Button>
+                    )}
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleziona prossima azione">
+                          {field.value && (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {field.value}
+                              </Badge>
+                            </div>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {NEXT_ACTIONS.map((azione) => (
+                        <SelectItem key={azione} value={azione}>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">
-                              {field.value}
+                              {azione}
                             </Badge>
                           </div>
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {NEXT_ACTIONS.map((azione) => (
-                      <SelectItem key={azione} value={azione}>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {azione}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessageSubtle />
-              </FormItem>
-            )}
-          />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessageSubtle />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {/* Note con AI */}
@@ -232,7 +227,7 @@ export function RisultatiStep({ form }: RisultatiStepProps) {
                 <AINotesField
                   value={field.value || ''}
                   onChange={field.onChange}
-                  placeholder="Inserisci note o dettagli sull'attività..."
+                  placeholder="Inserisci note o dettagli sull&apos;attività..."
                   maxLength={1000}
                 />
               </FormControl>
@@ -241,12 +236,13 @@ export function RisultatiStep({ form }: RisultatiStepProps) {
           )}
         />
 
-        {/* Data e Ora Prossima Azione */}
-        <div className="grid gap-4 md:grid-cols-2">
+        {/* Data e Ora Prossima Azione - solo in creazione */}
+        {!isEditMode && <div className="grid gap-4 md:grid-cols-2">
           {/* Data Prossima Azione */}
           <FormField
             control={control}
             name="Data prossima azione"
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Data Prossima Azione</FormLabel>
@@ -289,18 +285,36 @@ export function RisultatiStep({ form }: RisultatiStepProps) {
           <FormItem>
             <FormLabel>Ora Prossima Azione</FormLabel>
             <FormControl>
-              <Input
-                type="time"
-                id="next-time-picker"
-                value={selectedNextTime}
-                onChange={(e) => handleNextDateTimeChange(selectedNextDate, e.target.value)}
-                className="w-full"
-                placeholder="09:00"
+              <TimeSelect
+                value={selectedNextTime || undefined}
+                onChange={(time) => handleNextDateTimeChange(selectedNextDate, time)}
               />
             </FormControl>
             <FormMessageSubtle />
           </FormItem>
-        </div>
+        </div>}
+
+        {/* Note Prossima Azione - solo in creazione */}
+        {!isEditMode && prossimaAzione && (
+          <FormField
+            control={control}
+            name="Note prossima azione"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Note Prossima Azione</FormLabel>
+                <FormControl>
+                  <AINotesField
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    placeholder="Inserisci note o dettagli sulla prossima attività..."
+                    maxLength={1000}
+                  />
+                </FormControl>
+                <FormMessageSubtle />
+              </FormItem>
+            )}
+          />
+        )}
 
       </div>
     </div>

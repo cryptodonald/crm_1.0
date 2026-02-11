@@ -74,10 +74,10 @@ export function LeadSidebarNav({
 
   return (
     <nav className="flex flex-col gap-1 p-2">
-      {NAV_ITEMS.map((item) => {
+      {NAV_ITEMS.map((item: typeof NAV_ITEMS[number]) => {
         const Icon = item.icon;
         const isActive = activeSection === item.id;
-        const count = item.countKey ? counts[item.countKey] : undefined;
+        const count = item.countKey ? counts[item.countKey as keyof typeof counts] : undefined;
 
         return (
           <button

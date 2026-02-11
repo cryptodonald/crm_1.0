@@ -50,34 +50,28 @@ interface InformazioniBaseStepProps {
   prefilledLeadId?: string; // ID del lead preselezionato
 }
 
-// Tipi di attività disponibili
+// Tipi di attività disponibili (6)
 const ACTIVITY_TYPES: ActivityTipo[] = [
   'Chiamata',
-  'WhatsApp', 
+  'Messaggistica',
   'Email',
-  'SMS',
   'Consulenza',
   'Follow-up',
   'Altro',
 ];
 
-// Obiettivi disponibili
+// Obiettivi disponibili (10)
 const ACTIVITY_OBJECTIVES: ActivityObiettivo[] = [
   'Primo contatto',
-  'Qualificazione lead',
-  'Presentazione prodotto',
-  'Invio preventivo',
-  'Follow-up preventivo',
-  'Negoziazione',
+  'Qualificazione',
+  'Appuntamento',
+  'Presentazione',
+  'Preventivo',
   'Chiusura ordine',
-  'Fissare appuntamento',
-  'Confermare appuntamento',
-  'Promemoria appuntamento',
-  'Consegna prodotto',
-  'Assistenza tecnica',
-  'Controllo soddisfazione',
-  'Upsell Cross-sell',
-  'Richiesta recensione',
+  'Assistenza',
+  'Feedback',
+  'Recensione',
+  'Altro',
 ];
 
 // Priorità disponibili
@@ -131,7 +125,7 @@ export function InformazioniBaseStep({ form, prefilledLeadId }: InformazioniBase
       <div className="space-y-1 pb-2">
         <h3 className="text-lg font-semibold">Informazioni Base</h3>
         <p className="text-sm text-muted-foreground">
-          Definisci il tipo di attività, seleziona il lead associato e specifica l'obiettivo.
+          Definisci il tipo di attività, seleziona il lead associato e specifica l&apos;obiettivo.
         </p>
       </div>
       
@@ -197,13 +191,13 @@ export function InformazioniBaseStep({ form, prefilledLeadId }: InformazioniBase
                               return (
                                 <>
                                   <AvatarLead
-                                    nome={lead?.fields?.Nome || 'Lead'}
+                                    nome={lead?.name || 'Lead'}
                                     size="sm"
                                     
                                     className="w-5 h-5"
                                   />
                                   <span className="text-foreground font-medium">
-                                    {lead?.fields?.Nome || 'Lead selezionato'}
+                                    {lead?.name || 'Lead selezionato'}
                                   </span>
                                 </>
                               );
@@ -243,7 +237,7 @@ export function InformazioniBaseStep({ form, prefilledLeadId }: InformazioniBase
                                   <div className="flex items-center gap-3 w-full">
                                     <div className="flex-shrink-0">
                                       <AvatarLead
-                                        nome={lead.fields.Nome || 'Lead'}
+                                        nome={lead.name || 'Lead'}
                                         size="md"
                                         
                                       />
@@ -251,13 +245,13 @@ export function InformazioniBaseStep({ form, prefilledLeadId }: InformazioniBase
                                     
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <span className="font-medium text-sm truncate">{lead.fields.Nome || 'Lead senza nome'}</span>
+                                        <span className="font-medium text-sm truncate">{lead.name || 'Lead senza nome'}</span>
                                         <Badge variant="outline" className="text-xs">
-                                          {lead.fields.Stato}
+                                          {lead.status}
                                         </Badge>
                                       </div>
                                       <div className="text-xs text-muted-foreground truncate">
-                                        {lead.fields.Telefono || lead.fields.Email || 'Nessun contatto'}
+                                        {lead.phone || lead.email || 'Nessun contatto'}
                                       </div>
                                     </div>
                                     
@@ -288,14 +282,14 @@ export function InformazioniBaseStep({ form, prefilledLeadId }: InformazioniBase
                         return lead ? (
                           <div key={leadId} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
                             <AvatarLead
-                              nome={lead.fields.Nome || 'Lead'}
+                              nome={lead.name || 'Lead'}
                               size="sm"
                               
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1">
-                                <span className="text-sm font-medium truncate">{lead.fields.Nome || 'Lead senza nome'}</span>
-                                <Badge variant="outline" className="text-xs">{lead.fields.Stato}</Badge>
+                                <span className="text-sm font-medium truncate">{lead.name || 'Lead senza nome'}</span>
+                                <Badge variant="outline" className="text-xs">{lead.status}</Badge>
                               </div>
                             </div>
                             <button

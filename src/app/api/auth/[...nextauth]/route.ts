@@ -3,14 +3,15 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import bcrypt from 'bcryptjs';
 import { env } from '@/env';
-import { findRecords } from '@/lib/airtable';
-import { AirtableUser } from '@/types/airtable';
+import { getUserByEmail } from '@/lib/postgres';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { User as PostgresUser } from '@/types/database';
 
 /**
- * NextAuth Configuration (Step 3)
+ * NextAuth Configuration
  * 
  * Providers:
- * 1. Credentials: Email/password authentication against Airtable Users table
+ * 1. Credentials: Email/password authentication against Postgres users table
  * 2. Google OAuth: Google sign-in
  * 
  * Security:
@@ -67,32 +68,26 @@ export const authOptions: AuthOptions = {
         }
 
         try {
-          // Find user by email in Airtable
-          const records = await findRecords<AirtableUser['fields']>('users', {
-            filterByFormula: `{Email} = '${credentials.email}'`,
-            maxRecords: 1,
-          });
+          // Find user by email in Postgres
+          const user = await getUserByEmail(credentials.email);
 
-          if (!records || records.length === 0) {
+          if (!user) {
             throw new Error('CredentialsSignin');
           }
 
-          const userRecord = records[0];
-          const user = userRecord.fields;
-
-          // Check user status (Attivo is boolean in Airtable)
-          if (!user.Attivo) {
+          // Check user status (active is boolean in Postgres)
+          if (!user.active) {
             throw new Error('Account non attivo. Contatta l\'amministratore.');
           }
 
-          // Verify password (field is "Password" not "PasswordHash")
-          if (!user.Password) {
+          // Verify password (password_hash field)
+          if (!user.password_hash) {
             throw new Error('Account non configurato per login con password');
           }
 
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
-            user.Password
+            user.password_hash
           );
 
           if (!isPasswordValid) {
@@ -100,16 +95,16 @@ export const authOptions: AuthOptions = {
           }
 
           // Return user object for JWT
-          // Map Airtable fields to NextAuth user object
+          // Map Postgres fields to NextAuth user object
           return {
-            id: userRecord.id,
-            email: user.Email,
-            name: user.Nome,                    // "Nome" not "Name"
-            role: user.Ruolo.toLowerCase() as 'admin' | 'manager' | 'user',  // Convert "Admin" -> "admin"
-            image: user.Avatar_URL,             // "Avatar_URL" not "ProfileImage"
+            id: user.id,
+            email: user.email || '',
+            name: user.name || '',
+            role: user.role as 'admin' | 'manager' | 'user',
+            image: user.avatar_url || undefined,
           };
-        } catch (error: any) {
-          console.error('[NextAuth] Credentials auth error:', error.message);
+        } catch (error: unknown) {
+          console.error('[NextAuth] Credentials auth error:', error instanceof Error ? error.message : error);
           throw error;
         }
       },
@@ -152,44 +147,24 @@ export const authOptions: AuthOptions = {
       // Google OAuth sign in
       if (account?.provider === 'google' && user) {
         try {
-          // Check if user exists in Airtable by Google ID
-          const records = await findRecords<AirtableUser['fields']>('users', {
-            filterByFormula: `{GoogleId} = '${account.providerAccountId}'`,
-            maxRecords: 1,
-          });
+          // Check if user exists in Postgres by email
+          // Note: google_id column not in Postgres schema v1, so we only check email
+          const existingUser = await getUserByEmail(user.email || '');
 
-          if (records && records.length > 0) {
+          if (existingUser) {
             // Existing user - use their data
-            const existingUser = records[0];
             token.id = existingUser.id;
-            token.email = existingUser.fields.Email;
-            token.name = existingUser.fields.Nome;
-            token.role = existingUser.fields.Ruolo.toLowerCase() as 'admin' | 'manager' | 'user';
-            token.image = existingUser.fields.Avatar_URL;
+            token.email = existingUser.email || '';
+            token.name = existingUser.name || '';
+            token.role = existingUser.role as 'admin' | 'manager' | 'user';
+            token.image = existingUser.avatar_url || user.image;
           } else {
-            // New Google user - check if email exists
-            const emailRecords = await findRecords<AirtableUser['fields']>('users', {
-              filterByFormula: `{Email} = '${user.email}'`,
-              maxRecords: 1,
-            });
-
-            if (emailRecords && emailRecords.length > 0) {
-              // Link Google account to existing user
-              const existingUser = emailRecords[0];
-              // TODO: Update user record with GoogleId
-              token.id = existingUser.id;
-              token.email = existingUser.fields.Email;
-              token.name = existingUser.fields.Nome;
-              token.role = existingUser.fields.Ruolo.toLowerCase() as 'admin' | 'manager' | 'user';
-              token.image = user.image || existingUser.fields.Avatar_URL;
-            } else {
-              // TODO: Decide if we allow auto-registration via Google
-              // For now, throw error - require admin to create user first
-              throw new Error('Account non trovato. Contatta l\'amministratore.');
-            }
+            // TODO: Decide if we allow auto-registration via Google
+            // For now, throw error - require admin to create user first
+            throw new Error('Account non trovato. Contatta l\'amministratore.');
           }
-        } catch (error: any) {
-          console.error('[NextAuth] Google OAuth error:', error.message);
+        } catch (error: unknown) {
+          console.error('[NextAuth] Google OAuth error:', error instanceof Error ? error.message : error);
           throw error;
         }
       }
@@ -218,6 +193,7 @@ export const authOptions: AuthOptions = {
      * SignIn Callback
      * Control if user is allowed to sign in
      */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async signIn({ user, account }) {
       // Allow credentials sign in (already validated in authorize)
       if (account?.provider === 'credentials') {

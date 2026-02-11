@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getLead, updateLead, deleteLead } from '@/lib/airtable/leads';
+import { getLeadById, updateLead, deleteLead } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
+import type { LeadUpdateInput } from '@/types/database';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
-    const lead = await getLead(id);
+    const lead = await getLeadById(id);
 
     if (!lead) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
@@ -43,9 +44,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] GET /api/leads/[id] error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch lead' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to fetch lead' }, { status: 500 });
   }
 }
 
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
  * PATCH /api/leads/[id]
  * Update lead (partial update)
  * 
- * Body: Partial<AirtableLead['fields']>
+ * Body: Partial<LeadUpdateInput> (snake_case fields)
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
@@ -77,7 +78,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 
-    const lead = await updateLead(id, body);
+    // Map to Postgres schema (accept snake_case)
+    const input: LeadUpdateInput = {};
+    if (body.name !== undefined) input.name = body.name;
+    if (body.phone !== undefined) input.phone = body.phone;
+    if (body.email !== undefined) input.email = body.email;
+    if (body.address !== undefined) input.address = body.address;
+    if (body.postal_code !== undefined) input.postal_code = body.postal_code;
+    if (body.city !== undefined) input.city = body.city;
+    if (body.needs !== undefined) input.needs = body.needs;
+    if (body.status !== undefined) input.status = body.status;
+    if (body.gender !== undefined) input.gender = body.gender;
+    if (body.source_id !== undefined) input.source_id = body.source_id;
+    if (body.assigned_to !== undefined) input.assigned_to = body.assigned_to;
+    if (body.referral_lead_id !== undefined) input.referral_lead_id = body.referral_lead_id;
+
+    const lead = await updateLead(id, input);
 
     return NextResponse.json(
       { lead },
@@ -88,15 +104,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] PATCH /api/leads/[id] error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update lead' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update lead' }, { status: 500 });
   }
 }
 
 /**
  * DELETE /api/leads/[id]
- * Soft delete lead (set Stato = 'Chiuso')
+ * Hard delete lead from database
  */
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
@@ -125,8 +141,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] DELETE /api/leads/[id] error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to delete lead' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete lead' }, { status: 500 });
   }
 }

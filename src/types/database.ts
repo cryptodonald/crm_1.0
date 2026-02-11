@@ -1,0 +1,483 @@
+/**
+ * Database Types - Generated from Postgres Schema
+ * 
+ * Rappresenta lo schema Postgres post-migrazione.
+ * Tutte le tabelle con naming convention snake_case inglese.
+ */
+
+// ============================================================================
+// Core Types
+// ============================================================================
+
+export type UUID = string;
+export type Timestamptz = Date | string;
+
+// ============================================================================
+// LEADS
+// ============================================================================
+
+export interface Lead {
+  id: UUID;
+  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  
+  // Dati anagrafici
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  city: string | null;
+  address: string | null;
+  postal_code: number | null;
+  gender: string | null;
+  
+  // Business
+  needs: string | null;
+  status: LeadStatus | null;
+  
+  // Relations
+  source_id: UUID | null;
+  assigned_to: UUID[] | null; // Array di user IDs
+  referral_lead_id: UUID | null; // Self-reference per referral chain
+  
+  // Meta
+  attachments: Record<string, unknown> | null; // JSONB - Vercel Blob URLs
+  search_vector: string | null; // tsvector (usato internamente)
+  
+  // Aggregated fields (from JOIN queries)
+  activities_count?: number; // Count of related activities (from subquery)
+  referral_lead_name?: string | null; // Name of referral lead (from subquery)
+  referral_lead_gender?: string | null; // Gender of referral lead (from subquery)
+}
+
+export type LeadStatus = 
+  | 'Nuovo'
+  | 'Attivo'
+  | 'Contattato'
+  | 'Qualificato'
+  | 'In Negoziazione'
+  | 'Cliente'
+  | 'Sospeso'
+  | 'Chiuso';
+
+export interface LeadCreateInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  address?: string;
+  postal_code?: number;
+  gender?: string;
+  needs?: string;
+  status?: LeadStatus;
+  source_id?: UUID;
+  assigned_to?: UUID[];
+  referral_lead_id?: UUID;
+}
+
+export type LeadUpdateInput = Partial<LeadCreateInput>;
+
+// ============================================================================
+// ACTIVITIES
+// ============================================================================
+
+export interface Activity {
+  id: UUID;
+  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  
+  // Core
+  title: string | null;
+  type: ActivityType | null;
+  activity_date: Timestamptz | null;
+  status: ActivityStatus | null;
+  
+  // Details
+  notes: string | null;
+  outcome: string | null;
+  objective: string | null;
+  priority: Priority | null;
+  estimated_duration: number | null; // minutes
+  
+  // Relations
+  lead_id: UUID | null;
+  assigned_to: UUID | null;
+  
+  // Meta
+  search_vector: string | null;
+}
+
+export type ActivityType =
+  | 'Chiamata'
+  | 'Messaggistica'
+  | 'Email'
+  | 'Consulenza'
+  | 'Follow-up'
+  | 'Altro';
+
+export type ActivityStatus =
+  | 'Da fare'
+  | 'In corso'
+  | 'Completata'
+  | 'Annullata';
+
+export interface ActivityCreateInput {
+  title: string;
+  type: ActivityType;
+  activity_date?: Timestamptz;
+  status?: ActivityStatus;
+  notes?: string;
+  outcome?: string;
+  objective?: string;
+  priority?: Priority;
+  estimated_duration?: number;
+  lead_id: UUID;
+  assigned_to?: UUID;
+}
+
+export type ActivityUpdateInput = Partial<ActivityCreateInput>;
+
+// ============================================================================
+// NOTES
+// ============================================================================
+
+export interface Note {
+  id: UUID;
+  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  
+  content: string | null;
+  pinned: boolean | null;
+  
+  // Relations
+  lead_id: UUID | null;
+  user_id: UUID | null;
+  
+  // Aggregated fields (from JOIN queries)
+  author_name?: string | null;
+}
+
+export interface NoteCreateInput {
+  content: string;
+  pinned?: boolean;
+  lead_id: UUID;
+  user_id?: UUID;
+}
+
+export type NoteUpdateInput = Partial<NoteCreateInput>;
+
+// ============================================================================
+// USERS
+// ============================================================================
+
+export interface User {
+  id: UUID;
+  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  
+  name: string;
+  email: string; // UNIQUE
+  role: UserRole;
+  active: boolean;
+  phone: string | null;
+  password_hash: string; // bcrypt
+  avatar_url: string | null;
+  last_login: Timestamptz | null;
+}
+
+export type UserRole = 'admin' | 'user' | 'viewer' | 'sales';
+
+export interface UserCreateInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  password: string; // Plain text - verrà hashato
+  phone?: string;
+  avatar_url?: string;
+}
+
+export interface UserUpdateInput {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  active?: boolean;
+  phone?: string;
+  avatar_url?: string;
+  password?: string; // Se fornito, verrà re-hashato
+}
+
+// ============================================================================
+// MARKETING SOURCES
+// ============================================================================
+
+export interface MarketingSource {
+  id: UUID;
+  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  
+  name: string; // UNIQUE
+  description: string | null;
+  active: boolean;
+}
+
+export interface MarketingSourceCreateInput {
+  name: string;
+  description?: string;
+  active?: boolean;
+}
+
+export type MarketingSourceUpdateInput = Partial<MarketingSourceCreateInput>;
+
+// ============================================================================
+// TASKS
+// ============================================================================
+
+export interface Task {
+  id: UUID;
+  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  
+  title: string;
+  description: string | null;
+  type: TaskType | null;
+  status: TaskStatus;
+  priority: Priority;
+  due_date: Timestamptz | null;
+  completed_at: Timestamptz | null;
+  
+  // Relations
+  assigned_to_id: UUID | null;
+  created_by_id: UUID | null;
+  lead_id: UUID | null;
+  activity_id: UUID | null;
+}
+
+export type TaskType = 'personal' | 'lead' | 'activity' | 'order' | 'general';
+
+export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'cancelled';
+
+export type Priority = 'high' | 'medium' | 'low';
+
+export interface TaskCreateInput {
+  title: string;
+  description?: string;
+  type?: TaskType;
+  status?: TaskStatus;
+  priority?: Priority;
+  due_date?: Timestamptz;
+  assigned_to_id?: UUID;
+  created_by_id?: UUID;
+  lead_id?: UUID;
+  activity_id?: UUID;
+}
+
+export interface TaskUpdateInput extends Partial<TaskCreateInput> {
+  completed_at?: Timestamptz;
+}
+
+// ============================================================================
+// AUTOMATIONS
+// ============================================================================
+
+export interface Automation {
+  id: UUID;
+  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  
+  name: string;
+  description: string | null;
+  category: string | null;
+  priority: string | null;
+  is_active: boolean;
+  last_executed_at: Timestamptz | null;
+  execution_count: number;
+  
+  created_by_id: UUID | null;
+}
+
+export interface AutomationTrigger {
+  id: UUID;
+  automation_id: UUID;
+  trigger_table: string;
+  trigger_event: TriggerEvent;
+  field_name: string | null;
+  operator: TriggerOperator | null;
+  value: string | null;
+  logic_operator: 'AND' | 'OR';
+  position: number;
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+}
+
+export type TriggerEvent = 'create' | 'update' | 'delete' | 'scheduled';
+
+export type TriggerOperator =
+  | 'equals'
+  | 'not_equals'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'contains'
+  | 'not_contains'
+  | 'is_null'
+  | 'is_not_null';
+
+export interface AutomationAction {
+  id: UUID;
+  automation_id: UUID;
+  action_type: ActionType;
+  target_table: string | null;
+  target_field: string | null;
+  value: string | null;
+  position: number;
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+}
+
+export type ActionType =
+  | 'update_field'
+  | 'create_activity'
+  | 'create_task'
+  | 'send_email'
+  | 'send_notification'
+  | 'webhook';
+
+export interface AutomationLog {
+  id: UUID;
+  automation_id: UUID;
+  executed_at: Timestamptz;
+  status: AutomationStatus;
+  error_message: string | null;
+  affected_records: number;
+  execution_time_ms: number | null;
+}
+
+export type AutomationStatus = 'success' | 'failed' | 'partial' | 'skipped';
+
+// ============================================================================
+// USER PREFERENCES
+// ============================================================================
+
+export interface UserPreference {
+  id: UUID;
+  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  
+  name: string | null;
+  entity_type: EntityType;
+  entity_value: string;
+  color_class: string; // Tailwind CSS classes
+  is_default: boolean;
+  
+  user_id: UUID | null; // NULL = global default
+}
+
+export type EntityType =
+  | 'lead_status'
+  | 'activity_type'
+  | 'task_status'
+  | 'task_priority'
+  | 'source'
+  | 'user_role'
+  | 'order_status';
+
+export interface UserPreferenceCreateInput {
+  entity_type: EntityType;
+  entity_value: string;
+  color_class: string;
+  is_default?: boolean;
+  user_id?: UUID;
+  name?: string;
+}
+
+export type UserPreferenceUpdateInput = Partial<UserPreferenceCreateInput>;
+
+// ============================================================================
+// Query Filters & Pagination
+// ============================================================================
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SortParams {
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+export interface LeadFilters extends PaginationParams, SortParams {
+  status?: LeadStatus | LeadStatus[];
+  source_id?: UUID;
+  assigned_to?: UUID;
+  city?: string;
+  search?: string; // FTS search
+  dateFrom?: string; // ISO date string for filtering
+  dateTo?: string; // ISO date string for filtering
+  created_after?: Timestamptz;
+  created_before?: Timestamptz;
+}
+
+export interface ActivityFilters extends PaginationParams, SortParams {
+  lead_id?: UUID;
+  assigned_to?: UUID;
+  type?: ActivityType | ActivityType[];
+  status?: ActivityStatus | ActivityStatus[];
+  search?: string; // FTS search
+  date_from?: Timestamptz;
+  date_to?: Timestamptz;
+}
+
+export interface TaskFilters extends PaginationParams, SortParams {
+  assigned_to_id?: UUID;
+  lead_id?: UUID;
+  status?: TaskStatus | TaskStatus[];
+  priority?: Priority | Priority[];
+  due_before?: Timestamptz;
+  overdue?: boolean;
+}
+
+// ============================================================================
+// API Response Types
+// ============================================================================
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
+}
+
+export interface ApiError {
+  error: string;
+  code: string;
+  details?: Record<string, unknown>;
+  retryAfter?: number;
+}
+
+// ============================================================================
+// Database Helper Types
+// ============================================================================
+
+export type DbRow = Record<string, unknown>;
+
+export interface QueryResult<T = DbRow> {
+  rows: T[];
+  rowCount: number;
+}
+
+export interface TransactionClient {
+  query<T = DbRow>(sql: string, params?: unknown[]): Promise<QueryResult<T>>;
+}

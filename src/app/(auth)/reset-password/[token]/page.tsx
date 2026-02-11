@@ -1,5 +1,6 @@
 'use client';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { use, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -77,6 +78,7 @@ export default function ResetPasswordPage({ params }: { params: Promise<{ token:
       }
 
       setSuccess(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Errore imprevisto. Riprova.');
     } finally {

@@ -11,12 +11,15 @@ const DEFAULT_PREFERENCES: TablePreferences = {
   itemsPerPage: 10,
   visibleColumns: {
     cliente: true,
-    contatti: true,
+    stato: true,
+    fonte: true,
+    citta: true,
+    telefono: true,
+    email: false,
     data: true,
     attivita: true,
-    relazioni: true,
-    assegnatario: true,
-    documenti: true,
+    assegnatario: false,
+    relazioni: false,
   },
 };
 
@@ -33,14 +36,25 @@ export function useTablePreferences() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        setPreferences({
+        // Merge con i default, assicurandosi che tutte le nuove colonne siano presenti
+        const mergedColumns = { ...DEFAULT_PREFERENCES.visibleColumns };
+        
+        // Sovrascrivi solo le colonne che esistono già nel saved state
+        if (parsed.visibleColumns) {
+          Object.keys(parsed.visibleColumns).forEach(key => {
+            if (key in mergedColumns) {
+              mergedColumns[key] = parsed.visibleColumns[key];
+            }
+          });
+        }
+        
+        const loadedPrefs = {
           itemsPerPage: parsed.itemsPerPage || DEFAULT_PREFERENCES.itemsPerPage,
-          visibleColumns: {
-            ...DEFAULT_PREFERENCES.visibleColumns,
-            ...parsed.visibleColumns,
-          },
-        });
-        console.log('[TablePreferences] Loaded from localStorage:', parsed);
+          visibleColumns: mergedColumns,
+        };
+        
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPreferences(loadedPrefs);
       }
     } catch (error) {
       console.error('[TablePreferences] Error loading preferences:', error);
@@ -53,7 +67,6 @@ export function useTablePreferences() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
       setPreferences(newPreferences);
-      console.log('[TablePreferences] Saved to localStorage:', newPreferences);
     } catch (error) {
       console.error('[TablePreferences] Error saving preferences:', error);
     }
@@ -77,7 +90,6 @@ export function useTablePreferences() {
     try {
       localStorage.removeItem(STORAGE_KEY);
       setPreferences(DEFAULT_PREFERENCES);
-      console.log('[TablePreferences] Reset to defaults');
     } catch (error) {
       console.error('[TablePreferences] Error resetting preferences:', error);
     }

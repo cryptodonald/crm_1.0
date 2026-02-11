@@ -26,22 +26,42 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Check, ChevronDown, MapPin, Loader2, AlertTriangle, Link2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { AvatarLead } from '@/components/ui/avatar-lead';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { Check, ChevronDown, MapPin, Loader2, AlertTriangle, Link2, Phone, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 
 interface AnagraficaStepProps {
   form: UseFormReturn<LeadFormDataInferred>;
+  currentLeadId?: string; // ID del lead in modifica (per escluderlo dai duplicati)
 }
 
-export function AnagraficaStep({ form }: AnagraficaStepProps) {
+export function AnagraficaStep({ form, currentLeadId }: AnagraficaStepProps) {
   const [addressQuery, setAddressQuery] = useState('');
   const [addressPopoverOpen, setAddressPopoverOpen] = useState(false);
   const [lastSelectedAddress, setLastSelectedAddress] = useState('');
   const [isSelectingFromGooglePlaces, setIsSelectingFromGooglePlaces] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [possibleDuplicates, setPossibleDuplicates] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [searchingDuplicates, setSearchingDuplicates] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [dismissedDuplicateIds, setDismissedDuplicateIds] = useState<string[]>([]);
 
   const { control, setValue, watch, formState: { errors } } = form;
   
@@ -61,81 +81,76 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
   // Cerca duplicati quando nome o telefono cambiano
   useEffect(() => {
     const searchDuplicates = async () => {
-      // Se non abbiamo né nome né telefono, non cercare
-      if (!nomeValue?.trim() && !telefonoValue?.trim()) {
+      // Richiedi almeno 10 caratteri nel nome prima di cercare
+      // Questo dà tempo all'utente di scrivere il nome completo (es. "Mario Rossi")
+      const hasEnoughName = nomeValue?.trim() && nomeValue.trim().length >= 10;
+      const hasPhone = telefonoValue?.trim();
+      
+      // Se non abbiamo né nome completo né telefono, non cercare
+      if (!hasEnoughName && !hasPhone) {
         setPossibleDuplicates([]);
         return;
       }
 
       setSearchingDuplicates(true);
       try {
-        const response = await fetch('/api/leads/duplicates?threshold=0.85');
+        // Use dedicated check-duplicates endpoint (no routing conflict)
+        // Higher threshold (0.95) for stricter matching: only show clear duplicates
+        const params = new URLSearchParams({ threshold: '0.95' });
+        if (hasEnoughName) params.set('name', nomeValue);
+        if (hasPhone && telefonoValue) params.set('phone', normalizePhone(telefonoValue)); // Normalizza il telefono prima di inviare
+        
+        const response = await fetch(`/api/leads/check-duplicates?${params.toString()}`);
         if (response.ok) {
           const data = await response.json();
-          const allDuplicates = data.groups || [];
           
-          // Filtra per trovare duplicati del lead che stai creando
-          const myDuplicates: any[] = [];
-          for (const group of allDuplicates) {
-            const masterLead = data.leadsMap?.[group.masterId];
-            const dupLeads = group.duplicateIds
-              .map((id: string) => data.leadsMap?.[id])
-              .filter((l: any) => l);
-
-            // Controlla se uno dei lead nel gruppo corrisponde ai dati che stai inserendo
-            for (const lead of [masterLead, ...dupLeads]) {
-              if (!lead) continue;
-              
-              let matches = 0;
-              let matchType = '';
-
-              // Controllo nome
-              if (nomeValue && lead.Nome) {
-                const similarity = calculateSimilarity(nomeValue.toLowerCase(), lead.Nome.toLowerCase());
-                if (similarity > 0.85) {
-                  matches++;
-                  matchType += 'Nome ';
-                }
-              }
-
-              // Controllo telefono
-              if (telefonoValue && lead.Telefono) {
-                const normalizedNew = normalizePhone(telefonoValue);
-                const normalizedExisting = normalizePhone(lead.Telefono);
-                if (normalizedNew && normalizedExisting && normalizedNew === normalizedExisting) {
-                  matches++;
-                  matchType += 'Tel ';
-                }
-              }
-
-              // Se almeno un campo corrisponde, è un potenziale duplicato
-              if (matches > 0 && myDuplicates.find(d => d.id === lead.id) === undefined) {
-                myDuplicates.push({
-                  id: lead.id,
-                  nome: lead.Nome,
-                  telefono: lead.Telefono,
-                  email: lead.Email,
-                  city: lead.Città,
-                  matchType: matchType.trim()
-                });
-              }
+          // New API returns matches directly when name/phone are provided
+          if (data.matches) {
+            const duplicates = data.matches
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((match: any) => match.id !== currentLeadId) // Escludi il lead corrente
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .map((match: any) => ({
+                id: match.id,
+                nome: match.name,
+                telefono: match.phone,
+                email: match.email,
+                city: match.city,
+                matchType: match.matchTypes.join(', ')
+              }));
+            
+            // Filtra i duplicati già dismissati
+            const newDuplicates = duplicates.filter(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (dup: any) => !dismissedDuplicateIds.includes(dup.id)
+            );
+            
+            setPossibleDuplicates(newDuplicates);
+            // Show dialog solo se ci sono NUOVI duplicati non ancora dismissati
+            if (newDuplicates.length > 0) {
+              setShowDuplicateDialog(true);
+            } else {
+              setShowDuplicateDialog(false);
             }
+          } else {
+            setPossibleDuplicates([]);
+            setShowDuplicateDialog(false);
           }
-
-          setPossibleDuplicates(myDuplicates);
         }
       } catch (error) {
         console.error('Error fetching duplicates:', error);
         setPossibleDuplicates([]);
+        setShowDuplicateDialog(false);
       } finally {
         setSearchingDuplicates(false);
       }
     };
 
-    // Debounce di 500ms per non fare troppi request
-    const timeoutId = setTimeout(searchDuplicates, 500);
+    // Debounce di 1500ms per dare tempo di completare il nome (es. "Mario Rossi")
+    const timeoutId = setTimeout(searchDuplicates, 1500);
     return () => clearTimeout(timeoutId);
-  }, [nomeValue, telefonoValue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nomeValue, telefonoValue, dismissedDuplicateIds]);
 
   // Reset degli stati locali quando il form viene resettato
   const formValues = watch();
@@ -156,22 +171,25 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
       setAddressPopoverOpen(false);
       clearSuggestions();
       setPossibleDuplicates([]);
+      setDismissedDuplicateIds([]); // Reset anche i duplicati dismissati
     }
   }, [formValues, addressQuery, lastSelectedAddress, clearSuggestions]);
   
   // Effect to search when address query changes
+  // Ma NON cercare se stiamo selezionando da Google Places
   useEffect(() => {
-    if (addressQuery.length >= 3) {
+    if (addressQuery.length >= 3 && !isSelectingFromGooglePlaces) {
       searchPlaces(addressQuery);
     }
-  }, [addressQuery, searchPlaces]);
+  }, [addressQuery, searchPlaces, isSelectingFromGooglePlaces]);
 
   // Auto-open popover when suggestions become available
+  // Ma NON riaprire se stiamo selezionando da Google Places
   useEffect(() => {
-    if (addressSuggestions.length > 0 && addressQuery.length >= 3) {
+    if (addressSuggestions.length > 0 && addressQuery.length >= 3 && !isSelectingFromGooglePlaces) {
       setAddressPopoverOpen(true);
     }
-  }, [addressSuggestions.length, addressQuery]);
+  }, [addressSuggestions.length, addressQuery, isSelectingFromGooglePlaces]);
   
   // Fallback: gestione Tab con event listener se onKeyDown non funziona su CommandInput
   useEffect(() => {
@@ -216,6 +234,7 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
   };
 
   const handleAddressSelect = async (suggestion: { placeId: string; description: string }) => {
+    // Chiudi immediatamente il popover e pulisci suggestions
     setAddressPopoverOpen(false);
     clearSuggestions();
     setIsSelectingFromGooglePlaces(true); // Imposta il flag per prevenire la pulizia
@@ -286,9 +305,24 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
 
   function normalizePhone(phone: string): string {
     if (!phone) return '';
-    return phone.replace(/\D/g, '').slice(-10);
+    
+    // Remove all non-digit characters
+    let normalized = phone.replace(/\D/g, '');
+    
+    // Add Italian prefix if missing
+    if (!normalized.startsWith('39') && normalized.length >= 9 && normalized.length <= 10) {
+      normalized = '39' + normalized;
+    }
+    
+    // Formatta come nel DB: +39XXXXXXXXXX
+    if (normalized.startsWith('39') && normalized.length >= 11) {
+      return '+' + normalized;
+    }
+    
+    return normalized;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function calculateSimilarity(str1: string, str2: string): number {
     if (str1 === str2) return 1;
     const longer = str1.length > str2.length ? str1 : str2;
@@ -416,37 +450,53 @@ export function AnagraficaStep({ form }: AnagraficaStepProps) {
           )}
         />
 
-        {/* Alert Duplicati Potenziali */}
-        {possibleDuplicates.length > 0 && (
-          <div className="md:col-span-2">
-            <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
-              <Link2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <AlertDescription className="text-amber-900 dark:text-amber-100">
-                <div className="font-semibold mb-2">⚠️ Possibili duplicati trovati:</div>
-                <div className="space-y-2">
-                  {possibleDuplicates.map((dup, idx) => (
-                    <div key={dup.id} className="text-sm p-2 bg-white dark:bg-black/20 rounded border border-amber-200 dark:border-amber-800">
-                      <div className="font-medium">{dup.nome}</div>
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        {dup.telefono && <div>📞 {dup.telefono}</div>}
-                        {dup.email && <div>📧 {dup.email}</div>}
-                        {dup.city && <div>📍 {dup.city}</div>}
-                        <div className="mt-1">
-                          <span className="inline-block px-2 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded text-xs">
-                            Match: {dup.matchType}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+        {/* AlertDialog Duplicati - Compatto */}
+        <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+          <AlertDialogContent size="sm" className="p-4 gap-3">
+            <AlertDialogHeader className="!grid-rows-none !place-items-start space-y-1 pb-0 text-left">
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted mt-0.5">
+                  <AlertTriangle className="h-3.5 w-3.5" />
                 </div>
-                <div className="text-xs mt-2 text-amber-700 dark:text-amber-200">
-                  💡 Verifica se è lo stesso cliente prima di crearne un nuovo!
+                <div className="flex-1">
+                  <AlertDialogTitle className="text-base font-semibold">Possibili duplicati</AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm mt-1">
+                    {possibleDuplicates.length === 1 ? 'Esiste già un lead simile' : `Esistono già ${possibleDuplicates.length} lead simili`}
+                  </AlertDialogDescription>
                 </div>
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
+              </div>
+            </AlertDialogHeader>
+            
+            <div className="space-y-3 px-1 py-1">
+              {possibleDuplicates.map((dup) => (
+                <div key={dup.id} className="flex items-center gap-2.5">
+                  <AvatarLead nome={dup.nome} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{dup.nome}</div>
+                    {dup.telefono && (
+                      <div className="text-muted-foreground text-xs truncate">{dup.telefono}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <AlertDialogFooter className="bg-muted/50 -mx-4 -mb-4 px-4 py-3 border-t mt-2 !flex !flex-row !justify-end gap-2">
+              <AlertDialogCancel size="sm">Annulla</AlertDialogCancel>
+              <AlertDialogAction 
+                size="sm" 
+                onClick={() => {
+                  // Segna questi duplicati come dismissati per non mostrarli più
+                  const currentDuplicateIds = possibleDuplicates.map(d => d.id);
+                  setDismissedDuplicateIds(prev => [...prev, ...currentDuplicateIds]);
+                  setShowDuplicateDialog(false);
+                }}
+              >
+                Procedi
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Indirizzo con autocomplete Google Places */}
         <div className="md:col-span-2">

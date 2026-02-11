@@ -1,56 +1,49 @@
 import { NextResponse } from 'next/server';
-import { findRecords } from '@/lib/airtable';
-import { AirtableUser } from '@/types/airtable';
+import { getUsers } from '@/lib/postgres';
 
 /**
  * GET /api/users
  * 
- * Ritorna tutti gli utenti attivi dal sistema
- * Utilizzato per popolare select Assegnatario nei form
+ * Returns all active users from the system
+ * Used to populate assignee select in forms
  */
 export async function GET() {
   try {
-    // Fetch solo utenti attivi
-    const records = await findRecords<AirtableUser['fields']>('users', {
-      filterByFormula: '{Attivo} = TRUE()',
-      sort: [{ field: 'Nome', direction: 'asc' }],
-    });
+    // Fetch only active users (sorted by name)
+    const users = await getUsers();
 
-    // Trasforma in formato lookup per performance
+    // Transform to lookup format for performance
     const usersLookup: Record<string, {
       id: string;
-      nome: string;
+      name: string;
       email?: string;
-      ruolo: string;
-      avatar?: string;
+      role: string;
       avatarUrl?: string;
-      telefono?: string;
+      phone?: string;
     }> = {};
 
-    records.forEach((record) => {
-      const user = record.fields;
-      usersLookup[record.id] = {
-        id: record.id,
-        nome: user.Nome,
-        email: user.Email,
-        ruolo: user.Ruolo,
-        avatar: user.Avatar_URL,
-        avatarUrl: user.Avatar_URL,
-        telefono: user.Telefono,
+    users.forEach((user) => {
+      usersLookup[user.id] = {
+        id: user.id,
+        name: user.name || '',
+        email: user.email || undefined,
+        role: user.role,
+        avatarUrl: user.avatar_url || undefined,
+        phone: user.phone || undefined,
       };
     });
 
     return NextResponse.json({
       success: true,
       users: usersLookup,
-      count: records.length,
+      count: users.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] /api/users error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to fetch users',
+        error: error instanceof Error ? error.message : 'Failed to fetch users',
         users: {},
         count: 0,
       },

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getLeads, createLead } from '@/lib/airtable/leads';
+import { getLeads, createLead } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
+import type { LeadCreateInput, LeadStatus } from '@/types/database';
 
 /**
  * GET /api/leads
@@ -10,21 +11,35 @@ import { checkRateLimit } from '@/lib/ratelimit';
  * 
  * Query params:
  * - status: comma-separated status values
- * - fonte: source filter
- * - search: search query
- * - dateFrom, dateTo: date range
- * - limit: max results (optional, no limit = all leads)
+ * - source_id: source UUID filter
+ * - assigned_to: assigned user UUID filter
+ * - city: city filter (ILIKE)
+ * - search: FTS search query
+ * - page: page number (default 1)
+ * - limit: results per page (default 50)
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  let authTime = 0, rateLimitTime = 0, queryTime = 0, serializeTime = 0;
+  
   try {
     // Auth check
+    const authStart = Date.now();
     const session = await getServerSession(authOptions);
+    authTime = Date.now() - authStart;
+    
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Rate limit check
-    const { success, limit: rateLimit, remaining, reset } = await checkRateLimit(session.user.email, 'read');
+    // Rate limit check (skip in dev for performance)
+    const rateLimitStart = Date.now();
+    const isDev = process.env.NODE_ENV === 'development';
+    const { success, limit: rateLimit, remaining, reset } = isDev 
+      ? { success: true, limit: 1000, remaining: 999, reset: Date.now() + 60000 }
+      : await checkRateLimit(session.user.email, 'read');
+    rateLimitTime = Date.now() - rateLimitStart;
+    
     if (!success) {
       return NextResponse.json(
         { error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED', retryAfter: reset },
@@ -42,27 +57,41 @@ export async function GET(request: NextRequest) {
     // Parse query params
     const { searchParams } = new URL(request.url);
     const statusParam = searchParams.get('status');
-    const fonte = searchParams.get('fonte') || undefined;
+    const source_id = searchParams.get('source_id') || undefined;
+    const assigned_to = searchParams.get('assigned_to') || undefined;
+    const city = searchParams.get('city') || undefined;
     const search = searchParams.get('search') || undefined;
     const dateFrom = searchParams.get('dateFrom') || undefined;
     const dateTo = searchParams.get('dateTo') || undefined;
+    const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
-    const maxRecords = limitParam ? parseInt(limitParam) : undefined;
 
-    const status = statusParam ? statusParam.split(',') : undefined;
+    const status = statusParam ? statusParam.split(',') as LeadStatus[] : undefined;
+    const page = pageParam ? parseInt(pageParam) : 1;
+    const limit = limitParam ? parseInt(limitParam) : 50;
 
-    // Fetch leads (no limit = all leads)
-    const leads = await getLeads({
+    // Fetch leads with pagination
+    const queryStart = Date.now();
+    const result = await getLeads({
       status,
-      fonte,
+      source_id,
+      assigned_to,
+      city,
       search,
       dateFrom,
       dateTo,
-      limit: maxRecords,
+      page,
+      limit,
     });
-
-    return NextResponse.json(
-      { leads, total: leads.length },
+    queryTime = Date.now() - queryStart;
+    
+    const serializeStart = Date.now();
+    const response = NextResponse.json(
+      { 
+        leads: result.data, 
+        total: result.pagination.total,
+        pagination: result.pagination,
+      },
       {
         headers: {
           'X-RateLimit-Limit': rateLimit.toString(),
@@ -70,10 +99,16 @@ export async function GET(request: NextRequest) {
         },
       }
     );
-  } catch (error: any) {
+    serializeTime = Date.now() - serializeStart;
+    
+    const totalTime = Date.now() - startTime;
+    console.log(`[API] GET /api/leads timing: auth=${authTime}ms, rateLimit=${rateLimitTime}ms, query=${queryTime}ms, serialize=${serializeTime}ms, total=${totalTime}ms`);
+    
+    return response;
+  } catch (error: unknown) {
     console.error('[API] GET /api/leads error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch leads', code: 'FETCH_ERROR' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch leads', code: 'FETCH_ERROR' },
       { status: 500 }
     );
   }
@@ -83,7 +118,7 @@ export async function GET(request: NextRequest) {
  * POST /api/leads
  * Create new lead
  * 
- * Body: { Nome, Telefono?, Email?, Città?, Esigenza?, Stato?, Fonte?, Data? }
+ * Body: { name, phone?, email?, city?, needs?, status?, source_id?, assigned_to? }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -112,30 +147,32 @@ export async function POST(request: NextRequest) {
     // Parse body
     const body = await request.json();
 
-    // Validation (basic - use Zod in Step 3)
-    if (!body.Nome || typeof body.Nome !== 'string' || body.Nome.trim().length === 0) {
+    // Validation (basic - use Zod in Step 7)
+    if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Nome is required', code: 'VALIDATION_ERROR' },
+        { error: 'name is required', code: 'VALIDATION_ERROR' },
         { status: 400 }
       );
     }
 
+    // Map input to Postgres schema
+    const input: LeadCreateInput = {
+      name: body.name,
+      phone: body.phone || null,
+      email: body.email || null,
+      address: body.address || null,
+      postal_code: body.postal_code || null,
+      city: body.city || null,
+      needs: body.needs || null,
+      status: body.status || 'new',
+      gender: body.gender || null,
+      source_id: body.source_id || null,
+      assigned_to: body.assigned_to || null,
+      referral_lead_id: body.referral_lead_id || null,
+    };
+
     // Create lead
-    const lead = await createLead({
-      Nome: body.Nome,
-      Telefono: body.Telefono,
-      Email: body.Email,
-      Indirizzo: body.Indirizzo,
-      CAP: body.CAP,
-      Città: body.Città,
-      Esigenza: body.Esigenza,
-      Stato: body.Stato || 'Nuovo',
-      Gender: body.Gender,
-      Fonte: body.Fonte,
-      Assegnatario: body.Assegnatario,
-      Referenza: body.Referenza,
-      Data: body.Data,
-    });
+    const lead = await createLead(input);
 
     return NextResponse.json(
       { lead },
@@ -147,10 +184,10 @@ export async function POST(request: NextRequest) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] POST /api/leads error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create lead', code: 'CREATE_ERROR' },
+      { error: error instanceof Error ? error.message : 'Failed to create lead', code: 'CREATE_ERROR' },
       { status: 500 }
     );
   }

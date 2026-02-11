@@ -37,7 +37,7 @@ export const CreateLeadSchema = z.object({
   Esigenza: z.string().max(1000, 'Esigenza troppo lunga').optional().or(z.literal('')),
   Stato: LeadStatusEnum.optional().default('Nuovo'),
   Note: z.string().optional().or(z.literal('')),
-  Fonte: z.array(z.string()).optional(), // Array of Airtable record IDs
+  Fonte: z.array(z.string()).optional(), // Array of source IDs (UUIDs)
   Data: z.string().datetime().optional(), // ISO8601 datetime
 });
 

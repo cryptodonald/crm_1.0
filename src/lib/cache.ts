@@ -39,6 +39,7 @@ export const TTL = {
 export const cacheKeys = {
   // Lead keys
   lead: (leadId: string) => `leads:${leadId}`,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   leadsList: (userId: string, filters?: Record<string, any>) => {
     const filterHash = filters ? JSON.stringify(filters) : 'all';
     return `leads:list:${userId}:${filterHash}`;
@@ -47,6 +48,7 @@ export const cacheKeys = {
 
   // Activity keys
   activity: (activityId: string) => `activities:${activityId}`,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   activitiesList: (userId: string, filters?: Record<string, any>) => {
     const filterHash = filters ? JSON.stringify(filters) : 'all';
     return `activities:list:${userId}:${filterHash}`;
@@ -54,6 +56,7 @@ export const cacheKeys = {
 
   // Order keys
   order: (orderId: string) => `orders:${orderId}`,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ordersList: (userId: string, filters?: Record<string, any>) => {
     const filterHash = filters ? JSON.stringify(filters) : 'all';
     return `orders:list:${userId}:${filterHash}`;
@@ -82,11 +85,21 @@ export function isCacheAvailable(): boolean {
  * Get value from cache
  */
 export async function get<T>(key: string): Promise<T | null> {
-  if (!redis) return null;
+  if (!redis) {
+    console.log('[Cache] Redis not available');
+    return null;
+  }
 
   try {
-    const value = await redis.get<T>(key);
-    return value;
+    const value = await redis.get(key);
+    if (value === null) {
+      console.log(`[Cache] MISS: ${key}`);
+      return null;
+    }
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    const sizeKB = JSON.stringify(parsed).length / 1024;
+    console.log(`[Cache] HIT: ${key} (${sizeKB.toFixed(1)}KB)`);
+    return parsed;
   } catch (error) {
     console.error('[Cache] Get error:', { key, error });
     return null;
@@ -104,7 +117,8 @@ export async function set<T>(
   if (!redis) return;
 
   try {
-    await redis.setex(key, ttlSeconds, JSON.stringify(value));
+    await redis.set(key, JSON.stringify(value), { ex: ttlSeconds });
+    console.log(`[Cache] SET: ${key} (TTL: ${ttlSeconds}s)`);
   } catch (error) {
     console.error('[Cache] Set error:', { key, error });
   }

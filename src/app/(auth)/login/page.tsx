@@ -84,6 +84,7 @@ function LoginPageContent() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError(null);

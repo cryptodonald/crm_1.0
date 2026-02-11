@@ -1,64 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import {
-  getColorPreferences,
-  saveColorPreference,
-  getAllUserPreferences,
-  type EntityType,
-} from '@/lib/color-preferences';
+import { getColorPreferences, saveColorPreference, deleteColorPreference } from '@/lib/postgres';
 
 /**
- * GET /api/color-preferences
+ * GET /api/color-preferences?entityType=LeadStato
  * 
- * Query params:
- * - entityType: EntityType (required)
- * - all: 'true' per tutte le preferenze utente (optional)
+ * Fetch color preferences per entity type
  */
 export async function GET(request: NextRequest) {
   try {
-    // Auth check (opzionale per system defaults)
-    const session = await getServerSession(authOptions);
+    const { searchParams } = new URL(request.url);
+    const entityType = searchParams.get('entityType');
 
-    const searchParams = request.nextUrl.searchParams;
-    const entityType = searchParams.get('entityType') as EntityType | null;
-    const all = searchParams.get('all') === 'true';
-
-    // Se richieste tutte le preferenze utente (richiede auth)
-    if (all) {
-      if (!session?.user?.id) {
-        return NextResponse.json(
-          { error: 'Non autenticato' },
-          { status: 401 }
-        );
-      }
-      const userId = session.user.id;
-      const preferences = await getAllUserPreferences(userId);
-      
-      return NextResponse.json({ preferences });
-    }
-
-    // Altrimenti filtra per entityType
     if (!entityType) {
       return NextResponse.json(
-        { error: 'entityType richiesto' },
+        { error: 'entityType query param required' },
         { status: 400 }
       );
     }
 
-    // Carica colori (con userId se autenticato, altrimenti solo system defaults)
-    const userId = session?.user?.id;
-    const colors = await getColorPreferences(entityType, userId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const colors = await getColorPreferences(entityType as any);
 
-    return NextResponse.json({ 
-      entityType,
-      colors 
-    });
-
-  } catch (error: any) {
-    console.error('Error in GET /api/color-preferences:', error);
+    return NextResponse.json({ colors }, { status: 200 });
+  } catch (error: unknown) {
+    console.error('[Color Preferences API] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Errore server' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -67,47 +34,62 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/color-preferences
  * 
- * Body:
- * {
- *   entityType: EntityType,
- *   entityValue: string,
- *   colorClass: string
- * }
+ * Save color preference
+ * Body: { entityType, entityValue, colorClass }
  */
 export async function POST(request: NextRequest) {
   try {
-    // Auth check (obbligatorio per salvare preferenze)
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Non autenticato' },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const { entityType, entityValue, colorClass } = body;
 
-    // Validation
     if (!entityType || !entityValue || !colorClass) {
       return NextResponse.json(
-        { error: 'entityType, entityValue e colorClass richiesti' },
+        { error: 'entityType, entityValue, and colorClass required' },
         { status: 400 }
       );
     }
 
-    const userId = (session.user as any).id;
-    await saveColorPreference(entityType, entityValue, colorClass, userId);
+    await saveColorPreference(entityType, entityValue, colorClass);
 
-    return NextResponse.json({ 
-      success: true,
-      message: 'Preferenza salvata'
-    });
-
-  } catch (error: any) {
-    console.error('Error in POST /api/color-preferences:', error);
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error: unknown) {
+    console.error('[Color Preferences API] Save error:', error);
     return NextResponse.json(
-      { error: error.message || 'Errore server' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/color-preferences/{entityType}/{entityValue}
+ * 
+ * Delete color preference (reset to default)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    // Extract from URL path: /api/color-preferences/LeadStato/Nuovo
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    
+    // pathParts: ['api', 'color-preferences', entityType, entityValue]
+    const entityType = pathParts[2];
+    const entityValue = decodeURIComponent(pathParts[3] || '');
+
+    if (!entityType || !entityValue) {
+      return NextResponse.json(
+        { error: 'entityType and entityValue required in URL' },
+        { status: 400 }
+      );
+    }
+
+    await deleteColorPreference(entityType, entityValue);
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error: unknown) {
+    console.error('[Color Preferences API] Delete error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

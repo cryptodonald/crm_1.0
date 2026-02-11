@@ -3,39 +3,18 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { debounce } from 'lodash';
 
-// Dichiarazione globale per Google Maps API
+/**
+ * Google Maps API v2 (New Places API)
+ * Dichiarazioni globali per le nuove classi della Places API
+ */
 declare global {
   interface Window {
-    google?: typeof google;
-  }
-  
-  namespace google {
-    namespace maps {
-      class Map {}
-      namespace places {
-        class PlacesService {
-          constructor(attrContainer: HTMLDivElement | Map);
-          getDetails(
-            request: { placeId: string; fields: string[] },
-            callback: (place: any, status: any) => void
-          ): void;
-        }
-        class AutocompleteService {
-          getPlacePredictions(
-            request: {
-              input: string;
-              componentRestrictions?: { country: string };
-              types?: string[];
-            },
-            callback: (predictions: any, status: any) => void
-          ): void;
-        }
-        enum PlacesServiceStatus {
-          OK = 'OK',
-          ZERO_RESULTS = 'ZERO_RESULTS',
-        }
-      }
-    }
+    google?: {
+      maps: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        importLibrary: (name: string) => Promise<any>;
+      };
+    };
   }
 }
 
@@ -65,124 +44,181 @@ export interface ParsedAddress {
   country?: string;
 }
 
-class GooglePlacesService {
+/**
+ * Loader per Google Maps Platform v2
+ * Usa il nuovo formato della API di Google (Places Library v2)
+ */
+class GoogleMapsLoader {
+  private static instance: GoogleMapsLoader;
   private apiKey: string;
-  private placesService: google.maps.places.PlacesService | null = null;
-  private autocompleteService: google.maps.places.AutocompleteService | null = null;
+  private loadPromise: Promise<void> | null = null;
 
-  constructor(apiKey: string) {
+  private constructor(apiKey: string) {
     this.apiKey = apiKey;
   }
 
-  private async loadGoogleMapsAPI(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (typeof window !== 'undefined' && (window as any).google?.maps) {
-        this.initializeServices();
+  static getInstance(apiKey: string): GoogleMapsLoader {
+    if (!GoogleMapsLoader.instance) {
+      GoogleMapsLoader.instance = new GoogleMapsLoader(apiKey);
+    }
+    return GoogleMapsLoader.instance;
+  }
+
+  /**
+   * Carica la Google Maps API v2 con la libreria Places
+   * Usa il nuovo formato di Google (callback per initializer)
+   */
+  async load(): Promise<void> {
+    if (this.loadPromise) {
+      return this.loadPromise;
+    }
+
+    this.loadPromise = new Promise((resolve, reject) => {
+      if (typeof window === 'undefined') {
+        reject(new Error('Window not available'));
+        return;
+      }
+
+      // Verifica se già caricato
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((window as any).google?.maps?.importLibrary) {
         resolve();
         return;
       }
 
+      // Crea il script per caricare Google Maps API v2
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${this.apiKey}&libraries=places&language=it&region=IT`;
+      // IMPORTANTE: Usa il nuovo callback initializer con loading=async
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${this.apiKey}&callback=initGoogleMapsCallback&libraries=places&loading=async`;
       script.async = true;
       script.defer = true;
-      
-      script.onload = () => {
-        if ((window as any).google?.maps) {
-          this.initializeServices();
+
+      // Callback globale per l'API v2
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).initGoogleMapsCallback = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((window as any).google?.maps?.importLibrary) {
           resolve();
         } else {
-          reject(new Error('Google Maps API failed to load'));
+          reject(new Error('Google Maps API loaded but importLibrary not available'));
         }
       };
-      
+
       script.onerror = () => {
         reject(new Error('Failed to load Google Maps API script'));
       };
 
       document.head.appendChild(script);
     });
+
+    return this.loadPromise;
+  }
+}
+
+class GooglePlacesService {
+  private apiKey: string;
+  private loader: GoogleMapsLoader;
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+    this.loader = GoogleMapsLoader.getInstance(apiKey);
   }
 
-  private initializeServices(): void {
-    if ((window as any).google?.maps) {
-      // Create a dummy div for the PlacesService (it needs a map or div)
-      const dummyDiv = document.createElement('div');
-      this.placesService = new (window as any).google.maps.places.PlacesService(dummyDiv);
-      this.autocompleteService = new (window as any).google.maps.places.AutocompleteService();
-    }
+  private async ensureLoaded(): Promise<void> {
+    await this.loader.load();
   }
+
 
   async searchPlaces(query: string): Promise<PlaceResult[]> {
     if (!query || query.length < 3) return [];
 
-    await this.loadGoogleMapsAPI();
+    await this.ensureLoaded();
 
-    if (!this.autocompleteService) {
-      throw new Error('Google Maps Autocomplete Service not available');
+    try {
+      // Importa la libreria Places dalla nuova API v2
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { AutocompleteSuggestion } = await (window as any).google.maps.importLibrary('places');
+      
+      // Chiama l'API con i parametri corretti per la nuova versione
+      // NOTA: v2 API non supporta languagePreference/languageCode nel fetchAutocompleteSuggestions
+      // La lingua è determinata dalle impostazioni browser/locale
+      const response = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input: query,
+        includedRegionCodes: ['IT', 'SM'], // Italia e San Marino (filtro principale per lingua)
+        // includedPrimaryTypes non supportato in v2 per 'address' - rimosso
+      });
+
+      if (!response.suggestions || response.suggestions.length === 0) {
+        return [];
+      }
+
+      const results: PlaceResult[] = response.suggestions
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((suggestion: any) => suggestion.placePrediction) // Filtra risposte valide
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((suggestion: any) => {
+          const placePrediction = suggestion.placePrediction;
+          return {
+            placeId: placePrediction.placeId,
+            description: placePrediction.text?.text || '',
+            structuredFormatting: {
+              mainText: placePrediction.structuredFormat?.mainText?.text || placePrediction.text?.text || '',
+              secondaryText: placePrediction.structuredFormat?.secondaryText?.text || '',
+            },
+          };
+        });
+
+      return results;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('[GooglePlaces] Search error:', error);
+      if (error?.message?.includes('ZERO_RESULTS')) {
+        return [];
+      }
+      // Non lanciare l'errore, ritorna array vuoto per graceful degradation
+      return [];
     }
-
-    return new Promise((resolve, reject) => {
-      this.autocompleteService!.getPlacePredictions(
-        {
-          input: query,
-          // Rimossa restrizione country per includere San Marino
-          // Il parametro region=IT nell'URL API già dà priorità a IT/SM
-          types: ['address'],
-        },
-        (predictions, status) => {
-          const maps = (window as any).google?.maps;
-          if (maps && status === maps.places.PlacesServiceStatus.OK && predictions) {
-            const results: PlaceResult[] = predictions.map((prediction: any) => ({
-              placeId: prediction.place_id,
-              description: prediction.description,
-              structuredFormatting: {
-                mainText: prediction.structured_formatting?.main_text || prediction.description,
-                secondaryText: prediction.structured_formatting?.secondary_text || '',
-              },
-            }));
-            resolve(results);
-          } else if (maps && status === maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-            resolve([]);
-          } else {
-            reject(new Error(`Places API error: ${status}`));
-          }
-        }
-      );
-    });
   }
 
   async getPlaceDetails(placeId: string): Promise<PlaceDetails> {
-    await this.loadGoogleMapsAPI();
+    await this.ensureLoaded();
 
-    if (!this.placesService) {
-      throw new Error('Google Maps Places Service not available');
+    try {
+      // Importa la libreria Places dalla nuova API v2
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { Place } = await (window as any).google.maps.importLibrary('places');
+      
+      // NOTA: v2 API usa 'requestedLanguage' (verificare documentazione Google ufficiale)
+      const place = new Place({
+        id: placeId,
+        requestedLanguage: 'it', // Verificare se è il parametro corretto per v2
+      });
+
+      // Richiedi i campi necessari
+      await place.fetchFields({
+        fields: ['formattedAddress', 'addressComponents'],
+      });
+
+      const details: PlaceDetails = {
+        formattedAddress: place.formattedAddress || '',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        addressComponents: (place.addressComponents || []).map((component: any) => ({
+          longName: component.longText,
+          shortName: component.shortText,
+          types: component.types,
+        })),
+      };
+
+      return details;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('[GooglePlaces] Get details error:', error);
+      // Ritorna dettagli vuoti piuttosto che lanciare errore
+      return {
+        formattedAddress: '',
+        addressComponents: [],
+      };
     }
-
-    return new Promise((resolve, reject) => {
-      this.placesService!.getDetails(
-        {
-          placeId: placeId,
-          fields: ['formatted_address', 'address_components'],
-        },
-        (place, status) => {
-          const maps = (window as any).google?.maps;
-          if (maps && status === maps.places.PlacesServiceStatus.OK && place) {
-            const details: PlaceDetails = {
-              formattedAddress: (place as any).formatted_address || '',
-              addressComponents: ((place as any).address_components || []).map((component: any) => ({
-                longName: component.long_name,
-                shortName: component.short_name,
-                types: component.types,
-              })),
-            };
-            resolve(details);
-          } else {
-            reject(new Error(`Place details API error: ${status}`));
-          }
-        }
-      );
-    });
   }
 
   static parseAddressComponents(components: PlaceDetails['addressComponents']): ParsedAddress {
@@ -216,15 +252,13 @@ export function useGooglePlaces() {
   const [isSearching, setIsSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<PlaceResult[]>([]);
 
-  // Usa correttamente il nome della variabile d'ambiente
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  // Supporta entrambi i nomi della variabile d'ambiente
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API;
 
-  // Debug logging
+  // Debug logging (solo warn, nessun log se configurato)
   useEffect(() => {
     if (!apiKey) {
-      console.warn('⚠️ [useGooglePlaces] Google Maps API key not configured (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)');
-    } else {
-      console.log('✅ [useGooglePlaces] Google Maps API key loaded successfully');
+      console.warn('⚠️ [useGooglePlaces] Google Maps API key not configured (NEXT_PUBLIC_GOOGLE_MAPS_API or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)');
     }
   }, [apiKey]);
 

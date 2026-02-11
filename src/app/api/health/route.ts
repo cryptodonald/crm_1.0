@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/env';
 import { isCacheAvailable } from '@/lib/cache';
-import { tables } from '@/lib/airtable';
+import { testConnection } from '@/lib/postgres';
 
 /**
  * Health Check Endpoint
  * 
  * Validates:
  * - Environment variables loaded
- * - Airtable connectivity
+ * - Postgres connectivity
  * - Redis/KV connection
  * - JWT secrets configured
  * 
@@ -24,30 +24,24 @@ export async function GET() {
       status: 'ok',
       message: 'Environment variables validated',
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     checks.env = {
       status: 'error',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 
-  // Check 2: Airtable API Key
+  // Check 2: Postgres Database
   try {
-    if (env.AIRTABLE_API_KEY && env.AIRTABLE_BASE_ID) {
-      checks.airtable = {
-        status: 'ok',
-        message: 'Airtable configured',
-      };
-    } else {
-      checks.airtable = {
-        status: 'error',
-        message: 'Airtable credentials missing',
-      };
-    }
-  } catch (error: any) {
-    checks.airtable = {
+    await testConnection();
+    checks.database = {
+      status: 'ok',
+      message: 'Postgres connection OK',
+    };
+  } catch (error: unknown) {
+    checks.database = {
       status: 'error',
-      message: error.message,
+      message: `Postgres error: ${error instanceof Error ? error.message : 'Unknown'}`,
     };
   }
 
@@ -58,10 +52,10 @@ export async function GET() {
       status: cacheAvailable ? 'ok' : 'error',
       message: cacheAvailable ? 'Redis KV available' : 'Redis KV not configured (optional)',
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     checks.cache = {
       status: 'error',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 
@@ -78,10 +72,10 @@ export async function GET() {
         message: 'JWT secret missing or too short',
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     checks.jwt = {
       status: 'error',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 
@@ -98,10 +92,10 @@ export async function GET() {
         message: 'NextAuth secret missing or too short',
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     checks.nextauth = {
       status: 'error',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 

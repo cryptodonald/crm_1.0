@@ -1,112 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
 import { env } from '@/env';
-import type { Gender } from '@/lib/avatar-utils';
+
+// OpenRouter configurato come OpenAI-compatible endpoint
+const openai = new OpenAI({
+  apiKey: env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  defaultHeaders: {
+    'HTTP-Referer': env.NEXTAUTH_URL,
+  },
+});
 
 /**
- * API Route: AI Gender Detection
  * POST /api/ai/detect-gender
  * 
- * Usa OpenRouter per determinare il genere da un nome usando AI.
- * Fallback: se OpenRouter non disponibile, restituisce 'unknown'
+ * Detect gender from first name using OpenAI
  */
-
-interface DetectGenderRequest {
-  nome: string;
-}
-
-interface DetectGenderResponse {
-  gender: Gender;
-  confidence?: number;
-  source: 'ai' | 'fallback';
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const body: DetectGenderRequest = await request.json();
-    const { nome } = body;
+    const { name } = await request.json();
 
-    if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
+    if (!name || typeof name !== 'string') {
       return NextResponse.json(
-        { error: 'Nome richiesto' },
+        { error: 'Name is required' },
         { status: 400 }
       );
     }
 
-    // Controlla se OpenRouter è configurato
-    if (!env.OPENROUTER_API_KEY) {
-      console.warn('[detect-gender] OPENROUTER_API_KEY non configurato, fallback a unknown');
-      return NextResponse.json<DetectGenderResponse>({
-        gender: 'unknown',
-        source: 'fallback',
-      });
+    // Extract first name
+    const firstName = name.trim().split(' ')[0];
+
+    if (firstName.length < 2) {
+      return NextResponse.json({ gender: 'unknown' }, { status: 200 });
     }
 
-    // Chiama OpenRouter con un prompt specifico
-    const prompt = `Determina il genere della persona con questo nome: "${nome}".
-
-Rispondi SOLO con una delle seguenti parole:
-- "male" se è un nome maschile
-- "female" se è un nome femminile  
-- "unknown" se non riesci a determinarlo con certezza
-
-Risposta (solo male/female/unknown):`;
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': env.NEXTAUTH_URL || 'https://crm.doctorbed.it',
-        'X-Title': 'Doctorbed CRM - Gender Detection',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-3.5-turbo', // Più affidabile, meno rate limit
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.1, // Bassa temperatura per risposte deterministiche
-        max_tokens: 10, // Bastano poche parole
-      }),
+    // Call OpenRouter for gender detection
+    const completion = await openai.chat.completions.create({
+      model: 'openai/gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a gender detection assistant. Respond with ONLY one word: "male", "female", or "unknown". No explanations.',
+        },
+        {
+          role: 'user',
+          content: `Detect the gender of this Italian first name: "${firstName}"`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 10,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[detect-gender] OpenRouter error:', response.status, errorText);
-      return NextResponse.json<DetectGenderResponse>({
-        gender: 'unknown',
-        source: 'fallback',
-      });
+    const result = completion.choices[0]?.message?.content?.trim().toLowerCase();
+    
+    let gender: 'male' | 'female' | 'unknown' = 'unknown';
+    if (result === 'male' || result === 'female') {
+      gender = result;
     }
 
-    const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content?.trim().toLowerCase();
+    console.log(`[AI Gender Detection] "${firstName}" -> ${gender}`);
 
-    console.log('[detect-gender] AI response:', aiResponse);
-
-    // Parse la risposta AI
-    let gender: Gender = 'unknown';
-    if (aiResponse === 'male') {
-      gender = 'male';
-    } else if (aiResponse === 'female') {
-      gender = 'female';
-    }
-
-    return NextResponse.json<DetectGenderResponse>({
-      gender,
-      source: 'ai',
-      confidence: gender !== 'unknown' ? 0.9 : 0.5,
-    });
-  } catch (error) {
-    console.error('[detect-gender] Error:', error);
-    return NextResponse.json<DetectGenderResponse>(
-      {
-        gender: 'unknown',
-        source: 'fallback',
-      },
-      { status: 200 } // Non è un errore dal punto di vista dell'utente
-    );
+    return NextResponse.json({ gender }, { status: 200 });
+  } catch (error: unknown) {
+    console.error('[AI Gender Detection] Error:', error instanceof Error ? error.message : error);
+    
+    // Fallback to unknown on error
+    return NextResponse.json({ gender: 'unknown' }, { status: 200 });
   }
 }

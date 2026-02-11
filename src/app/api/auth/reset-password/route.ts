@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { findRecords, updateRecord } from '@/lib/airtable';
+import { getUserByEmail, updateUser } from '@/lib/postgres';
 import { passwordResetTokens } from '@/lib/redis';
-import { AirtableUser } from '@/types/airtable';
 
 /**
  * POST /api/auth/reset-password
  * 
- * Validates reset token and updates user password in Airtable.
+ * Validates reset token and updates user password in Postgres.
  */
 export async function POST(request: Request) {
   try {
@@ -53,26 +52,22 @@ export async function POST(request: Request) {
     }
 
     // Find user
-    const users = await findRecords<AirtableUser['fields']>('users', {
-      filterByFormula: `{Email} = '${email}'`,
-      maxRecords: 1,
-    });
+    const user = await getUserByEmail(email);
 
-    if (!users || users.length === 0) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Utente non trovato' },
         { status: 404 }
       );
     }
 
-    const user = users[0];
-
     // Hash new password
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    // Update password in Airtable
-    await updateRecord<AirtableUser['fields']>('users', user.id, {
-      Password: passwordHash,
+    // Update password in Postgres
+    await updateUser(user.id, {
+      password: newPassword, // updateUser function will hash it
     });
 
     // Delete token from Redis (one-time use)
@@ -84,7 +79,7 @@ export async function POST(request: Request) {
       success: true,
       message: 'Password aggiornata con successo',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Password Reset] Error:', error);
     return NextResponse.json(
       { error: 'Errore interno del server' },

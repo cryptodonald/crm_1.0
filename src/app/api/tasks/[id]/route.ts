@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getRecord, updateRecord, deleteRecord } from '@/lib/airtable';
+import { getTaskById, updateTask, deleteTask } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
-import type { AirtableUserTask, UpdateUserTaskInput } from '@/types/developer';
+import type { TaskUpdateInput } from '@/types/database';
 
 /**
  * GET /api/tasks/[id]
@@ -25,7 +25,11 @@ export async function GET(
       return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
-    const task = await getRecord<AirtableUserTask>('userTasks', id);
+    const task = await getTaskById(id);
+
+    if (!task) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
 
     return NextResponse.json({ task }, {
       headers: {
@@ -33,10 +37,10 @@ export async function GET(
         'X-RateLimit-Remaining': remaining.toString(),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[API] GET /api/tasks/[id] error:`, error);
     
-    if (error.statusCode === 404) {
+    if (error instanceof Error && error.message.includes('not found')) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
@@ -65,23 +69,33 @@ export async function PATCH(
     }
 
     // Fetch task to check permissions
-    const existingTask = await getRecord<AirtableUserTask>('userTasks', id);
+    const existingTask = await getTaskById(id);
+
+    if (!existingTask) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
     
     // Check if user is assignee, creator, or Admin/Manager
-    const isAssignee = (existingTask.fields.AssignedTo as string[] | undefined)?.includes(session.user.id || '');
-    const isCreator = (existingTask.fields.CreatedBy as string[] | undefined)?.includes(session.user.id || '');
+    const isAssignee = existingTask.assigned_to_id === session.user.id;
+    const isCreator = existingTask.created_by_id === session.user.id;
     const isAdminOrManager = ['admin', 'manager'].includes(session.user.role || '');
 
     if (!isAssignee && !isCreator && !isAdminOrManager) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const body: UpdateUserTaskInput = await request.json();
+    const body = await request.json();
 
-    // Note: CompletedAt is a formula field in Airtable, not manually editable
-    // It will auto-update when Status changes to 'done'
+    // Map to Postgres schema
+    const input: TaskUpdateInput = {};
+    if (body.title !== undefined) input.title = body.title;
+    if (body.description !== undefined) input.description = body.description;
+    if (body.status !== undefined) input.status = body.status;
+    if (body.priority !== undefined) input.priority = body.priority;
+    if (body.due_date !== undefined) input.due_date = body.due_date;
+    if (body.assigned_to_id !== undefined) input.assigned_to_id = body.assigned_to_id;
 
-    const task = await updateRecord<AirtableUserTask>('userTasks', id, body);
+    const task = await updateTask(id, input);
 
     return NextResponse.json({ task }, {
       headers: {
@@ -89,10 +103,10 @@ export async function PATCH(
         'X-RateLimit-Remaining': remaining.toString(),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[API] PATCH /api/tasks/[id] error:`, error);
     
-    if (error.statusCode === 404) {
+    if (error instanceof Error && error.message.includes('not found')) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
@@ -121,16 +135,20 @@ export async function DELETE(
     }
 
     // Fetch task to check permissions
-    const existingTask = await getRecord<AirtableUserTask>('userTasks', id);
+    const existingTask = await getTaskById(id);
+
+    if (!existingTask) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
     
-    const isCreator = (existingTask.fields.CreatedBy as string[] | undefined)?.includes(session.user.id || '');
+    const isCreator = existingTask.created_by_id === session.user.id;
     const isAdmin = session.user.role === 'admin';
 
     if (!isCreator && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await deleteRecord('userTasks', id);
+    await deleteTask(id);
 
     return NextResponse.json({ success: true, message: 'Task deleted' }, {
       headers: {
@@ -138,10 +156,10 @@ export async function DELETE(
         'X-RateLimit-Remaining': remaining.toString(),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[API] DELETE /api/tasks/[id] error:`, error);
     
-    if (error.statusCode === 404) {
+    if (error instanceof Error && error.message.includes('not found')) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 

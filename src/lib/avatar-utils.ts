@@ -54,7 +54,7 @@ export async function detectGenderWithAI(nome: string): Promise<Gender> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ nome }),
+      body: JSON.stringify({ name: nome }), // API expects 'name' not 'nome'
     });
 
     if (!response.ok) {
@@ -73,29 +73,22 @@ export async function detectGenderWithAI(nome: string): Promise<Gender> {
 /**
  * Ottiene il percorso dell'avatar basato sul genere
  * @param nome Nome della persona
- * @param isAdmin Se true, restituisce avatar admin
  * @param customGender Genere custom se già noto (da AI detection)
  * @returns Percorso relativo dell'avatar
  */
 export function getAvatarPath(
   nome: string,
-  isAdmin: boolean = false,
   customGender?: Gender
 ): string {
-  if (isAdmin) {
-    return '/avatars/admin.png';
-  }
-
-  // Se non abbiamo gender custom, usa fallback basic (AI deve essere chiamata esplicitamente)
   const gender = customGender || inferGenderBasic(nome);
 
   switch (gender) {
     case 'male':
-      return '/avatars/male.png';
+      return '/avatars/male.svg';
     case 'female':
-      return '/avatars/female.png';
+      return '/avatars/female.svg';
     default:
-      return '/avatars/avatar.png';
+      return '/avatars/neutral.svg';
   }
 }
 

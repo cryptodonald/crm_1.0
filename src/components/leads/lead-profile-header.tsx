@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Badge } from '@/components/ui/badge';
 import { LeadStatusBadge, LeadSourceBadge } from '@/components/ui/smart-badge';
 import { AvatarLead } from '@/components/ui/avatar-lead';
@@ -17,18 +18,23 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Phone,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Mail,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   MapPin,
   Hash,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Calendar,
   User,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Users,
   Clock,
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { mutate } from 'swr';
+import { useSWRConfig } from 'swr';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,16 +43,17 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  AlertDialogMedia,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { AirtableLead } from '@/types/airtable.generated';
-// import { getLeadStatusColor, getSourceColor } from '@/lib/airtable-colors'; // Migrato a SmartBadge
+import type { Lead } from '@/types/database';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { LeadProgressStepper } from './lead-progress-stepper';
 
 interface LeadProfileHeaderProps {
-  lead: AirtableLead;
+  lead: Lead;
   sourceName?: string;
   sourceColor?: string;
   onEdit?: () => void;
@@ -61,9 +68,11 @@ export function LeadProfileHeader({
   sourceColor,
   onEdit,
   onDelete,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onAddActivity,
 }: LeadProfileHeaderProps) {
   const router = useRouter();
+  const { mutate } = useSWRConfig();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -72,36 +81,36 @@ export function LeadProfileHeader({
 
   // Fetch assignee data (name + avatar)
   useEffect(() => {
-    if (lead.fields.Assegnatario && lead.fields.Assegnatario.length > 0) {
-      fetch(`/api/users/${lead.fields.Assegnatario[0]}`)
+    if (lead.assigned_to && lead.assigned_to.length > 0) {
+      fetch(`/api/users/${lead.assigned_to[0]}`)
         .then(res => res.json())
         .then(data => {
           setAssigneeData({
-            name: data.user?.fields?.Nome || 'Utente',
-            avatar: data.user?.fields?.Avatar_URL
+            name: data.user?.name || 'Utente',
+            avatar: data.user?.avatar_url || undefined,
           });
         })
         .catch(() => setAssigneeData({ name: 'Utente' }));
     }
-  }, [lead.fields.Assegnatario]);
+  }, [lead.assigned_to]);
 
   // Fetch reference lead data (name + gender for avatar)
   useEffect(() => {
-    if (lead.fields.Referenza && lead.fields.Referenza.length > 0) {
+    if (lead.referral_lead_id) {
       Promise.all(
-        lead.fields.Referenza.map(refId =>
+        [lead.referral_lead_id].map((refId) =>
           fetch(`/api/leads/${refId}`)
             .then(res => res.json())
             .then(data => ({ 
               id: refId, 
-              name: data.lead?.fields?.Nome || 'Lead',
-              gender: data.lead?.fields?.Gender
+              name: data.lead?.name || 'Lead',
+              gender: data.lead?.gender as 'male' | 'female' | 'unknown' | undefined,
             }))
             .catch(() => ({ id: refId, name: 'Lead' }))
         )
       ).then(setReferenceLeads);
     }
-  }, [lead.fields.Referenza]);
+  }, [lead.referral_lead_id]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -128,6 +137,7 @@ export function LeadProfileHeader({
       
       // Reindirizza alla lista lead
       router.push('/leads');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error deleting lead:', error);
       toast.error('Errore durante l\'eliminazione');
@@ -141,38 +151,71 @@ export function LeadProfileHeader({
     if (isUpdating) return;
 
     setIsUpdating(true);
-    const previousState = lead.fields.Stato;
+    const previousState = lead.status;
 
     try {
-      // Optimistic update
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updatedLead = { ...lead, status: newState as any };
+
+      // CRITICAL-001: Optimistic update con pattern matching
+      // Aggiorna cache dettaglio lead
+      mutate(`/api/leads/${lead.id}`, updatedLead, { revalidate: false });
+
+      // Aggiorna TUTTE le cache lista leads (base + con filtri/pagination)
       mutate(
-        `/api/leads/${lead.id}`,
-        { ...lead, fields: { ...lead.fields, Stato: newState as any } },
-        false
+        (key) => typeof key === 'string' && key.startsWith('/api/leads'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          if (!current) return current;
+          if (current.leads && Array.isArray(current.leads)) {
+            return {
+              ...current,
+              leads: current.leads.map((l: Lead) =>
+                l.id === lead.id ? updatedLead : l
+              ),
+            };
+          }
+          return current;
+        },
+        { revalidate: false }
       );
 
       // Call API
       const res = await fetch(`/api/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ Stato: newState }),
+        body: JSON.stringify({ status: newState }),
       });
 
       if (!res.ok) {
         throw new Error('Failed to update lead state');
       }
 
-      // Revalidate
+      // Revalidate dettaglio
       await mutate(`/api/leads/${lead.id}`);
       toast.success(`Stato cambiato in: ${newState}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating lead state:', error);
       
-      // Rollback on error
+      // Rollback: ripristina stato precedente su TUTTE le cache
+      mutate(`/api/leads/${lead.id}`, { ...lead, status: previousState }, { revalidate: false });
       mutate(
-        `/api/leads/${lead.id}`,
-        { ...lead, fields: { ...lead.fields, Stato: previousState } },
-        false
+        (key) => typeof key === 'string' && key.startsWith('/api/leads'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          if (!current) return current;
+          if (current.leads && Array.isArray(current.leads)) {
+            return {
+              ...current,
+              leads: current.leads.map((l: Lead) =>
+                l.id === lead.id ? { ...lead, status: previousState } : l
+              ),
+            };
+          }
+          return current;
+        },
+        { revalidate: false }
       );
       
       toast.error('Errore durante il cambio di stato');
@@ -189,8 +232,8 @@ export function LeadProfileHeader({
           {/* Avatar */}
           <div className="flex-shrink-0">
             <AvatarLead
-              nome={lead.fields.Nome || 'Lead'}
-              gender={lead.fields.Gender}
+              nome={lead.name || 'Lead'}
+              gender={lead.gender as 'male' | 'female' | 'unknown'}
               size="lg"
             />
           </div>
@@ -212,12 +255,12 @@ export function LeadProfileHeader({
 
                 {/* Nome */}
                 <h1 className="text-2xl font-bold truncate">
-                  {lead.fields.Nome || 'Lead senza nome'}
+                  {lead.name || 'Lead senza nome'}
                 </h1>
 
                 {/* Stato */}
-                {lead.fields.Stato && (
-                  <LeadStatusBadge status={lead.fields.Stato} />
+                {lead.status && (
+                  <LeadStatusBadge status={lead.status} />
                 )}
 
                 {/* Provenienza */}
@@ -254,14 +297,14 @@ export function LeadProfileHeader({
 
             {/* Riga 2: Città + Creato il */}
             <div className="flex items-center gap-4 pl-[36px]">
-              {lead.fields.Città && (
-                <span className="text-base font-medium">{lead.fields.Città}</span>
+              {lead.city && (
+                <span className="text-base font-medium">{lead.city}</span>
               )}
-              {lead.fields.Data && (
+              {lead.created_at && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
                   <span>
-                    {format(new Date(lead.fields.Data), "d MMM yyyy 'alle' HH:mm", { locale: it })}
+                    {format(new Date(lead.created_at), "d MMM yyyy 'alle' HH:mm", { locale: it })}
                   </span>
                 </div>
               )}
@@ -270,37 +313,38 @@ export function LeadProfileHeader({
             {/* Riga 3: Telefono, Email, Assegnatario, Referenza in linea */}
             <div className="flex items-center gap-4 flex-wrap pl-[36px] text-sm">
               {/* Telefono */}
-              {lead.fields.Telefono && (
+              {lead.phone && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">Telefono:</span>
                   <button
-                    onClick={() => copyToClipboard(lead.fields.Telefono!, 'Telefono copiato')}
+                    onClick={() => copyToClipboard(lead.phone!, 'Telefono copiato')}
                     className="hover:text-primary active:scale-95 transition-all font-medium"
                   >
-                    {lead.fields.Telefono}
+                    {lead.phone}
                   </button>
                 </div>
               )}
 
               {/* Email */}
-              {lead.fields.Email && (
+              {lead.email && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">Email:</span>
                   <a
-                    href={`mailto:${lead.fields.Email}`}
+                    href={`mailto:${lead.email}`}
                     className="hover:text-primary transition-colors font-medium truncate"
                   >
-                    {lead.fields.Email}
+                    {lead.email}
                   </a>
                 </div>
               )}
 
               {/* Assegnatario */}
-              {lead.fields.Assegnatario && lead.fields.Assegnatario.length > 0 && assigneeData && (
+              {lead.assigned_to && lead.assigned_to.length > 0 && assigneeData && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">Assegnatario:</span>
                   <div className="flex items-center gap-1.5">
                     {assigneeData.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img 
                         src={assigneeData.avatar} 
                         alt={assigneeData.name}
@@ -315,7 +359,7 @@ export function LeadProfileHeader({
               )}
 
               {/* Referenza */}
-              {lead.fields.Referenza && lead.fields.Referenza.length > 0 && (
+              {lead.referral_lead_id && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">Referenza:</span>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -349,10 +393,10 @@ export function LeadProfileHeader({
         </div>
 
         {/* Sezione 2: Progress Stepper */}
-        {lead.fields.Stato && (
+        {lead.status && (
           <div className="pt-2">
             <LeadProgressStepper
-              currentState={lead.fields.Stato}
+              currentState={lead.status}
               onStateChange={handleStateChange}
             />
           </div>
@@ -361,27 +405,29 @@ export function LeadProfileHeader({
 
       {/* Dialog conferma eliminazione */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Conferma eliminazione
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Sei sicuro di voler eliminare il lead <span className="font-semibold">{lead.fields.Nome || 'senza nome'}</span>?
-              <br />
-              <br />
-              <span className="text-destructive">Questa azione è irreversibile</span> e eliminerà anche tutte le attività, note e ordini associati.
-            </AlertDialogDescription>
+        <AlertDialogContent size="sm" className="p-4 gap-3">
+          <AlertDialogHeader className="!grid-rows-none !place-items-start space-y-1 pb-0 text-left">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted mt-0.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <AlertDialogTitle className="text-base font-semibold">Eliminare il lead?</AlertDialogTitle>
+                <AlertDialogDescription className="text-sm mt-1">
+                  <span className="text-destructive font-medium">Questa azione è irreversibile</span> e eliminerà anche tutte le attività, note e ordini associati.
+                </AlertDialogDescription>
+              </div>
+            </div>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
-            <AlertDialogAction
+          <AlertDialogFooter className="bg-muted/50 -mx-4 -mb-4 px-4 py-3 border-t mt-2 !flex !flex-row !justify-end gap-2">
+            <AlertDialogCancel size="sm">Annulla</AlertDialogCancel>
+            <AlertDialogAction 
+              size="sm"
+              variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/90"
             >
-              {isDeleting ? 'Eliminazione...' : 'Elimina definitivamente'}
+              {isDeleting ? 'Eliminazione...' : 'Elimina'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

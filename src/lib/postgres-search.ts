@@ -13,21 +13,27 @@
 import { Pool } from 'pg';
 import { cachedQuery, CacheKeys, CacheTTL } from './redis-cache';
 
-// Postgres pool (riutilizza da data-source.ts)
+// Postgres pool (riutilizza da postgres.ts)
 let pgPool: Pool | null = null;
 
 export function getPgPool(): Pool {
   if (!pgPool) {
+    const connectionString = process.env.POSTGRES_URL;
+    
+    if (!connectionString) {
+      throw new Error('POSTGRES_URL environment variable not set');
+    }
+    
     pgPool = new Pool({
-      host: 'aws-1-us-east-1.pooler.supabase.com',
-      database: 'postgres',
-      user: 'postgres.occtinunulzhbjjvztcj',
-      password: process.env.POSTGRES_PASSWORD!,
-      port: 5432,
-      ssl: { rejectUnauthorized: false },
+      connectionString,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 20000,
+      ssl: { rejectUnauthorized: false },
+    });
+
+    pgPool.on('error', (err) => {
+      console.error('[PgPool] Unexpected error:', err);
     });
   }
   return pgPool;
@@ -39,14 +45,13 @@ export function getPgPool(): Pool {
 
 export interface LeadSearchResult {
   id: string;
-  airtable_id: string;
-  Nome?: string;
-  Telefono?: string;
-  Email?: string;
-  Città?: string;
-  Stato?: string;
-  Data?: string;
-  Esigenza?: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  city: string | null;
+  status: string | null;
+  created_at: string;
+  needs: string | null;
   rank: number; // Relevance score
 }
 
@@ -60,7 +65,7 @@ export interface LeadSearchResult {
  * @example
  * const results = await searchLeads('mario rossi');
  * // Trova: "Mario Rossi", "Rossi Mario", "MARIO ROSSI"
- * // Latency: 80-150ms (vs 4000ms Airtable)
+ * // Latency: 80-150ms (cached <10ms)
  */
 export async function searchLeads(
   query: string,
@@ -87,24 +92,24 @@ export async function searchLeads(
         const result = await pool.query(`
           SELECT 
             id,
-            airtable_id,
-            "Nome",
-            "Telefono",
-            "Email",
-            "Città",
-            "Stato",
-            "Data",
-            "Esigenza",
+            name,
+            phone,
+            email,
+            city,
+            status,
+            created_at,
+            needs,
             ts_rank(search_vector, query) AS rank
           FROM leads, 
-               to_tsquery('italian', $1) query
+               to_tsquery('english', $1) query
           WHERE search_vector @@ query
-          ORDER BY rank DESC, "Data" DESC
+          ORDER BY rank DESC, created_at DESC
           LIMIT $2
         `, [tsquery, limit]);
         
-        return result.rows;
+        return result.rows as LeadSearchResult[];
         
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error('[SearchLeads] FTS error:', error.message);
         
@@ -113,26 +118,25 @@ export async function searchLeads(
         const fallbackResult = await pool.query(`
           SELECT 
             id,
-            airtable_id,
-            "Nome",
-            "Telefono",
-            "Email",
-            "Città",
-            "Stato",
-            "Data",
-            "Esigenza",
+            name,
+            phone,
+            email,
+            city,
+            status,
+            created_at,
+            needs,
             0.5 AS rank
           FROM leads
           WHERE 
-            "Nome" ILIKE $1 OR
-            "Telefono" ILIKE $1 OR
-            "Email" ILIKE $1 OR
-            "Città" ILIKE $1
-          ORDER BY "Data" DESC
+            name ILIKE $1 OR
+            phone ILIKE $1 OR
+            email ILIKE $1 OR
+            city ILIKE $1
+          ORDER BY created_at DESC
           LIMIT $2
         `, [likePattern, limit]);
         
-        return fallbackResult.rows;
+        return fallbackResult.rows as LeadSearchResult[];
       }
     }
   );
@@ -144,13 +148,12 @@ export async function searchLeads(
 
 export interface ActivitySearchResult {
   id: string;
-  airtable_id: string;
-  Titolo?: string;
-  Tipo?: string;
-  Data?: string;
-  Esito?: string;
-  Note?: string;
-  Lead?: string[]; // JSONB array
+  title: string | null;
+  type: string | null;
+  activity_date: string | null;
+  outcome: string | null;
+  notes: string | null;
+  lead_id: string | null;
   rank: number;
 }
 
@@ -179,106 +182,101 @@ export async function searchActivities(
         let sql = `
           SELECT 
             id,
-            airtable_id,
-            "Titolo",
-            "Tipo",
-            "Data",
-            "Esito",
-            "Note",
-            "ID Lead" AS "Lead",
+            title,
+            type,
+            activity_date,
+            outcome,
+            notes,
+            lead_id,
             ts_rank(search_vector, query) AS rank
           FROM activities, 
-               to_tsquery('italian', $1) query
+               to_tsquery('english', $1) query
           WHERE search_vector @@ query
         `;
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const params: any[] = [tsquery];
         
         // Filtro per leadId se specificato
         if (leadId) {
-          sql += ` AND "ID Lead" @> $${params.length + 1}::jsonb`;
-          params.push(JSON.stringify([leadId]));
+          sql += ` AND lead_id = $${params.length + 1}`;
+          params.push(leadId);
         }
         
-        sql += ` ORDER BY rank DESC, "Data" DESC LIMIT $${params.length + 1}`;
+        sql += ` ORDER BY rank DESC, activity_date DESC LIMIT $${params.length + 1}`;
         params.push(limit);
         
         const result = await pool.query(sql, params);
+        return result.rows as ActivitySearchResult[];
         
-        return result.rows.map(row => ({
-          ...row,
-          Lead: row.Lead ? JSON.parse(row.Lead) : undefined,
-        }));
-        
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error('[SearchActivities] FTS error:', error.message);
         
-        // Fallback ILIKE
+        // Fallback: ILIKE search
         const likePattern = `%${normalizedQuery}%`;
-        let fallbackSql = `
+        let sql = `
           SELECT 
             id,
-            airtable_id,
-            "Titolo",
-            "Tipo",
-            "Data",
-            "Esito",
-            "Note",
-            "ID Lead" AS "Lead",
+            title,
+            type,
+            activity_date,
+            outcome,
+            notes,
+            lead_id,
             0.5 AS rank
           FROM activities
           WHERE 
-            "Titolo" ILIKE $1 OR
-            "Note" ILIKE $1 OR
-            "Tipo" ILIKE $1
+            title ILIKE $1 OR
+            notes ILIKE $1 OR
+            outcome ILIKE $1
         `;
         
-        const fallbackParams: any[] = [likePattern];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const params: any[] = [likePattern];
         
         if (leadId) {
-          fallbackSql += ` AND "ID Lead" @> $${fallbackParams.length + 1}::jsonb`;
-          fallbackParams.push(JSON.stringify([leadId]));
+          sql += ` AND lead_id = $${params.length + 1}`;
+          params.push(leadId);
         }
         
-        fallbackSql += ` ORDER BY "Data" DESC LIMIT $${fallbackParams.length + 1}`;
-        fallbackParams.push(limit);
+        sql += ` ORDER BY activity_date DESC LIMIT $${params.length + 1}`;
+        params.push(limit);
         
-        const fallbackResult = await pool.query(fallbackSql, fallbackParams);
-        
-        return fallbackResult.rows.map(row => ({
-          ...row,
-          Lead: row.Lead ? JSON.parse(row.Lead) : undefined,
-        }));
+        const result = await pool.query(sql, params);
+        return result.rows as ActivitySearchResult[];
       }
     }
   );
 }
 
 /**
- * PRODUCTS SEARCH
+ * NOTES SEARCH
  */
 
-export interface ProductSearchResult {
+export interface NoteSearchResult {
   id: string;
-  airtable_id: string;
-  Nome_Prodotto?: string;
-  Descrizione?: string;
-  Categoria?: string;
-  Codice_Matrice?: string;
-  Prezzo_Listino_Attuale?: number;
+  content: string | null;
+  type: string | null;
+  highlighted: boolean | null;
+  created_at: string;
+  lead_id: string | null;
   rank: number;
 }
 
-export async function searchProducts(
+export async function searchNotes(
   query: string,
+  leadId?: string,
   limit = 20
-): Promise<ProductSearchResult[]> {
+): Promise<NoteSearchResult[]> {
   if (!query || query.trim().length === 0) {
     return [];
   }
   
   const normalizedQuery = query.trim().toLowerCase();
-  const cacheKey = `products:search:${normalizedQuery}`;
+  const cacheKey = leadId 
+    ? `notes:search:${leadId}:${normalizedQuery}` 
+    : `notes:search:${normalizedQuery}`;
   
   return cachedQuery(
     cacheKey,
@@ -288,179 +286,129 @@ export async function searchProducts(
       const tsquery = normalizedQuery.split(/\s+/).join(' & ');
       
       try {
-        const result = await pool.query(`
+        let sql = `
           SELECT 
             id,
-            airtable_id,
-            "Nome_Prodotto",
-            "Descrizione",
-            "Categoria",
-            "Codice_Matrice",
-            "Prezzo_Listino_Attuale",
+            content,
+            type,
+            highlighted,
+            created_at,
+            lead_id,
             ts_rank(search_vector, query) AS rank
-          FROM products, 
-               to_tsquery('italian', $1) query
+          FROM notes, 
+               to_tsquery('english', $1) query
           WHERE search_vector @@ query
-          ORDER BY rank DESC
-          LIMIT $2
-        `, [tsquery, limit]);
+        `;
         
-        return result.rows;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const params: any[] = [tsquery];
         
+        if (leadId) {
+          sql += ` AND lead_id = $${params.length + 1}`;
+          params.push(leadId);
+        }
+        
+        sql += ` ORDER BY rank DESC, created_at DESC LIMIT $${params.length + 1}`;
+        params.push(limit);
+        
+        const result = await pool.query(sql, params);
+        return result.rows as NoteSearchResult[];
+        
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
-        console.error('[SearchProducts] FTS error:', error.message);
+        console.error('[SearchNotes] FTS error:', error.message);
         
-        // Fallback ILIKE
+        // Fallback: ILIKE search
         const likePattern = `%${normalizedQuery}%`;
-        const fallbackResult = await pool.query(`
+        let sql = `
           SELECT 
             id,
-            airtable_id,
-            "Nome_Prodotto",
-            "Descrizione",
-            "Categoria",
-            "Codice_Matrice",
-            "Prezzo_Listino_Attuale",
+            content,
+            type,
+            highlighted,
+            created_at,
+            lead_id,
             0.5 AS rank
-          FROM products
-          WHERE 
-            "Nome_Prodotto" ILIKE $1 OR
-            "Descrizione" ILIKE $1 OR
-            "Categoria" ILIKE $1 OR
-            "Codice_Matrice" ILIKE $1
-          ORDER BY "Nome_Prodotto"
-          LIMIT $2
-        `, [likePattern, limit]);
+          FROM notes
+          WHERE content ILIKE $1
+        `;
         
-        return fallbackResult.rows;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const params: any[] = [likePattern];
+        
+        if (leadId) {
+          sql += ` AND lead_id = $${params.length + 1}`;
+          params.push(leadId);
+        }
+        
+        sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`;
+        params.push(limit);
+        
+        const result = await pool.query(sql, params);
+        return result.rows as NoteSearchResult[];
       }
     }
   );
 }
 
 /**
- * ORDERS SEARCH
+ * GLOBAL SEARCH
+ * Search across leads, activities, and notes
  */
 
-export interface OrderSearchResult {
+export interface GlobalSearchResult {
+  type: 'lead' | 'activity' | 'note';
   id: string;
-  airtable_id: string;
-  ID_Ordine?: string;
-  Data_Ordine?: string;
-  Stato_Ordine?: string;
-  Totale_Finale?: number;
-  ID_Lead?: string[]; // JSONB
+  title: string;
+  subtitle?: string;
   rank: number;
-}
-
-export async function searchOrders(
-  query: string,
-  limit = 20
-): Promise<OrderSearchResult[]> {
-  if (!query || query.trim().length === 0) {
-    return [];
-  }
-  
-  const normalizedQuery = query.trim().toLowerCase();
-  const cacheKey = `orders:search:${normalizedQuery}`;
-  
-  return cachedQuery(
-    cacheKey,
-    CacheTTL.search,
-    async () => {
-      const pool = getPgPool();
-      const tsquery = normalizedQuery.split(/\s+/).join(' & ');
-      
-      try {
-        const result = await pool.query(`
-          SELECT 
-            id,
-            airtable_id,
-            "ID_Ordine",
-            "Data_Ordine",
-            "Stato_Ordine",
-            "Totale_Finale",
-            "ID_Lead",
-            ts_rank(search_vector, query) AS rank
-          FROM orders, 
-               to_tsquery('italian', $1) query
-          WHERE search_vector @@ query
-          ORDER BY rank DESC, "Data_Ordine" DESC
-          LIMIT $2
-        `, [tsquery, limit]);
-        
-        return result.rows.map(row => ({
-          ...row,
-          ID_Lead: row.ID_Lead ? JSON.parse(row.ID_Lead) : undefined,
-        }));
-        
-      } catch (error: any) {
-        console.error('[SearchOrders] FTS error:', error.message);
-        
-        // Fallback ILIKE
-        const likePattern = `%${normalizedQuery}%`;
-        const fallbackResult = await pool.query(`
-          SELECT 
-            id,
-            airtable_id,
-            "ID_Ordine",
-            "Data_Ordine",
-            "Stato_Ordine",
-            "Totale_Finale",
-            "ID_Lead",
-            0.5 AS rank
-          FROM orders
-          WHERE 
-            "ID_Ordine" ILIKE $1 OR
-            "Note_Cliente" ILIKE $1 OR
-            "Note_Interne" ILIKE $1 OR
-            "Stato_Ordine" ILIKE $1
-          ORDER BY "Data_Ordine" DESC
-          LIMIT $2
-        `, [likePattern, limit]);
-        
-        return fallbackResult.rows.map(row => ({
-          ...row,
-          ID_Lead: row.ID_Lead ? JSON.parse(row.ID_Lead) : undefined,
-        }));
-      }
-    }
-  );
-}
-
-/**
- * GLOBAL SEARCH (cerca in tutte le entity)
- */
-
-export interface GlobalSearchResults {
-  leads: LeadSearchResult[];
-  activities: ActivitySearchResult[];
-  products: ProductSearchResult[];
-  orders: OrderSearchResult[];
-  totalResults: number;
-  duration: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata?: Record<string, any>;
 }
 
 export async function globalSearch(
   query: string,
-  limitPerEntity = 5
-): Promise<GlobalSearchResults> {
-  const startTime = Date.now();
+  limit = 30
+): Promise<GlobalSearchResult[]> {
+  if (!query || query.trim().length === 0) {
+    return [];
+  }
   
-  // Ricerca parallela su tutte le entity
-  const [leads, activities, products, orders] = await Promise.all([
-    searchLeads(query, limitPerEntity),
-    searchActivities(query, undefined, limitPerEntity),
-    searchProducts(query, limitPerEntity),
-    searchOrders(query, limitPerEntity),
+  const [leads, activities, notes] = await Promise.all([
+    searchLeads(query, Math.ceil(limit / 3)),
+    searchActivities(query, undefined, Math.ceil(limit / 3)),
+    searchNotes(query, undefined, Math.ceil(limit / 3)),
   ]);
   
-  return {
-    leads,
-    activities,
-    products,
-    orders,
-    totalResults: leads.length + activities.length + products.length + orders.length,
-    duration: Date.now() - startTime,
-  };
+  const results: GlobalSearchResult[] = [
+    ...leads.map(l => ({
+      type: 'lead' as const,
+      id: l.id,
+      title: l.name || 'Lead senza nome',
+      subtitle: l.email || l.phone || l.city || undefined,
+      rank: l.rank,
+      metadata: { status: l.status, city: l.city },
+    })),
+    ...activities.map(a => ({
+      type: 'activity' as const,
+      id: a.id,
+      title: a.title || a.type || 'Attività',
+      subtitle: a.outcome || a.notes?.slice(0, 100),
+      rank: a.rank,
+      metadata: { type: a.type, date: a.activity_date },
+    })),
+    ...notes.map(n => ({
+      type: 'note' as const,
+      id: n.id,
+      title: n.content?.slice(0, 100) || 'Nota',
+      subtitle: n.type || undefined,
+      rank: n.rank,
+      metadata: { highlighted: n.highlighted },
+    })),
+  ];
+  
+  // Sort by rank and take top results
+  return results
+    .sort((a, b) => b.rank - a.rank)
+    .slice(0, limit);
 }

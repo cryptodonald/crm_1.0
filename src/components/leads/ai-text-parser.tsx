@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Card } from '@/components/ui/card';
 import { 
   Dialog,
@@ -110,6 +111,7 @@ export function AITextParser({ open, onOpenChange, onDataParsed }: AITextParserP
 
       // Conta i campi estratti
       const extractedFields = Object.entries(result.data)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         .filter(([_, value]) => value !== undefined && value !== null && value !== '')
         .length;
 
@@ -145,7 +147,7 @@ export function AITextParser({ open, onOpenChange, onDataParsed }: AITextParserP
             Importa Lead da Testo
           </DialogTitle>
           <DialogDescription>
-            Incolla il testo con i dati del lead e l'AI estrarrà automaticamente le informazioni.
+            Incolla il testo con i dati del lead e l&apos;AI estrarrà automaticamente le informazioni.
           </DialogDescription>
         </DialogHeader>
 
@@ -166,7 +168,7 @@ export function AITextParser({ open, onOpenChange, onDataParsed }: AITextParserP
 
           {/* Info */}
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>L'AI estrarrà automaticamente: Nome, Telefono, Email, Città, CAP, Esigenza e Note.</p>
+            <p>L&apos;AI estrarrà automaticamente: Nome, Telefono, Email, Città, CAP, Esigenza e Note.</p>
             <p>Funziona con form di contatto, email, messaggi WhatsApp e testo libero.</p>
           </div>
 

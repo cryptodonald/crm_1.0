@@ -1,13 +1,14 @@
 import { z } from 'zod';
-import type { AirtableActivity } from './airtable.generated';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { Activity, ActivityType, ActivityStatus } from './database';
 
-// Estrai types dinamicamente da AirtableActivity
-export type ActivityTipo = NonNullable<AirtableActivity['fields']['Tipo']>;
-export type ActivityStato = NonNullable<AirtableActivity['fields']['Stato']>;
-export type ActivityObiettivo = NonNullable<AirtableActivity['fields']['Obiettivo']>;
-export type ActivityPriorita = NonNullable<AirtableActivity['fields']['Priorità']>;
-export type ActivityEsito = NonNullable<AirtableActivity['fields']['Esito']>;
-export type ActivityProssimaAzione = NonNullable<AirtableActivity['fields']['Prossima azione']>;
+// Types based on Postgres schema
+export type ActivityTipo = ActivityType;
+export type ActivityStato = ActivityStatus;
+export type ActivityObiettivo = string; // Custom field (not in Postgres v1)
+export type ActivityPriorita = string; // Custom field (not in Postgres v1)
+export type ActivityEsito = string; // Custom field (not in Postgres v1)
+export type ActivityProssimaAzione = string; // Custom field (not in Postgres v1)
 
 // Schema Zod per validazione form (4 step modal)
 export const ActivityFormSchema = z.object({
@@ -19,7 +20,7 @@ export const ActivityFormSchema = z.object({
   
   // Step 2: Programmazione
   Data: z.string().optional(),
-  'Durata stimata': z.number().optional(),
+  'Durata stimata': z.string().optional(),
   Stato: z.string().min(1, 'Seleziona uno stato'),
   Assegnatario: z.array(z.string()).optional(),
   
@@ -28,6 +29,7 @@ export const ActivityFormSchema = z.object({
   Esito: z.string().optional(),
   'Prossima azione': z.string().optional(),
   'Data prossima azione': z.string().optional(),
+  'Note prossima azione': z.string().optional(),
   
   // Step 4: Allegati (opzionale)
   Allegati: z.array(z.any()).optional(),
@@ -51,10 +53,10 @@ export type ActivityData = ActivityFormData & {
   _shouldRemove?: boolean;
 };
 
-// Default data per nuovo modal
+// Default data for new activity modal (valori italiani come nel form UI)
 export const DEFAULT_ACTIVITY_DATA: Partial<ActivityFormData> = {
   Tipo: 'Chiamata',
-  Stato: 'Da Pianificare',
+  Stato: 'Da fare',
   Priorità: 'Media',
   'ID Lead': [],
   Assegnatario: [],
@@ -114,12 +116,11 @@ export function getActivityPrioritaColor(priorita?: string): string {
   return priorityColors[priorita || 'Media'] || 'bg-gray-100 text-gray-700 border-gray-200';
 }
 
-// Icone per tipi attività (per compatibility)
+// Icone per tipi attività
 export const ACTIVITY_TIPO_ICONS: Record<string, string> = {
   'Chiamata': '📞',
-  'WhatsApp': '💬',
+  'Messaggistica': '💬',
   'Email': '📧',
-  'SMS': '📱',
   'Consulenza': '👥',
   'Follow-up': '🔄',
   'Altro': '📋',
@@ -146,15 +147,11 @@ export function getActivityProssimaAzioneColor(azione?: string): string {
 export const ACTIVITY_PROSSIMA_AZIONE_COLORS = getActivityProssimaAzioneColor;
 
 export function getActivityStatoColor(stato?: string): string {
-  // Stati hanno colori semantici fissi
   const statusColors: Record<string, string> = {
-    'Da Pianificare': 'bg-gray-100 text-gray-700 border-gray-200',
-    'Pianificata': 'bg-blue-100 text-blue-700 border-blue-200',
-    'In corso': 'bg-amber-100 text-amber-700 border-amber-200',
-    'In attesa': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    'Da fare': 'bg-gray-100 text-gray-700 border-gray-200',
+    'In corso': 'bg-blue-100 text-blue-700 border-blue-200',
     'Completata': 'bg-green-100 text-green-700 border-green-200',
     'Annullata': 'bg-red-100 text-red-700 border-red-200',
-    'Rimandata': 'bg-orange-100 text-orange-700 border-orange-200',
   };
   return statusColors[stato || ''] || 'bg-gray-100 text-gray-700 border-gray-200';
 }

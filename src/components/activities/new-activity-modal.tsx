@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCreateActivity, useUpdateActivity } from '@/hooks/use-activities';
-import { AirtableActivity } from '@/types/airtable.generated';
+import type { Activity } from '@/types/database';
 import {
   Dialog,
   DialogContent,
@@ -15,15 +15,18 @@ import {
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Save, CalendarDays, FileText } from 'lucide-react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { ArrowLeft, ArrowRight, Save, CalendarDays, FileText, RotateCcw } from 'lucide-react';
 import { AvatarLead } from '@/components/ui/avatar-lead';
 import { useLeadsData } from '@/hooks/use-leads-data';
 import { 
   ActivityFormData, 
   ActivityData,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ActivityTipo,
   DEFAULT_ACTIVITY_DATA,
   ActivityFormSchema,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ACTIVITY_TIPO_ICONS,
 } from '@/types/activities';
 import { toast } from 'sonner';
@@ -31,11 +34,11 @@ import { toast } from 'sonner';
 import { InformazioniBaseStep } from './new-activity-steps/informazioni-base-step';
 import { ProgrammazioneStep } from './new-activity-steps/programmazione-step';
 import { RisultatiStep } from './new-activity-steps/risultati-step';
-import { AllegatiStep } from './new-activity-steps/allegati-step';
 
 interface NewActivityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (updatedActivity?: any) => void; // any per supportare ActivityData + oggetti custom automazioni
   prefilledLeadId?: string; // ID del lead preselezionato
   activity?: ActivityData | null; // Attività da modificare (null = creazione)
@@ -46,12 +49,68 @@ const STEPS = [
   { id: 1, name: 'Informazioni Base', component: InformazioniBaseStep },
   { id: 2, name: 'Programmazione', component: ProgrammazioneStep },
   { id: 3, name: 'Risultati', component: RisultatiStep },
-  { id: 4, name: 'Allegati', component: AllegatiStep },
 ];
 
 // Local storage keys for draft saving
 const DRAFT_STORAGE_KEY = 'newActivityDraft';
 const DRAFT_TIMESTAMP_KEY = 'newActivityDraftTimestamp';
+
+/** Converte stringa "HH:mm" in minuti totali (number) */
+function timeStringToMinutes(time: string | undefined): number | null {
+  if (!time) return null;
+  const [h, m] = time.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  const total = h * 60 + m;
+  return total > 0 ? total : null;
+}
+
+/** Converte minuti totali (number) in stringa "HH:mm" */
+function minutesToTimeString(minutes: number | null | undefined): string | undefined {
+  if (!minutes || minutes <= 0) return undefined;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** Mappa i campi API Postgres (english snake_case) ai campi form (nomi italiani) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapApiToForm(activity: any): ActivityFormData {
+  return {
+    Tipo: activity.type || 'Chiamata',
+    Stato: activity.status || 'Da fare',
+    Obiettivo: activity.objective || undefined,
+    'Priorit\u00e0': activity.priority || 'Media',
+    Data: activity.activity_date || undefined,
+    'Durata stimata': minutesToTimeString(activity.estimated_duration),
+    'ID Lead': activity.lead_id ? [activity.lead_id] : [],
+    Assegnatario: activity.assigned_to ? [activity.assigned_to] : [],
+    Note: activity.notes || undefined,
+    Esito: activity.outcome || undefined,
+    'Prossima azione': undefined,
+    'Data prossima azione': undefined,
+    'Note prossima azione': undefined,
+  };
+}
+
+/** Mappa i campi del form (nomi italiani) ai campi API Postgres (english snake_case) */
+function mapFormToApi(data: ActivityFormData): Record<string, unknown> {
+  const tipo = data.Tipo || 'Chiamata';
+  const obiettivo = data.Obiettivo || '';
+
+  return {
+    title: obiettivo ? `${tipo} - ${obiettivo}` : tipo,
+    type: tipo,
+    status: data.Stato || 'Da fare',
+    activity_date: data.Data || null,
+    lead_id: data['ID Lead']?.[0] || null,
+    assigned_to: data.Assegnatario?.[0] || null,
+    notes: data.Note || null,
+    outcome: data.Esito || null,
+    objective: data.Obiettivo || null,
+    priority: data['Priorità'] || null,
+    estimated_duration: timeStringToMinutes(data['Durata stimata']),
+  };
+}
 
 export function NewActivityModal({ 
   open, 
@@ -61,15 +120,19 @@ export function NewActivityModal({
   activity 
 }: NewActivityModalProps) {
   const isEditMode = !!activity;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const activityId = activity ? (activity as any).id : undefined;
   
   // Hook per create/update con optimistic updates
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { createActivity, isCreating } = useCreateActivity();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { updateActivity, isUpdating } = useUpdateActivity(activityId || '');
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [hasDraftData, setHasDraftData] = useState(false);
   const [showLoadDraftDialog, setShowLoadDraftDialog] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -84,40 +147,22 @@ export function NewActivityModal({
     mode: 'onChange',
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { handleSubmit, formState: { isValid, errors }, trigger, watch } = form;
 
   // Hook per ottenere i dati dei lead
   const { leads } = useLeadsData({ loadAll: true });
 
-  const currentStepIndex = currentStep - 1;
-  const progress = ((currentStep - 1) / (STEPS.length - 1)) * 100;
+  const currentStepIndex = Math.min(currentStep - 1, STEPS.length - 1);
+  const progress = (currentStepIndex / (STEPS.length - 1)) * 100;
   const CurrentStepComponent = STEPS[currentStepIndex].component;
 
   // Check for existing draft on component mount and handle edit mode
   useEffect(() => {
     if (open) {
       if (isEditMode && activity) {
-        // Edit mode: precompila con dati dell'attività esistente
-        // L'attività può arrivare come AirtableActivity (con .fields) o ActivityData (flat)
-        const activityFields = (activity as any).fields || activity;
-        
-        const initialData: ActivityFormData = {
-          Tipo: activityFields.Tipo || 'Chiamata',
-          Stato: activityFields.Stato || 'Da Pianificare',
-          Obiettivo: activityFields.Obiettivo,
-          Priorità: activityFields.Priorità || 'Media',
-          Data: activityFields.Data,
-          'Durata stimata': activityFields['Durata stimata'],
-          'ID Lead': activityFields['ID Lead'] || [],
-          Assegnatario: activityFields.Assegnatario || [],
-          Note: activityFields.Note,
-          Esito: activityFields.Esito,
-          'Prossima azione': activityFields['Prossima azione'],
-          'Data prossima azione': activityFields['Data prossima azione'],
-          Allegati: activityFields.Allegati,
-        };
-        
-        console.log('[EditActivity] Pre-loading activity data:', initialData);
+        // Edit mode: mappa campi API (english snake_case) → form (nomi italiani)
+        const initialData = mapApiToForm(activity);
         form.reset(initialData);
       } else {
         // Creation mode: gestisci draft e lead preselezionato
@@ -169,7 +214,6 @@ export function NewActivityModal({
             localStorage.setItem(DRAFT_TIMESTAMP_KEY, Date.now().toString());
             lastSavedDataRef.current = currentDataString;
             setDraftSaved(true);
-            console.log('💾 Bozza attività salvata automaticamente');
             
             // Remove indicator after 2 seconds
             setTimeout(() => setDraftSaved(false), 2000);
@@ -237,20 +281,40 @@ export function NewActivityModal({
     formChangedRef.current = false;
   };
 
+  const handleReset = () => {
+    // Resetta il form ai valori di default
+    form.reset(DEFAULT_ACTIVITY_DATA);
+    
+    // Resetta anche lo step corrente
+    setCurrentStep(1);
+    
+    // Se c'è un lead preselezionato, reimpostalo
+    if (prefilledLeadId) {
+      form.setValue('ID Lead', [prefilledLeadId]);
+    }
+    
+    // Rimuovi bozza se in modalità creazione
+    if (!isEditMode) {
+      clearDraft();
+    }
+    
+    toast.success('Form azzerato', {
+      description: 'Tutti i campi sono stati resettati ai valori di default.',
+    });
+  };
+
   // 🤖 Funzione per gestire le automazioni post-creazione attività
-  const handleActivityAutomations = async (activityData: ActivityFormData, createdActivity?: any) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleActivityAutomations = async (activityData: ActivityFormData, _createdActivity?: any) => {
     try {
-      console.log('🎆 [AUTOMATIONS] Avvio automazioni post-attività:', { activityData, createdActivity });
       
       const leadIds = activityData['ID Lead'];
       if (!leadIds || leadIds.length === 0) {
-        console.log('⚠️ [AUTOMATIONS] Nessun lead collegato, skip automazioni');
         return;
       }
       
-      // Per ogni lead collegato all'attività
+      // Per ogni lead collegato all&apos;attività
       for (const leadId of leadIds) {
-        console.log(`🔄 [AUTOMATIONS] Processando lead: ${leadId}`);
         
         // 🚀 AUTOMAZIONE 1: Assegnazione automatica assegnatario
         await handleLeadAssigneeAutomation(leadId, activityData);
@@ -262,7 +326,6 @@ export function NewActivityModal({
         await handleNextActivityCreation(leadId, activityData);
       }
       
-      console.log('✅ [AUTOMATIONS] Automazioni completate con successo');
     } catch (error) {
       console.error('❌ [AUTOMATIONS] Errore durante automazioni:', error);
       // Non bloccare il flusso principale per errori di automazione
@@ -272,10 +335,9 @@ export function NewActivityModal({
   // 👤 Automazione assegnazione assegnatario lead
   const handleLeadAssigneeAutomation = async (leadId: string, activityData: ActivityFormData) => {
     try {
-      const activityAssignee = activityData.Assegnatario?.[0]; // Primo assegnatario dell'attività
+      const activityAssignee = activityData.Assegnatario?.[0]; // Primo assegnatario dell&apos;attività
       
       if (!activityAssignee) {
-        console.log('👤 [LEAD ASSIGNEE] Nessun assegnatario nell\'attività, skip');
         return;
       }
       
@@ -288,23 +350,19 @@ export function NewActivityModal({
       
       const leadData = await leadResponse.json();
       const lead = leadData.lead;
-      const currentAssignee = lead.Assegnatario?.[0]; // Primo assegnatario del lead
-      
-      console.log('👤 [LEAD ASSIGNEE] Lead:', leadId, '- Attuale:', currentAssignee, '- Attività:', activityAssignee);
+      const currentAssignee = lead.assigned_to?.[0];
       
       // SCENARIO 1: Lead senza assegnatario → assegna automaticamente
       if (!currentAssignee) {
-        console.log('✅ [LEAD ASSIGNEE] Lead senza assegnatario, assegnazione automatica a:', activityAssignee);
-        
         const updateResponse = await fetch(`/api/leads/${leadId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ Assegnatario: [activityAssignee] }),
+          body: JSON.stringify({ assigned_to: [activityAssignee] }),
         });
         
         if (updateResponse.ok) {
           toast.success('Assegnatario aggiornato', {
-            description: `Il lead è stato assegnato automaticamente a ${activityAssignee}.`,
+            description: `Il lead è stato assegnato automaticamente.`,
           });
         } else {
           console.error('❌ [LEAD ASSIGNEE] Errore aggiornamento assegnatario');
@@ -314,14 +372,11 @@ export function NewActivityModal({
       
       // SCENARIO 2: Lead con assegnatario diverso → chiedi conferma
       if (currentAssignee !== activityAssignee) {
-        console.log('⚠️ [LEAD ASSIGNEE] Assegnatario diverso, richiesta conferma cambio');
-        
-        // Mostra dialog di conferma
         const confirmed = await new Promise<boolean>((resolve) => {
           toast(
             `Cambiare assegnatario del lead?`,
             {
-              description: `Il lead è assegnato a ${currentAssignee}. Vuoi cambiarlo a ${activityAssignee}?`,
+              description: `Il lead ha già un assegnatario. Vuoi cambiarlo?`,
               action: {
                 label: 'Sì, cambia',
                 onClick: () => resolve(true),
@@ -330,7 +385,7 @@ export function NewActivityModal({
                 label: 'No, mantieni',
                 onClick: () => resolve(false),
               },
-              duration: 10000, // 10 secondi per decidere
+              duration: 10000,
             }
           );
         });
@@ -339,24 +394,19 @@ export function NewActivityModal({
           const updateResponse = await fetch(`/api/leads/${leadId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Assegnatario: [activityAssignee] }),
+            body: JSON.stringify({ assigned_to: [activityAssignee] }),
           });
           
           if (updateResponse.ok) {
-            toast.success('Assegnatario cambiato', {
-              description: `Il lead è stato riassegnato da ${currentAssignee} a ${activityAssignee}.`,
-            });
+            toast.success('Assegnatario cambiato');
           } else {
             console.error('❌ [LEAD ASSIGNEE] Errore cambio assegnatario');
           }
-        } else {
-          console.log('❌ [LEAD ASSIGNEE] Utente ha scelto di mantenere l\'assegnatario esistente');
         }
         return;
       }
       
       // SCENARIO 3: Stesso assegnatario → nessuna azione
-      console.log('✅ [LEAD ASSIGNEE] Assegnatario già corretto, nessuna azione necessaria');
       
     } catch (error) {
       console.error('❌ [LEAD ASSIGNEE] Errore durante automazione assegnatario:', error);
@@ -371,79 +421,51 @@ export function NewActivityModal({
       
       // Solo per attività completate
       if (Stato !== 'Completata') {
-        console.log(`🔄 [LEAD STATE] Attività non completata (${Stato}), skip cambio stato`);
         return;
       }
       
       let newLeadState: string | null = null;
       
-      // 🚀 Regola 1: Primo contatto riuscito: Nuovo → Contattato
-      // Esiti accettabili: contatto stabilito o interesse dimostrato
+      // 🚀 Regola 1: Primo contatto riuscito → Contattato
       if (Obiettivo === 'Primo contatto' && [
-        'Contatto riuscito',
-        'Molto interessato',
-        'Interessato',
+        'Da ricontattare',
+        'Qualificato',
         'Appuntamento fissato',
       ].includes(Esito || '')) {
         newLeadState = 'Contattato';
-        console.log(`🟢 [LEAD STATE] Primo contatto (${Esito}) → Contattato`);
       }
-      // 🚀 Regola 2: Qualificazione lead: Contattato → Qualificato
-      // Esiti accettabili: qualsiasi feedback positivo o raccolta info
-      else if (Obiettivo === 'Qualificazione lead' && [
-        'Informazioni raccolte',
-        'Contatto riuscito',
-        'Molto interessato',
-        'Interessato',
-        'Preventivo richiesto',
-      ].includes(Esito || '')) {
+      // 🚀 Regola 2: Qualificazione completata → Qualificato
+      else if (Obiettivo === 'Qualificazione' && Esito === 'Qualificato') {
         newLeadState = 'Qualificato';
-        console.log(`🟡 [LEAD STATE] Qualificazione (${Esito}) → Qualificato`);
       }
-      // 🚀 Regola 3: Presentazione prodotto con interesse: Contattato → Qualificato
-      // Se presenti il prodotto e mostrano interesse, qualifica
-      else if (Obiettivo === 'Presentazione prodotto' && [
-        'Molto interessato',
-        'Interessato',
-        'Preventivo richiesto',
-      ].includes(Esito || '')) {
-        newLeadState = 'Qualificato';
-        console.log(`🟡 [LEAD STATE] Presentazione prodotto (${Esito}) → Qualificato`);
-      }
-      // 🆕 Regola 4: Preventivo inviato/richiesto → In Negoziazione (PRIORITÀ ALTA)
-      // Qualsiasi attività con "Preventivo inviato" o "Preventivo richiesto" porta a In Negoziazione
-      // INDIPENDENTEMENTE dall'obiettivo (può essere Consulenza, Follow-up, ecc.)
-      else if ([
+      // 🚀 Regola 3: Presentazione con esito positivo → Qualificato
+      else if (Obiettivo === 'Presentazione' && [
+        'Qualificato',
         'Preventivo inviato',
-        'Preventivo richiesto',
       ].includes(Esito || '')) {
-        newLeadState = 'In Negoziazione';
-        console.log(`🟣 [LEAD STATE] ${Obiettivo || 'Qualsiasi'} (${Esito}) → In Negoziazione`);
+        newLeadState = 'Qualificato';
       }
-      // 🆕 Regola 5: Appuntamento fissato → In Negoziazione
-      // Qualsiasi attività con "Appuntamento fissato" porta a In Negoziazione
+      // 🚀 Regola 4: Preventivo inviato → In Negoziazione
+      else if (Esito === 'Preventivo inviato') {
+        newLeadState = 'In Negoziazione';
+      }
+      // 🚀 Regola 5: Appuntamento fissato → In Negoziazione
       else if (Esito === 'Appuntamento fissato') {
         newLeadState = 'In Negoziazione';
-        console.log(`🟣 [LEAD STATE] ${Obiettivo || 'Qualsiasi'} (Appuntamento fissato) → In Negoziazione`);
       }
-      // 🚀 Regola 6: Ordine confermato: (qualsiasi) → Cliente
-      // Qualsiasi attività con ordine confermato converte in cliente
+      // 🚀 Regola 6: Ordine confermato → Cliente
       else if (Esito === 'Ordine confermato') {
         newLeadState = 'Cliente';
-        console.log('🟢 [LEAD STATE] Ordine confermato → Cliente');
       }
-      // 🚀 Regola 7: Follow-up negativo: (qualsiasi) → Perso
-      // Se definitivamente non interessato, marca come perso
+      // 🚀 Regola 7: Non interessato / Opportunità persa → Chiuso
       else if ([
         'Non interessato',
         'Opportunità persa',
       ].includes(Esito || '')) {
-        newLeadState = 'Perso';
-        console.log(`🔴 [LEAD STATE] Esito negativo (${Esito}) → Perso`);
+        newLeadState = 'Chiuso';
       }
       
       if (newLeadState) {
-        console.log(`🔄 [LEAD STATE] Aggiornamento lead ${leadId} a stato: ${newLeadState}`);
         
         // 🚀 SALVATAGGIO OTTIMISTICO: Aggiorna immediatamente l'UI
         if (onSuccess) {
@@ -456,7 +478,6 @@ export function NewActivityModal({
             _isLoading: true
           };
           
-          console.log(`🚀 [OPTIMISTIC LEAD] Notificando cambio stato ottimistico:`, optimisticLeadUpdate);
           onSuccess(optimisticLeadUpdate);
         }
         
@@ -471,11 +492,10 @@ export function NewActivityModal({
         const response = await fetch(`/api/leads/${leadId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ Stato: newLeadState }),
+          body: JSON.stringify({ status: newLeadState }),
         });
         
         if (response.ok) {
-          console.log(`✅ [LEAD STATE] Lead ${leadId} aggiornato a ${newLeadState}`);
           
           // 🔄 CONFERMA DELL'AGGIORNAMENTO OTTIMISTICO
           if (onSuccess) {
@@ -487,14 +507,13 @@ export function NewActivityModal({
               _isLoading: false
             };
             
-            console.log(`✅ [OPTIMISTIC LEAD CONFIRMED] Confermando cambio stato:`, confirmedLeadUpdate);
             onSuccess(confirmedLeadUpdate);
           }
           
           // Toast di successo finale
           toast.success(`Stato lead aggiornato automaticamente`, {
             id: toastId, // Sostituisce il toast di loading
-            description: `Il lead è stato spostato in stato \"${newLeadState}\" in base al risultato dell'attività.`,
+            description: `Il lead è stato spostato in stato \"${newLeadState}\" in base al risultato dell&apos;attività.`,
           });
           
         } else {
@@ -509,7 +528,6 @@ export function NewActivityModal({
               _shouldRollback: true
             };
             
-            console.log(`❌ [OPTIMISTIC LEAD ROLLBACK] Rollback cambio stato:`, rollbackLeadUpdate);
             onSuccess(rollbackLeadUpdate);
           }
           
@@ -533,7 +551,6 @@ export function NewActivityModal({
           error: error
         };
         
-        console.log(`❌ [OPTIMISTIC LEAD ERROR] Rollback per errore:`, errorRollback);
         onSuccess(errorRollback);
       }
     }
@@ -548,57 +565,49 @@ export function NewActivityModal({
       } = activityData;
       
       if (!prossimaAzione || prossimaAzione.trim() === '') {
-        console.log('📅 [NEXT ACTIVITY] Nessuna prossima azione specificata, skip');
         return;
       }
       
-      console.log(`📅 [NEXT ACTIVITY] Creazione prossima attività: ${prossimaAzione}`);
       
       // Determina lo stato della prossima attività in base alla presenza di data/ora
-      let statoNuovaAttivita = 'Da Pianificare';
+      let statoNuovaAttivita = 'Da fare';
       let dataNuovaAttivita = undefined;
       
       if (dataProssimaAzione) {
-        statoNuovaAttivita = 'Pianificata';
+        statoNuovaAttivita = 'Da fare';
         dataNuovaAttivita = new Date(dataProssimaAzione).toISOString();
-        console.log(`📅 [NEXT ACTIVITY] Con data specifica → Stato: ${statoNuovaAttivita}`);
-      } else {
-        console.log(`📅 [NEXT ACTIVITY] Senza data specifica → Stato: ${statoNuovaAttivita}`);
       }
       
-      // Mappa la prossima azione al tipo di attività corretto
+      // Mappa la prossima azione ai tipi attività
       const mappazioneProxAttivita = {
         'Chiamata': 'Chiamata',
-        'WhatsApp': 'WhatsApp', 
+        'Messaggistica': 'Messaggistica',
         'Email': 'Email',
-        'SMS': 'SMS',
         'Consulenza': 'Consulenza',
         'Follow-up': 'Follow-up',
-        'Nessuna': 'Chiamata', // Default per \"Nessuna\"
+        'Altro': 'Altro',
       } as const;
       
       // Tipo di attività basato sulla prossima azione
       const tipoAttivita = mappazioneProxAttivita[prossimaAzione as keyof typeof mappazioneProxAttivita] || 'Chiamata';
       
-      // Prepara dati per la prossima attività
-      const newActivityData = {
+      // Prepara dati per la prossima attività (formato form → API)
+      const nextFormData: Partial<ActivityFormData> = {
         Tipo: tipoAttivita,
         Stato: statoNuovaAttivita,
-        Priorità: 'Media',
+        'Priorit\u00e0': 'Media',
         'ID Lead': [leadId],
         Assegnatario: activityData.Assegnatario,
-        Note: `Follow-up: ${prossimaAzione}`,
         ...(dataNuovaAttivita && { Data: dataNuovaAttivita }),
+        ...(activityData['Note prossima azione'] && { Note: activityData['Note prossima azione'] }),
       };
-      
-      // Usa hook createActivity (già gestisce optimistic updates e rollback)
-      console.log(`📝 [NEXT ACTIVITY] Creando prossima attività con hook...`);
-      const createdActivity = await createActivity(newActivityData);
+      const nextApiData = mapFormToApi(nextFormData as ActivityFormData);
+
+      const createdActivity = await createActivity(nextApiData);
       
       if (createdActivity) {
-        console.log(`✅ [NEXT ACTIVITY] Prossima attività creata:`, createdActivity.id);
         toast.success('Prossima attività creata automaticamente', {
-          description: `È stata creata l'attività "${tipoAttivita}" per il follow-up "${prossimaAzione}".`,
+          description: `È stata creata l&apos;attività "${tipoAttivita}" per il follow-up "${prossimaAzione}".`,
         });
         
         // Notifica opzionale al parent component
@@ -621,72 +630,57 @@ export function NewActivityModal({
   };
 
   const onSubmit = async (data: ActivityFormData) => {
-    console.log('🔵 [ONSUBMIT START] onSubmit function called');
-    console.log('🔵 [ONSUBMIT START] isEditMode:', isEditMode);
-    console.log('🔵 [ONSUBMIT START] data:', data);
-    
     setIsSubmitting(true);
     try {
-      // ⚠️ IMPORTANTE: Rimuovi campi che non esistono su Airtable
-      const { 
-        'Obiettivo prossima azione': _removed, 
-        ...cleanData 
+      // Rimuovi campi non validi e mappa a formato API Postgres
+      const {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        'Obiettivo prossima azione': _removed,
+        ...cleanData
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } = data as any;
-      
-      console.log('✅ [Activity Modal] Dati puliti:', cleanData);
-      
-      // Usa hook con optimistic updates (CRITICAL-001 pattern)
-      let createdActivityResult: AirtableActivity | null = null;
-      
+
+      const apiData = mapFormToApi(cleanData as ActivityFormData);
+
+      let createdActivityResult: Activity | null = null;
+
       if (isEditMode) {
-        const success = await updateActivity(cleanData);
+        const success = await updateActivity(apiData);
         if (!success) {
           throw new Error("Errore durante l'aggiornamento dell'attività");
         }
       } else {
-        createdActivityResult = await createActivity(cleanData);
+        createdActivityResult = await createActivity(apiData);
         if (!createdActivityResult) {
           throw new Error("Errore durante la creazione dell'attività");
         }
       }
-      
-      // Success
+
       const activityTitle = `${data.Tipo}${data.Obiettivo ? ` - ${data.Obiettivo}` : ''}`;
-      if (createdActivityResult) {
-        console.log(`✅ [Activity Modal] Created activity:`, createdActivityResult.id);
-      } else {
-        console.log(`✅ [Activity Modal] Updated activity`);
-      }
-      
       const successMessage = isEditMode ? 'aggiornata' : 'creata';
       const successAction = isEditMode ? 'aggiornata' : 'aggiunta al CRM';
       toast.success(`Attività ${successMessage} con successo!`, {
         description: `L'attività "${activityTitle}" è stata ${successAction}.`,
       });
-      
-      // Clear draft after successful submission
+
       if (!isEditMode) {
         clearDraft();
       }
-      
-      // Callback onSuccess (solo per automazioni/notifiche, non serve ricostruzione dati)
+
       if (onSuccess && createdActivityResult) {
         onSuccess({
           id: createdActivityResult.id,
           _isMainActivity: true
         });
       }
-      
-      // Esegui automazioni (lead state, next activity)
+
+      // Automazioni usano dati form originali (nomi italiani)
       await handleActivityAutomations(data, createdActivityResult);
-      
-      // Close modal
+
       onOpenChange(false);
-      
     } catch (error) {
-      console.error('❌ [Activity Modal] Error:', error);
+      console.error('[Activity Modal] Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
-      
       const errorType = isEditMode ? "l'aggiornamento" : "la creazione";
       toast.error(`Errore durante ${errorType} dell'attività`, {
         description: errorMessage,
@@ -764,6 +758,7 @@ export function NewActivityModal({
   };
 
   // Step validation functions
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const validateCurrentStep = async () => {
     switch (currentStep) {
       case 1: // Informazioni Base
@@ -806,6 +801,7 @@ export function NewActivityModal({
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const canSubmit = async () => {
     // Check if required fields for step 1 are filled
     const tipo = form.watch('Tipo');
@@ -837,7 +833,7 @@ export function NewActivityModal({
                 const lead = leadId ? leads.find(l => l.id === leadId) : null;
                 return (
                   <AvatarLead
-                    nome={lead?.fields?.Nome || ''}
+                    nome={lead?.name || ''}
                     size="lg"
                     
                     className="w-10 h-10"
@@ -889,12 +885,24 @@ export function NewActivityModal({
               <CurrentStepComponent 
                 form={form} 
                 prefilledLeadId={prefilledLeadId}
+                isEditMode={isEditMode}
                 {...(currentStep === 4 && isEditMode && activity?.id ? { activityId: activity.id } : {})}
               />
               
               {/* Action Buttons */}
               <div className="flex justify-between border-t pt-4 mt-6">
                 <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReset}
+                    disabled={isSubmitting}
+                    title="Azzera tutti i campi"
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -930,48 +938,8 @@ export function NewActivityModal({
                   ) : (
                     <Button
                       type="button"
-                      onClick={() => {
-                        console.log('🔴 [BUTTON CLICK] Aggiorna/Crea Attività clicked');
-                        console.log('🔴 [BUTTON CLICK] isEditMode:', isEditMode);
-                        console.log('🔴 [BUTTON CLICK] isSubmitting:', isSubmitting);
-                        console.log('🔴 [BUTTON CLICK] activity:', activity);
-                        console.log('🔴 [BUTTON CLICK] onSuccess callback:', onSuccess);
-                        console.log('🔴 [BUTTON CLICK] Form errors:', errors);
-                        console.log('🔴 [BUTTON CLICK] Form isValid:', isValid);
-                        
-                        try {
-                          console.log('🔴 [BUTTON CLICK] About to call handleSubmit...');
-                          const formValues = form.getValues();
-                          console.log('🔴 [BUTTON CLICK] Current form values:', formValues);
-                          console.log('🔴 [BUTTON CLICK] Form errors before submit:', form.formState.errors);
-                          
-                          // 🔴 BYPASS TEMPORANEO: Chiamiamo onSubmit direttamente senza validazione
-                          console.log('🟡 [BYPASS] Calling onSubmit directly without validation for debug');
-                          onSubmit(formValues as any);
-                          
-                          // Codice originale commentato per debug
-                          // const submitResult = handleSubmit(
-                          //   (data) => {
-                          //     console.log('🔴 [HANDLESUBMIT SUCCESS] Form is valid, calling onSubmit with data:', data);
-                          //     onSubmit(data);
-                          //   },
-                          //   (errors) => {
-                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form validation failed:', errors);
-                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form state errors:', form.formState.errors);
-                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form values at error:', form.getValues());
-                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form isValid:', form.formState.isValid);
-                          //     console.error('🔴 [HANDLESUBMIT ERROR] Form isDirty:', form.formState.isDirty);
-                          //   }
-                          // );
-                          // console.log('🔴 [BUTTON CLICK] handleSubmit returned:', submitResult);
-                          // submitResult();
-                          // console.log('🔴 [BUTTON CLICK] Submit function called successfully');
-                        } catch (error) {
-                          console.error('🔴 [BUTTON CLICK] ERROR in handleSubmit:', error);
-                        }
-                      }}
+                      onClick={handleSubmit(onSubmit)}
                       disabled={isSubmitting || (() => {
-                        // Solo i campi essenziali devono essere validi per abilitare il submit
                         const tipo = form.watch('Tipo');
                         const idLead = form.watch('ID Lead');
                         return !tipo || !idLead || idLead.length === 0;
@@ -997,7 +965,7 @@ export function NewActivityModal({
           <DialogHeader>
             <DialogTitle>Salvare come bozza?</DialogTitle>
             <DialogDescription>
-              Hai inserito dei dati per l'attività. Vuoi salvare i dati come bozza per poterli ripristinare in seguito?
+              Hai inserito dei dati per l&apos;attività. Vuoi salvare i dati come bozza per poterli ripristinare in seguito?
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col space-y-3">

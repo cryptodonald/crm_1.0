@@ -35,39 +35,29 @@ export function AINotesField({
     setIsRewriting(true);
     
     try {
-      const response = await fetch('/api/ai/rewrite-notes', {
+      const response = await fetch('/api/ai/rewrite', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          notes: value,
-          maxLength,
+          text: value,
+          context: 'note_attivita',
+          tone: 'concise',
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('❌ [AI Notes] API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
         throw new Error(errorData.error || errorData.details || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('✅ [AI Notes] Response data:', data);
-      console.log('📝 [AI Notes] Original length:', data.originalLength, '-> New length:', data.newLength);
       
-      if (data.rewrittenNotes) {
-        console.log('🔄 [AI Notes] Calling onChange with:', data.rewrittenNotes.substring(0, 100) + '...');
-        onChange(data.rewrittenNotes);
+      if (data.rewrittenText) {
+        onChange(data.rewrittenText);
         toast.success('Note riscritte con successo', {
-          description: `Originale: ${data.originalLength} caratteri → Nuovo: ${data.newLength} caratteri`,
+          description: `Originale: ${data.originalLength} caratteri → Nuovo: ${data.rewrittenLength} caratteri`,
         });
       } else {
-        console.error('❌ [AI Notes] Missing rewrittenNotes in response');
         throw new Error('Risposta non valida dal server');
       }
     } catch (error) {
