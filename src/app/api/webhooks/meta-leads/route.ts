@@ -7,6 +7,7 @@ import {
 } from '@/lib/meta-leads';
 import { createLead } from '@/lib/postgres';
 import type { LeadCreateInput } from '@/types/database';
+import { Resend } from 'resend';
 
 // ============================================================================
 // GET /api/webhooks/meta-leads
@@ -133,6 +134,11 @@ export async function POST(request: NextRequest) {
             `[Meta Webhook] Lead created: ${lead.id} - ${lead.name} (${lead.email || 'no email'})`
           );
           processedCount++;
+
+          // 9. Send email notification (fire & forget — don't block webhook)
+          sendNewLeadNotification(mapped).catch((err) =>
+            console.error('[Meta Webhook] Email notification failed:', err)
+          );
         } catch (err) {
           console.error(`[Meta Webhook] Error processing leadgen ${leadgenId}:`, err);
           // Continue processing other leads even if one fails
@@ -155,4 +161,51 @@ export async function POST(request: NextRequest) {
     // Still return 200 to prevent Meta from retrying on parse errors
     return NextResponse.json({ received: true, error: 'Processing error' }, { status: 200 });
   }
+}
+
+// ============================================================================
+// Email Notification
+// ============================================================================
+
+interface NotificationLead {
+  name: string;
+  phone: string | null;
+  email: string | null;
+  city: string | null;
+  needs: string | null;
+  source_id: string | null;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  '40f088af-9a33-4107-817f-f293bd417345': 'Facebook',
+  '00ee8f45-b184-41b9-b6a0-e1eeca312831': 'Instagram',
+};
+
+async function sendNewLeadNotification(lead: NotificationLead): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const notifyEmail = process.env.NOTIFY_EMAIL;
+  if (!apiKey || !notifyEmail) return;
+
+  const resend = new Resend(apiKey);
+  const source = lead.source_id ? (SOURCE_LABELS[lead.source_id] || 'Meta') : 'Meta';
+  const now = new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
+
+  await resend.emails.send({
+    from: 'Doctorbed CRM <noreply@crm.doctorbed.com>',
+    to: notifyEmail,
+    subject: `🆕 Nuovo lead: ${lead.name} (${source})`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 500px;">
+        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Nuovo lead da ${source}</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr><td style="padding: 8px 0; color: #666;">Nome</td><td style="padding: 8px 0; font-weight: bold;">${lead.name}</td></tr>
+          ${lead.phone ? `<tr><td style="padding: 8px 0; color: #666;">Telefono</td><td style="padding: 8px 0;"><a href="tel:${lead.phone}">${lead.phone}</a></td></tr>` : ''}
+          ${lead.email ? `<tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;"><a href="mailto:${lead.email}">${lead.email}</a></td></tr>` : ''}
+          ${lead.city ? `<tr><td style="padding: 8px 0; color: #666;">Città</td><td style="padding: 8px 0;">${lead.city}</td></tr>` : ''}
+          ${lead.needs ? `<tr><td style="padding: 8px 0; color: #666;">Esigenza</td><td style="padding: 8px 0;">${lead.needs}</td></tr>` : ''}
+        </table>
+        <p style="color: #999; font-size: 12px; margin-top: 16px;">${now} — Doctorbed CRM</p>
+      </div>
+    `,
+  });
 }
