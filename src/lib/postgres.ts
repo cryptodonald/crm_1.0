@@ -62,7 +62,7 @@ function getPool(): Pool {
       connectionTimeoutMillis: 10000, // Reduce timeout after warm-up
       statement_timeout: 30000,
       ssl: {
-        rejectUnauthorized: false,
+        rejectUnauthorized: true, // Supabase requires proper SSL validation
       },
     });
 
