@@ -135,10 +135,13 @@ export async function POST(request: NextRequest) {
           );
           processedCount++;
 
-          // 9. Send email notification (fire & forget — don't block webhook)
-          sendNewLeadNotification(mapped).catch((err) =>
-            console.error('[Meta Webhook] Email notification failed:', err)
-          );
+          // 9. Send email notification
+          try {
+            await sendNewLeadNotification(mapped);
+            console.log('[Meta Webhook] Email notification sent');
+          } catch (emailErr) {
+            console.error('[Meta Webhook] Email notification failed:', emailErr);
+          }
         } catch (err) {
           console.error(`[Meta Webhook] Error processing leadgen ${leadgenId}:`, err);
           // Continue processing other leads even if one fails
