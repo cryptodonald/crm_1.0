@@ -184,6 +184,11 @@ const SOURCE_LABELS: Record<string, string> = {
   '00ee8f45-b184-41b9-b6a0-e1eeca312831': 'Instagram',
 };
 
+/** Escape HTML special chars to prevent rendering issues */
+function esc(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 async function sendNewLeadNotification(lead: NotificationLead): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   const notifyEmail = process.env.NOTIFY_EMAIL;
@@ -192,22 +197,36 @@ async function sendNewLeadNotification(lead: NotificationLead): Promise<void> {
   const resend = new Resend(apiKey);
   const source = lead.source_id ? (SOURCE_LABELS[lead.source_id] || 'Meta') : 'Meta';
   const now = new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
+  const name = esc(lead.name);
+
+  const row = (label: string, value: string) =>
+    `<tr>
+      <td style="padding: 10px 12px; color: #888; font-size: 13px; width: 100px;">${label}</td>
+      <td style="padding: 10px 12px; color: #1a1a1a; font-size: 14px;">${value}</td>
+    </tr>`;
+
+  const rows = [
+    row('Nome', `<strong>${name}</strong>`),
+    lead.phone ? row('Telefono', `<a href="tel:${esc(lead.phone)}" style="color: #2563eb; text-decoration: none;">${esc(lead.phone)}</a>`) : '',
+    lead.email ? row('Email', `<a href="mailto:${esc(lead.email)}" style="color: #2563eb; text-decoration: none;">${esc(lead.email)}</a>`) : '',
+    lead.city ? row('Città', esc(lead.city)) : '',
+    lead.needs ? row('Esigenza', `<em>${esc(lead.needs)}</em>`) : '',
+  ].filter(Boolean).join('');
 
   await resend.emails.send({
     from: 'Doctorbed CRM <noreply@crm.doctorbed.app>',
     to: notifyEmail,
-    subject: `🆕 Nuovo lead: ${lead.name} (${source})`,
+    subject: `Nuovo lead da campagna Meta Ads - ${lead.name}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 500px;">
-        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Nuovo lead da ${source}</h2>
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 8px 0; color: #666;">Nome</td><td style="padding: 8px 0; font-weight: bold;">${lead.name}</td></tr>
-          ${lead.phone ? `<tr><td style="padding: 8px 0; color: #666;">Telefono</td><td style="padding: 8px 0;"><a href="tel:${lead.phone}">${lead.phone}</a></td></tr>` : ''}
-          ${lead.email ? `<tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;"><a href="mailto:${lead.email}">${lead.email}</a></td></tr>` : ''}
-          ${lead.city ? `<tr><td style="padding: 8px 0; color: #666;">Città</td><td style="padding: 8px 0;">${lead.city}</td></tr>` : ''}
-          ${lead.needs ? `<tr><td style="padding: 8px 0; color: #666;">Esigenza</td><td style="padding: 8px 0;">${lead.needs}</td></tr>` : ''}
+      <div style="font-family: -apple-system, Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+          <h2 style="color: #1a1a1a; margin: 0 0 4px 0; font-size: 18px;">Nuovo lead da campagna Meta Ads</h2>
+          <p style="color: #888; margin: 0; font-size: 13px;">Piattaforma: ${source} &middot; ${now}</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;">
+          ${rows}
         </table>
-        <p style="color: #999; font-size: 12px; margin-top: 16px;">${now} — Doctorbed CRM</p>
+        <p style="color: #bbb; font-size: 11px; margin-top: 16px; text-align: center;">Doctorbed CRM &middot; crm.doctorbed.app</p>
       </div>
     `,
   });
