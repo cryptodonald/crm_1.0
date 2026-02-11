@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = JSON.parse(rawBody);
+    console.log('[Webflow Webhook] Full payload:', JSON.stringify(payload, null, 2));
 
     // Webflow sends { data: { field: value } } for form submissions
     const data = payload.data || payload;
