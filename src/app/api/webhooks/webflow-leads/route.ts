@@ -272,38 +272,20 @@ async function sendNotification(lead: NotifLead): Promise<void> {
   if (!apiKey || !notifyEmail) return;
 
   const resend = new Resend(apiKey);
-  const now = new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
-  const name = esc(lead.name);
 
-  const row = (label: string, value: string) =>
-    `<tr>
-      <td style="padding: 10px 12px; color: #888; font-size: 13px; width: 100px;">${label}</td>
-      <td style="padding: 10px 12px; color: #1a1a1a; font-size: 14px;">${value}</td>
-    </tr>`;
-
-  const rows = [
-    row('Nome', `<strong>${name}</strong>`),
-    lead.phone ? row('Telefono', `<a href="tel:${esc(lead.phone)}" style="color: #2563eb; text-decoration: none;">${esc(lead.phone)}</a>`) : '',
-    lead.email ? row('Email', `<a href="mailto:${esc(lead.email)}" style="color: #2563eb; text-decoration: none;">${esc(lead.email)}</a>`) : '',
-    lead.city ? row('Città', esc(lead.city)) : '',
-lead.needs ? row('Esigenza', `<em>${esc(lead.needs)}</em>`) : '',
-  ].filter(Boolean).join('');
+  const lines = [
+    `Nome: ${lead.name}`,
+    lead.phone ? `Telefono: ${lead.phone}` : null,
+    lead.email ? `Email: ${lead.email}` : null,
+    lead.city ? `Città: ${lead.city}` : null,
+    lead.needs ? `Esigenza: ${lead.needs}` : null,
+  ].filter(Boolean).join('\n');
 
   await resend.emails.send({
     from: 'Doctorbed CRM <noreply@crm.doctorbed.app>',
     to: notifyEmail,
     subject: `Nuovo lead dal sito web - ${lead.name}`,
-    html: `
-      <div style="font-family: -apple-system, Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-        <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
-          <h2 style="color: #1a1a1a; margin: 0 0 4px 0; font-size: 18px;">Nuovo lead dal sito web</h2>
-          <p style="color: #888; margin: 0; font-size: 13px;">materassidoctorbed.com &middot; ${now}</p>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;">
-          ${rows}
-        </table>
-        <p style="color: #bbb; font-size: 11px; margin-top: 16px; text-align: center;">Doctorbed CRM &middot; crm.doctorbed.app</p>
-      </div>
-    `,
+    text: lines,
+    html: `<div style=\"font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto;\"><pre style=\"white-space: pre-wrap; font-size: 14px; color: #1a1a1a;\">${esc(lines)}</pre><p style=\"color:#bbb;font-size:11px;margin-top:12px;text-align:center;\">Doctorbed CRM · crm.doctorbed.app</p></div>`,
   });
 }
