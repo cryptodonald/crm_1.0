@@ -87,12 +87,12 @@ async function fetchAllFormLeads(
     `${GRAPH_API_BASE}/${FORM_ID}/leads?fields=id,created_time,field_data,platform&limit=25&access_token=${pageAccessToken}`;
 
   while (url) {
-    const response = await fetch(url);
-    if (!response.ok) {
-      const err = await response.text();
+    const res: Response = await fetch(url);
+    if (!res.ok) {
+      const err = await res.text();
       throw new Error(`Graph API error: ${err}`);
     }
-    const data = await response.json();
+    const data: { data?: MetaLeadData[]; paging?: { next?: string } } = await res.json();
     allLeads.push(...(data.data || []));
     url = data.paging?.next || null;
   }
