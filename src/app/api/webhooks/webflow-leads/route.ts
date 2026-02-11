@@ -4,12 +4,20 @@
  * Receives form submissions from materassidoctorbed.com,
  * deduplicates, normalizes, and creates leads in the CRM.
  *
- * Webflow webhook payload (form_submission trigger):
+ * Webflow V2 webhook payload (form_submission trigger):
  * {
- *   "_id": "...",
- *   "displayName": "Multi Step Form",
- *   "data": { "Nome": "...", "Cognome": "...", "Email": "...", ... }
+ *   "triggerType": "form_submission",
+ *   "payload": {
+ *     "name": "Multi Step Form",
+ *     "siteId": "...",
+ *     "data": { "Nome": "...", "Cognome": "...", "Email": "...", ... },
+ *     "submittedAt": "...",
+ *     "formId": "..."
+ *   }
  * }
+ *
+ * Signature: HMAC-SHA256 of "timestamp:body" using webhook secret.
+ * Headers: x-webflow-timestamp, x-webflow-signature
  *
  * Setup: Webflow → Site Settings → Webhooks → Form submission
  * URL: https://crm.doctorbed.app/api/webhooks/webflow-leads
@@ -36,6 +44,20 @@ function normalizePhone(raw: string): string {
   if (phone.startsWith('0039')) phone = '+39' + phone.slice(4);
   if (/^[03]/.test(phone) && !phone.startsWith('+')) phone = '+39' + phone;
   return phone;
+}
+
+/** Case-insensitive field lookup — tries exact match first, then lowercased */
+function getField(data: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    if (data[key] !== undefined && data[key] !== null) return String(data[key]).trim();
+  }
+  const entries = Object.entries(data);
+  for (const key of keys) {
+    const lc = key.toLowerCase();
+    const found = entries.find(([k]) => k.toLowerCase() === lc);
+    if (found && found[1] !== undefined && found[1] !== null) return String(found[1]).trim();
+  }
+  return '';
 }
 
 // ============================================================================
@@ -79,42 +101,82 @@ async function findExistingLead(
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify Webflow signature
+    // Verify Webflow signature (HMAC-SHA256 of "timestamp:body")
     const rawBody = await request.text();
     const secret = process.env.WEBFLOW_WEBHOOK_SECRET;
-    if (secret) {
-      const signature = request.headers.get('x-webflow-signature');
-      const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-      if (signature !== expected) {
-        console.error('[Webflow Webhook] Invalid signature');
+    const signature = request.headers.get('x-webflow-signature');
+    const timestamp = request.headers.get('x-webflow-timestamp');
+
+    if (secret && signature && timestamp) {
+      const signedPayload = `${timestamp}:${rawBody}`;
+      const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
+      try {
+        const valid = crypto.timingSafeEqual(
+          Buffer.from(expected, 'hex'),
+          Buffer.from(signature, 'hex')
+        );
+        if (!valid) {
+          console.error('[Webflow Webhook] Invalid signature');
+          return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+        }
+      } catch {
+        console.error('[Webflow Webhook] Signature comparison failed (format mismatch)');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+
+      // Reject requests older than 5 minutes (replay protection)
+      const age = Date.now() - Number(timestamp);
+      if (age > 300_000) {
+        console.error('[Webflow Webhook] Request too old:', age, 'ms');
+        return NextResponse.json({ error: 'Request expired' }, { status: 401 });
       }
     }
 
     const payload = JSON.parse(rawBody);
-    console.log('[Webflow Webhook] Full payload:', JSON.stringify(payload, null, 2));
+    console.log('[Webflow Webhook] Full payload:', JSON.stringify(payload));
 
-    // Webflow sends { data: { field: value } } for form submissions
-    const data = payload.data || payload;
+    // DEBUG: email the raw payload so we can see exact structure
+    try {
+      const debugKey = process.env.RESEND_API_KEY;
+      const debugEmail = process.env.NOTIFY_EMAIL;
+      if (debugKey && debugEmail) {
+        const r = new Resend(debugKey);
+        await r.emails.send({
+          from: 'Doctorbed CRM <noreply@crm.doctorbed.app>',
+          to: debugEmail,
+          subject: '[DEBUG] Webflow raw payload',
+          html: `<pre style="font-size:12px;white-space:pre-wrap;">${JSON.stringify(payload, null, 2).replace(/</g, '&lt;')}</pre>`,
+        });
+      }
+    } catch (_) { /* ignore */ }
 
-    // Extract fields (Webflow field names from the form)
-    const nome = (data['Nome'] || '').trim();
-    const cognome = (data['Cognome'] || '').trim();
+    // Webflow V2: { triggerType, payload: { name, siteId, data: {...} } }
+    const formData: Record<string, unknown> =
+      (payload.payload?.data as Record<string, unknown>)
+      || (payload.data as Record<string, unknown>)
+      || payload;
+
+    console.log('[Webflow Webhook] Form data keys:', Object.keys(formData));
+
+    // Extract fields (case-insensitive, tries multiple possible names)
+    const nome = getField(formData, 'Nome', 'nome', 'name', 'First Name');
+    const cognome = getField(formData, 'Cognome', 'cognome', 'Last Name');
     const rawName = [nome, cognome].filter(Boolean).join(' ');
     const name = rawName ? toTitleCase(rawName) : 'Lead Sito (senza nome)';
 
-    const rawPhone = (data['Telefono'] || '').trim();
+    const rawPhone = getField(formData, 'Telefono', 'telefono', 'Phone', 'Phone Number');
     const phone = rawPhone ? (normalizePhone(rawPhone) || null) : null;
 
-    const email = (data['Email'] || '').trim() || null;
+    const email = getField(formData, 'Email', 'email') || null;
 
-    const rawCity = (data['Città'] || data['Citt'] || data['city'] || '').trim();
+    const rawCity = getField(formData, 'Città', 'Citt', 'city', 'Citta', 'città');
     const city = rawCity ? toTitleCase(rawCity) : null;
 
-    // Build needs from form selections
-    const scelta = (data['Scelta'] || data['Materasso-scelte'] || data['materasso'] || '').trim();
-    const note = (data['Note'] || '').trim();
-    const needsParts = [scelta, note].filter(Boolean);
+    // Build needs from form selections + notes
+    const scelta = getField(formData, 'Scelta', 'scelta', 'Materasso-scelte', 'materasso');
+    const materasso = getField(formData, 'materasso', 'Materasso-scelte', 'Materasso');
+    const note = getField(formData, 'Note', 'note', 'notes', 'Messaggio');
+    const needsParts = [...new Set([scelta, materasso, note].filter(Boolean))];
     const needs = needsParts.length > 0 ? needsParts.join(' — ') : null;
 
     // Check for duplicates
