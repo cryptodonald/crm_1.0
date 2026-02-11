@@ -124,20 +124,66 @@ export async function fetchLeadData(
 }
 
 // ============================================================================
+// Normalization Helpers
+// ============================================================================
+
+/** Title Case: "mario rossi" → "Mario Rossi" */
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/(?:^|\s|')\S/g, (ch) => ch.toUpperCase());
+}
+
+/**
+ * Normalize Italian phone numbers.
+ * - Strip non-digit chars (keep leading +)
+ * - 0039 → +39
+ * - Bare 3xx/0x → prepend +39
+ * - Format: +39 XXX XXX XXXX
+ */
+function normalizePhone(raw: string): string {
+  let phone = raw.replace(/[^\d+]/g, '');
+
+  if (phone.startsWith('0039')) {
+    phone = '+39' + phone.slice(4);
+  }
+  if (/^[03]/.test(phone) && !phone.startsWith('+')) {
+    phone = '+39' + phone;
+  }
+  if (phone.startsWith('+39') && phone.length >= 12) {
+    const local = phone.slice(3);
+    return `+39 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
+  }
+  return phone;
+}
+
+// ============================================================================
 // Field Mapping: Meta → CRM
 // ============================================================================
+
+// Standard fields (already mapped to specific CRM columns — skip for needs)
+const STANDARD_FIELD_KEYS = new Set([
+  'full_name', 'nome_e_cognome', 'nome', 'first_name', 'last_name',
+  'email', 'phone_number', 'numero_di_telefono', 'telefono',
+  'city', 'città', 'citta',
+  'street_address', 'indirizzo',
+  'zip_code', 'post_code', 'cap', 'postal_code',
+  'gender', 'sesso',
+]);
 
 /**
  * Map Meta Lead Ads field_data to CRM lead schema.
  * 
- * Common Meta field names:
- * - full_name, first_name, last_name
- * - email
- * - phone_number
- * - city
- * - street_address
- * - zip_code / post_code
- * - Custom fields (depend on form configuration)
+ * Modulo "Consulenza Doctorbed New" fields:
+ *  - nome_e_cognome (FULL_NAME)
+ *  - numero_di_telefono (PHONE)
+ *  - città (CITY)
+ *  - cosa_stai_cercando? (CUSTOM → needs)
+ *  - qual_è_la_tua_esigenza_principale? (CUSTOM → needs)
+ *  - che_posizione_assumi_prevalentemente_quando_dormi? (CUSTOM → needs)
+ *  - che_livello_di_rigidità_preferisci? (CUSTOM → needs)
+ *
+ * All non-standard (custom) fields are concatenated into `needs`.
  */
 export function mapMetaFieldsToLead(
   metaData: MetaLeadData,
@@ -153,30 +199,65 @@ export function mapMetaFieldsToLead(
     }
   }
 
-  // Build name from available fields
-  const fullName = fields.get('full_name') 
+  // ── Name (Title Case) ──────────────────────────────────────────────
+  const rawName = fields.get('full_name')
     || fields.get('nome_e_cognome')
     || fields.get('nome')
     || [fields.get('first_name'), fields.get('last_name')]
         .filter(Boolean)
         .join(' ')
     || 'Lead Meta (senza nome)';
+  const fullName = rawName.startsWith('<test lead:') ? rawName : toTitleCase(rawName);
 
-  // Parse postal code as integer
-  const postalCodeRaw = fields.get('zip_code') 
-    || fields.get('post_code') 
+  // ── Phone (normalized Italian) ─────────────────────────────────────
+  const rawPhone = fields.get('phone_number')
+    || fields.get('numero_di_telefono')
+    || fields.get('telefono')
+    || null;
+  const phone = rawPhone ? normalizePhone(rawPhone) : null;
+
+  // ── City (Title Case) ──────────────────────────────────────────────
+  const rawCity = fields.get('city')
+    || fields.get('città')
+    || fields.get('citta')
+    || null;
+  const city = rawCity && !rawCity.startsWith('<test lead:') ? toTitleCase(rawCity) : rawCity;
+
+  // ── Postal Code ────────────────────────────────────────────────────
+  const postalCodeRaw = fields.get('zip_code')
+    || fields.get('post_code')
     || fields.get('cap')
     || fields.get('postal_code');
   const postalCode = postalCodeRaw ? parseInt(postalCodeRaw, 10) : null;
 
+  // ── Needs: all custom fields → concatenated ────────────────────────
+  // Labels for human-readable output
+  const CUSTOM_LABELS: Record<string, string> = {
+    'cosa_stai_cercando?': 'Cerca',
+    'qual_è_la_tua_esigenza_principale?': 'Esigenza',
+    'che_posizione_assumi_prevalentemente_quando_dormi?': 'Posizione',
+    'che_livello_di_rigidità_preferisci?': 'Rigidità',
+  };
+
+  const needsParts: string[] = [];
+  for (const [key, value] of fields.entries()) {
+    if (STANDARD_FIELD_KEYS.has(key)) continue;
+    // Skip test lead dummy data
+    if (value.startsWith('<test lead:')) continue;
+
+    const label = CUSTOM_LABELS[key];
+    needsParts.push(label ? `${label}: ${value}` : value);
+  }
+  const needs = needsParts.length > 0 ? needsParts.join(' | ') : null;
+
   return {
     name: fullName,
     email: fields.get('email') || null,
-    phone: fields.get('phone_number') || fields.get('telefono') || null,
-    city: fields.get('city') || fields.get('città') || fields.get('citta') || null,
+    phone,
+    city,
     address: fields.get('street_address') || fields.get('indirizzo') || null,
     postal_code: postalCode && !isNaN(postalCode) ? postalCode : null,
-    needs: fields.get('needs') || fields.get('esigenze') || fields.get('messaggio') || fields.get('note') || null,
+    needs,
     gender: fields.get('gender') || fields.get('sesso') || null,
     source_id: sourceId,
     status: 'Nuovo',
