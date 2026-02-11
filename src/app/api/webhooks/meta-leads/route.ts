@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
         try {
           // 5. Fetch full lead data from Graph API
           const metaLeadData = await fetchLeadData(leadgenId, pageAccessToken);
+          console.log('[Meta Webhook] Raw field_data:', JSON.stringify(metaLeadData.field_data));
 
           // 6. Map Meta fields → CRM schema (async: AI rewrites needs)
           const mapped = await mapMetaFieldsToLead(metaLeadData, sourceId);
