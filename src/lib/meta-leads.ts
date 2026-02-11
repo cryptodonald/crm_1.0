@@ -151,10 +151,6 @@ function normalizePhone(raw: string): string {
   if (/^[03]/.test(phone) && !phone.startsWith('+')) {
     phone = '+39' + phone;
   }
-  if (phone.startsWith('+39') && phone.length >= 12) {
-    const local = phone.slice(3);
-    return `+39 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
-  }
   return phone;
 }
 
