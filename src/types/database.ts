@@ -52,7 +52,6 @@ export interface Lead {
 
 export type LeadStatus = 
   | 'Nuovo'
-  | 'Attivo'
   | 'Contattato'
   | 'Qualificato'
   | 'In Negoziazione'

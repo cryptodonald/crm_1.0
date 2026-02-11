@@ -16,9 +16,10 @@ export const LeadStatusEnum = z.enum([
   'Nuovo',
   'Contattato',
   'Qualificato',
+  'In Negoziazione',
   'Cliente',
-  'Chiuso',
   'Sospeso',
+  'Chiuso',
 ]);
 
 /**

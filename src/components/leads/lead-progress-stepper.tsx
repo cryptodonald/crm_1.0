@@ -85,8 +85,8 @@ const FINAL_STATES = {
     bgColor: 'bg-yellow-100',
     icon: Hourglass 
   },
-  Perso: { 
-    label: 'Perso', 
+  Chiuso: { 
+    label: 'Chiuso', 
     description: 'Opportunità chiusa',
     color: 'text-red-600', 
     bgColor: 'bg-red-100',
@@ -188,7 +188,7 @@ export function LeadProgressStepper({
                   // Colora linea in base allo stato finale se siamo all'ultimo step del funnel
                   index === FUNNEL_STEPS.length - 1 && activeStep === 5 && currentState === 'Cliente' && '!bg-green-500',
                   index === FUNNEL_STEPS.length - 1 && activeStep === 5 && currentState === 'Sospeso' && '!bg-yellow-500',
-                  index === FUNNEL_STEPS.length - 1 && activeStep === 5 && currentState === 'Perso' && '!bg-red-500',
+                  index === FUNNEL_STEPS.length - 1 && activeStep === 5 && currentState === 'Chiuso' && '!bg-red-500',
                   // Altrimenti usa il comportamento standard (verde per completati)
                   index !== FUNNEL_STEPS.length - 1 && 'group-data-[state=completed]/step:bg-green-500'
                 )} 
@@ -221,7 +221,7 @@ export function LeadProgressStepper({
                         isFinalState && finalStateConfig && '!ring-2 !ring-offset-2 !text-white',
                         currentState === 'Cliente' && '!bg-green-600',
                         currentState === 'Sospeso' && '!bg-yellow-600',
-                        currentState === 'Perso' && '!bg-red-600',
+                        currentState === 'Chiuso' && '!bg-red-600',
                         !isFinalState && 'bg-muted text-muted-foreground',
                       )}
                     >

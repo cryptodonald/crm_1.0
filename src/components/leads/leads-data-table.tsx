@@ -137,7 +137,7 @@ interface LeadsDataTableProps {
 // Stati disponibili (da database schema)
 function getStatiDisponibili(): string[] {
   // Direct return - stati dal DB Postgres
-  return ['Nuovo', 'Attivo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Chiuso', 'Sospeso'];
+  return ['Nuovo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Sospeso', 'Chiuso'];
 }
 
 // Configurazione colonne visibili

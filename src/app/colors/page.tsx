@@ -44,7 +44,7 @@ const PRESET_COLORS = [
 ];
 
 // Stati Lead (da schema Postgres)
-const LEAD_STATI = ['Nuovo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Chiuso', 'Sospeso'];
+const LEAD_STATI = ['Nuovo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Sospeso', 'Chiuso'];
 
 // Activity Types (Tipo)
 const ACTIVITY_TYPES = ['Chiamata', 'Email', 'WhatsApp', 'SMS', 'Consulenza', 'Follow-up', 'Altro'];

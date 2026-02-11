@@ -61,7 +61,7 @@ export function resetCacheMetrics() {
  * const leads = await cachedQuery(
  *   'leads:active',
  *   300, // 5 minuti
- *   async () => await getLeadsFromPostgres({ stato: 'Attivo' })
+ *   async () => await getLeadsFromPostgres({ stato: 'Contattato' })
  * );
  */
 export async function cachedQuery<T>(

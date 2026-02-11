@@ -15,13 +15,12 @@ export type BadgeColorMap = Record<string, string>;
  */
 export const DEFAULT_LEAD_STATUS_COLORS: BadgeColorMap = {
   'Nuovo': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  'Attivo': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
   'Contattato': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
   'Qualificato': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
   'In Negoziazione': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
   'Cliente': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
-  'Chiuso': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
   'Sospeso': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+  'Chiuso': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
 };
 
 /**

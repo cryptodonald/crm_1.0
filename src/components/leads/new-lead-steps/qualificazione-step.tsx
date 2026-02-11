@@ -64,7 +64,7 @@ export function QualificazioneStep({ form }: QualificazioneStepProps) {
   const { leads, isLoading: leadsLoading } = useLeads({ limit: 1000 });
 
   // Carica stati dinamicamente dallo schema
-  const leadStati = ['Nuovo', 'Attivo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Sospeso', 'Chiuso'];
+  const leadStati = ['Nuovo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Sospeso', 'Chiuso'];
 
   // Watch per valori selezionati
   const selectedAssegnatario = watch('AssignedTo');

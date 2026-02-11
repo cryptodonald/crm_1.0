@@ -90,7 +90,7 @@ export const leadFormSchema = z.object({
   CAP: z.number().optional(),
   Città: z.string().optional(),
   Esigenza: z.string().optional(),
-  Stato: z.enum(['Nuovo', 'Attivo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Sospeso', 'Chiuso']),
+  Stato: z.enum(['Nuovo', 'Contattato', 'Qualificato', 'In Negoziazione', 'Cliente', 'Sospeso', 'Chiuso']),
   Fonte: z.string().optional(),
   _fonteId: z.string().optional(),
   AssignedTo: z.array(z.string()).optional(),

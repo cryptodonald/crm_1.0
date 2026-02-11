@@ -8,11 +8,12 @@ import { Badge } from '@/components/ui/badge';
 function getLeadStatusColor(status: string): string {
   const colors: Record<string, string> = {
     'Nuovo': 'bg-blue-100 text-blue-800 border-blue-200',
-    'Attivo': 'bg-green-100 text-green-800 border-green-200',
+    'Contattato': 'bg-yellow-100 text-yellow-800 border-yellow-200',
     'Qualificato': 'bg-purple-100 text-purple-800 border-purple-200',
+    'In Negoziazione': 'bg-orange-100 text-orange-800 border-orange-200',
     'Cliente': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    'Sospeso': 'bg-amber-100 text-amber-800 border-amber-200',
     'Chiuso': 'bg-gray-100 text-gray-800 border-gray-200',
-    'Sospeso': 'bg-yellow-100 text-yellow-800 border-yellow-200',
   };
   return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
 }
