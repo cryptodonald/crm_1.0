@@ -60,6 +60,54 @@ function getField(data: Record<string, unknown>, ...keys: string[]): string {
   return '';
 }
 
+// AI rewrite (OpenRouter) similar to Meta leads
+async function aiRewriteNeeds(custom: Record<string, string>): Promise<string> {
+  // Fallback concatenation
+  const fallback = Object.values(custom).filter(Boolean).join(' — ');
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return fallback;
+
+  const bullet = Object.entries(custom)
+    .filter(([, v]) => v && v.trim().length > 0)
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join('\n');
+
+  try {
+    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://crm.doctorbed.app',
+        'X-Title': 'CRM Doctorbed - AI Rewrite',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        max_tokens: 150,
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Sei un assistente CRM. Riscrivi le risposte del modulo in UNA sola frase in italiano. '
+              + 'Usa solo le informazioni fornite. Non inventare. Terza persona: "Il cliente...".',
+          },
+          {
+            role: 'user',
+            content: `Dati modulo Webflow (interesse/motivo/opzioni/note):\n${bullet}`,
+          },
+        ],
+      }),
+    });
+
+    if (!resp.ok) return fallback;
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content?.trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // ============================================================================
 // Duplicate Check
 // ============================================================================
@@ -107,44 +155,34 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('x-webflow-signature');
     const timestamp = request.headers.get('x-webflow-timestamp');
 
-    // TODO: Re-enable signature verification after confirming payload structure
-    if (secret && signature && timestamp) {
-      const signedPayload = `${timestamp}:${rawBody}`;
-      const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
-      const sigMatch = signature === expected;
-      console.log('[Webflow Webhook] Signature check:', { sigMatch, signature: signature?.slice(0, 12) + '...', expected: expected.slice(0, 12) + '...' });
-      // Don't reject for now — just log
-    } else {
-      console.log('[Webflow Webhook] Signature headers:', { hasSecret: !!secret, hasSignature: !!signature, hasTimestamp: !!timestamp });
+if (secret && signature && timestamp) {
+  const signedPayload = `${timestamp}:${rawBody}`;
+  const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
+  try {
+    const valid = crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'));
+    if (!valid) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
+  } catch {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+  const age = Date.now() - Number(timestamp);
+  if (age > 300_000) {
+    return NextResponse.json({ error: 'Request expired' }, { status: 401 });
+  }
+} else if (process.env.NODE_ENV === 'production') {
+  return NextResponse.json({ error: 'Missing signature headers' }, { status: 401 });
+}
 
-    const payload = JSON.parse(rawBody);
-    console.log('[Webflow Webhook] Full payload:', JSON.stringify(payload));
+const payload = JSON.parse(rawBody);
 
-    // DEBUG: email the raw payload so we can see exact structure
-    try {
-      const debugKey = process.env.RESEND_API_KEY;
-      const debugEmail = process.env.NOTIFY_EMAIL;
-      if (debugKey && debugEmail) {
-        const r = new Resend(debugKey);
-        await r.emails.send({
-          from: 'Doctorbed CRM <noreply@crm.doctorbed.app>',
-          to: debugEmail,
-          subject: '[DEBUG] Webflow raw payload',
-          html: `<pre style="font-size:12px;white-space:pre-wrap;">${JSON.stringify(payload, null, 2).replace(/</g, '&lt;')}</pre>`,
-        });
-      }
-    } catch (_) { /* ignore */ }
-
-    // Webflow V2: { triggerType, payload: { name, siteId, data: {...} } }
+// Webflow V2: { triggerType, payload: { name, siteId, data: {...} } }
     const formData: Record<string, unknown> =
       (payload.payload?.data as Record<string, unknown>)
       || (payload.data as Record<string, unknown>)
       || payload;
 
-    console.log('[Webflow Webhook] Form data keys:', Object.keys(formData));
-
-    // Extract fields (case-insensitive, tries multiple possible names)
+// Extract fields (case-insensitive, tries multiple possible names)
     const nome = getField(formData, 'Nome', 'nome', 'name', 'First Name');
     const cognome = getField(formData, 'Cognome', 'cognome', 'Last Name');
     const rawName = [nome, cognome].filter(Boolean).join(' ');
@@ -158,12 +196,24 @@ export async function POST(request: NextRequest) {
     const rawCity = getField(formData, 'Città', 'Citt', 'city', 'Citta', 'città');
     const city = rawCity ? toTitleCase(rawCity) : null;
 
-    // Build needs from form selections + notes
-    const scelta = getField(formData, 'Scelta', 'scelta', 'Materasso-scelte', 'materasso');
-    const materasso = getField(formData, 'materasso', 'Materasso-scelte', 'Materasso');
-    const note = getField(formData, 'Note', 'note', 'notes', 'Messaggio');
-    const needsParts = [...new Set([scelta, materasso, note].filter(Boolean))];
-    const needs = needsParts.length > 0 ? needsParts.join(' — ') : null;
+// Build needs from form selections + notes (then AI rewrite)
+const scelta = getField(formData, 'Scelta', 'scelta'); // cosa è interessato
+const motivo = getField(formData, 'materasso', 'Motivo', 'motivo'); // motivo
+const motorizzato = getField(formData, 'motorizzato');
+const topper = getField(formData, 'topper');
+const note = getField(formData, 'Note', 'note', 'notes', 'Messaggio');
+
+let needs: string | null = null;
+const custom: Record<string, string> = {};
+if (scelta) custom['interesse'] = scelta;
+if (motivo) custom['motivo'] = motivo;
+if (motorizzato) custom['motorizzato'] = motorizzato;
+if (topper) custom['topper'] = topper;
+if (note) custom['note'] = note;
+
+if (Object.keys(custom).length > 0) {
+  needs = await aiRewriteNeeds(custom);
+}
 
     // Check for duplicates
     const existing = await findExistingLead(phone, email, name, city);
@@ -186,13 +236,12 @@ export async function POST(request: NextRequest) {
     const lead = await createLead(input);
     console.log(`[Webflow Webhook] Lead created: ${lead.id} - ${name}`);
 
-    // Send email notification
-    try {
-      await sendNotification({ name, phone, email, city, needs });
-      console.log('[Webflow Webhook] Email notification sent');
-    } catch (emailErr) {
-      console.error('[Webflow Webhook] Email failed:', emailErr);
-    }
+// Send email notification
+try {
+  await sendNotification({ name, phone, email, city, needs });
+} catch (emailErr) {
+  console.error('[Webflow Webhook] Email failed:', emailErr);
+}
 
     return NextResponse.json({ received: true, created: true, id: lead.id }, { status: 200 });
   } catch (error) {
@@ -237,7 +286,7 @@ async function sendNotification(lead: NotifLead): Promise<void> {
     lead.phone ? row('Telefono', `<a href="tel:${esc(lead.phone)}" style="color: #2563eb; text-decoration: none;">${esc(lead.phone)}</a>`) : '',
     lead.email ? row('Email', `<a href="mailto:${esc(lead.email)}" style="color: #2563eb; text-decoration: none;">${esc(lead.email)}</a>`) : '',
     lead.city ? row('Città', esc(lead.city)) : '',
-    lead.needs ? row('Richiesta', `<em>${esc(lead.needs)}</em>`) : '',
+lead.needs ? row('Esigenza', `<em>${esc(lead.needs)}</em>`) : '',
   ].filter(Boolean).join('');
 
   await resend.emails.send({
