@@ -281,11 +281,21 @@ async function sendNotification(lead: NotifLead): Promise<void> {
     lead.needs ? `Esigenza: ${lead.needs}` : null,
   ].filter(Boolean).join('\n');
 
+  const html = `
+    <div style="font-family: -apple-system, system-ui, Arial, sans-serif; color:#1a1a1a; font-size:14px; line-height:1.55; max-width: 560px; margin: 0 auto;">
+      Nome: ${esc(lead.name)}<br>
+      ${lead.phone ? `Telefono: ${esc(lead.phone)}<br>` : ''}
+      ${lead.email ? `Email: ${esc(lead.email)}<br>` : ''}
+      ${lead.city ? `Città: ${esc(lead.city)}<br>` : ''}
+      ${lead.needs ? `Esigenza: ${esc(lead.needs)}` : ''}
+      <div style="color:#bbb;font-size:11px;margin-top:12px;text-align:center;">Doctorbed CRM · crm.doctorbed.app</div>
+    </div>`;
+
   await resend.emails.send({
     from: 'Doctorbed CRM <noreply@crm.doctorbed.app>',
     to: notifyEmail,
     subject: `Nuovo lead dal sito web - ${lead.name}`,
     text: lines,
-    html: `<div style=\"font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto;\"><pre style=\"white-space: pre-wrap; font-size: 14px; color: #1a1a1a;\">${esc(lines)}</pre><p style=\"color:#bbb;font-size:11px;margin-top:12px;text-align:center;\">Doctorbed CRM · crm.doctorbed.app</p></div>`,
+    html,
   });
 }
