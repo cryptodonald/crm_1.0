@@ -224,7 +224,7 @@ export async function mapMetaFieldsToLead(
     || fields.get('numero_di_telefono')
     || fields.get('telefono')
     || null;
-  const phone = rawPhone ? normalizePhone(rawPhone) : null;
+  const phone = rawPhone ? (normalizePhone(rawPhone) || null) : null;
 
   // ── City (Title Case) ──────────────────────────────────────────────
   const rawCity = fields.get('city')
