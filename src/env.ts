@@ -78,6 +78,14 @@ const envSchema = z.object({
   GOOGLE_PLACES_API_KEY: z.string().optional(),
 
   // ========================================
+  // Meta Lead Ads (OPTIONAL)
+  // ========================================
+  META_APP_SECRET: z.string().optional(),
+  META_PAGE_ACCESS_TOKEN: z.string().optional(),
+  META_VERIFY_TOKEN: z.string().optional(),
+  META_SOURCE_ID: z.string().uuid().optional(),
+
+  // ========================================
   // Other
   // ========================================
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),

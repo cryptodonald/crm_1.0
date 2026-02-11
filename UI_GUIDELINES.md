@@ -498,4 +498,6 @@ Prima di creare nuovo componente UI:
 - `src/components/ui/` - Componenti shadcn installati
 - `tailwind.config.ts` - Configurazione Tailwind + design tokens
 - `src/types/leads-form.ts` - Zod schemas per forms
-- `AGENTS.md` - Sezione "Common Pitfalls & Fixes"
+- `AGENTS.md` - Patterns critici e business rules
+- `DATABASE_SCHEMA.md` - Schema DB completo (per capire i types delle form)
+- `SETUP.md` - Setup ambiente di sviluppo

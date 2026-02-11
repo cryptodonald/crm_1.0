@@ -7,17 +7,18 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 CRM 2.0 per Doctorbed con database **PostgreSQL** (Supabase). Migrato completamente da Airtable (Feb 2026).
 
 **Stack**:
-- Database: PostgreSQL 16 (Supabase) con Full-Text Search
+- Database: PostgreSQL 17.6 (Supabase) con Full-Text Search + pg_trgm
 - Cache: Upstash Redis  
 - Framework: Next.js 16 + TypeScript strict
 - Auth: NextAuth v4
 - Deploy: Vercel
 
 **Key Features**:
-- 11 tabelle normalizzate (leads, activities, notes, users, etc.)
-- FTS ottimizzato con GIN indices
-- 50+ indici per performance
+- 11 tabelle + 1 VIEW normalizzate (leads, activities, notes, users, etc.)
+- FTS con custom trigger functions + trigram fuzzy search (pg_trgm)
+- 59 indici per performance (GIN, partial, composite, DESC)
 - Schema completamente in English snake_case
+- Schema completo verificato: vedi `DATABASE_SCHEMA.md` e `schema.sql`
 
 ## Development Commands
 
@@ -209,22 +210,25 @@ Cache TTL strategy:
 
 ### Postgres Schema Reference
 
-**11 tabelle core** (vedi `DATABASE_SCHEMA.md` per dettagli completi):
-- **leads** (581 record): Core lead management con FTS
-- **activities** (~1500): Attività linked a leads
-- **notes** (~500): Note con highlight flag
-- **users** (2): System users (admin/sales)
-- **marketing_sources** (6): Lead sources (Meta, Instagram, Google)
-- **automations** (4): Workflow automation
-- **automation_triggers**, **automation_actions**, **automation_logs**
-- **tasks** (1): User tasks/todos
-- **user_preferences** (35): UI color customization
+**11 tabelle + 1 VIEW** (vedi `DATABASE_SCHEMA.md` per schema completo verificato via `pg_dump`):
+- **leads** (17 colonne): Core lead management con FTS + trigram search
+- **activities** (14 colonne): Attività linked a leads con FTS
+- **notes** (7 colonne): Note con pin flag
+- **users** (11 colonne): System users (admin/sales)
+- **marketing_sources** (6 colonne): Lead sources (Meta, Instagram, Google)
+- **automations** (11 colonne): Workflow automation
+- **automation_triggers**, **automation_actions**, **automation_logs** (RLS abilitato)
+- **tasks** (14 colonne): User tasks/todos
+- **user_preferences** (9 colonne): UI color customization
+- **dashboard_stats** (VIEW): Statistiche aggregate
 
 Key relationships:
-- Lead → Activities (1:N via `activities.lead_id`)
-- Lead → Notes (1:N via `notes.lead_id`)
-- Lead → MarketingSource (N:1 via `leads.source_id`)
-- Lead → Lead (self-reference via `leads.referral_lead_id` for referral chains)
+- Lead → Activities (1:N via `activities.lead_id`, CASCADE)
+- Lead → Notes (1:N via `notes.lead_id`, CASCADE)
+- Lead → MarketingSource (N:1 via `leads.source_id`, SET NULL)
+- Lead → Lead (self-reference via `leads.referral_lead_id`, SET NULL)
+
+> ⚠️ Le colonne `airtable_id` sono state droppate da tutte le tabelle. Migrazione completata.
 
 ### UI Parity Requirements
 
@@ -393,7 +397,8 @@ Retention: 1 year
 
 ### Reference Documentation
 
-- `DATABASE_SCHEMA.md`: Schema Postgres completo (11 tabelle, FK, indici, query examples)
+- `DATABASE_SCHEMA.md`: Schema Postgres completo verificato (11 tabelle + 1 VIEW, 59 indici, FK, FTS)
+- `schema.sql`: Dump schema per ricreazione DB (generato da `pg_dump`)
 - `UI_GUIDELINES.md`: Linee guida UI, componenti shadcn/ui, Radix UI, Tailwind patterns
 - `SETUP.md`: Setup completo nuovo ambiente di sviluppo
 - `src/types/database.ts`: TypeScript interfaces per tutte le tabelle
@@ -408,7 +413,7 @@ Retention: 1 year
 - **Styling**: Tailwind CSS v4
 - **UI Components**: Radix UI + shadcn/ui
 - **Auth**: NextAuth v4
-- **Database**: PostgreSQL 16 (Supabase)
+- **Database**: PostgreSQL 17.6 (Supabase)
 - **Cache**: Upstash Redis
 - **Storage**: Vercel Blob
 - **Deployment**: Vercel

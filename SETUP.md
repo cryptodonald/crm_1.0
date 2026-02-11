@@ -7,7 +7,7 @@ Setup completo per nuovo ambiente di sviluppo CRM 2.0.
 - **Node.js**: v20+ (LTS)
 - **npm**: v10+
 - **Git**: Per version control
-- **PostgreSQL**: Supabase account (database hosted)
+- **PostgreSQL**: Supabase account (database hosted, PG 17.6)
 - **Redis**: Upstash account (cache hosted)
 - **Vercel**: Account per deploy (opzionale per dev locale)
 
@@ -57,7 +57,7 @@ Dipendenze principali installate:
 - `next@16` - Framework
 - `react@19.2.3` - UI library
 - `typescript@5.x` - Type safety
-- `@vercel/postgres` - Database client
+- `pg@8.x` - PostgreSQL client
 - `@upstash/redis` - Cache client
 - `next-auth@4.x` - Authentication
 - `swr@2.x` - Data fetching
@@ -140,11 +140,12 @@ Il database PostgreSQL viene gestito su Supabase. Lo schema è già deployato.
 ### Verifica Database
 
 ```bash
-# Test connessione
-npm run db:test
+# Installa psql se non presente
+brew install libpq && brew link --force libpq
 
-# Oppure via psql (opzionale)
-psql "$POSTGRES_URL_NON_POOLING"
+# Test connessione
+export $(grep -v '^#' .env.local | grep POSTGRES_URL_NON_POOLING | head -1 | sed 's/"//g')
+psql "$POSTGRES_URL_NON_POOLING" -c "\dt public.*"
 ```
 
 ### Schema Overview
@@ -160,6 +161,20 @@ psql "$POSTGRES_URL_NON_POOLING"
 - `user_preferences` - UI customization
 
 Vedi `DATABASE_SCHEMA.md` per dettagli completi.
+
+### Ricreare lo Schema
+
+Il file `schema.sql` (nella root) contiene il dump completo dello schema generato da `pg_dump`.
+
+```bash
+# Export schema dal DB corrente
+pg_dump "$POSTGRES_URL_NON_POOLING" --schema-only --no-owner --no-privileges --schema=public -f schema.sql
+
+# Import schema su nuovo database
+psql "$NEW_DATABASE_URL" -f schema.sql
+```
+
+> ⚠️ Richiede le extensions `uuid-ossp` e `pg_trgm` (già presenti su Supabase).
 
 ## 5. Run Development Server
 
