@@ -194,7 +194,7 @@ async function sendNewLeadNotification(lead: NotificationLead): Promise<void> {
   const now = new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
 
   await resend.emails.send({
-    from: 'Doctorbed CRM <noreply@crm.doctorbed.com>',
+    from: 'Doctorbed CRM <noreply@crm.doctorbed.app>',
     to: notifyEmail,
     subject: `🆕 Nuovo lead: ${lead.name} (${source})`,
     html: `
