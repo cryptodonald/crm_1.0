@@ -16,6 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { createLead, queryOne } from '@/lib/postgres';
 import type { Lead, LeadCreateInput } from '@/types/database';
 import { Resend } from 'resend';
@@ -78,7 +79,19 @@ async function findExistingLead(
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await request.json();
+    // Verify Webflow signature
+    const rawBody = await request.text();
+    const secret = process.env.WEBFLOW_WEBHOOK_SECRET;
+    if (secret) {
+      const signature = request.headers.get('x-webflow-signature');
+      const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+      if (signature !== expected) {
+        console.error('[Webflow Webhook] Invalid signature');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+    }
+
+    const payload = JSON.parse(rawBody);
 
     // Webflow sends { data: { field: value } } for form submissions
     const data = payload.data || payload;
