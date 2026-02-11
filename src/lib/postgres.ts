@@ -46,10 +46,16 @@ let isWarmedUp = false;
 
 function getPool(): Pool {
   if (!pool) {
-    const connectionString = process.env.POSTGRES_URL;
+    let connectionString = process.env.POSTGRES_URL;
     
     if (!connectionString) {
       throw new Error('POSTGRES_URL environment variable not set');
+    }
+
+    // Ensure SSL mode is set for Supabase
+    if (!connectionString.includes('sslmode=')) {
+      const separator = connectionString.includes('?') ? '&' : '?';
+      connectionString = `${connectionString}${separator}sslmode=require`;
     }
 
     console.log('[Postgres] Initializing connection pool...');
@@ -62,7 +68,7 @@ function getPool(): Pool {
       connectionTimeoutMillis: 10000, // Reduce timeout after warm-up
       statement_timeout: 30000,
       ssl: {
-        rejectUnauthorized: true, // Supabase requires proper SSL validation
+        rejectUnauthorized: false, // Allow self-signed certs from Supabase
       },
     });
 
