@@ -141,53 +141,30 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Map fields using existing logic (includes AI rewrite for needs)
-        const mapped = await mapMetaFieldsToLead(metaLead, sourceId);
+        // Quick field extraction for duplicate check (NO AI call)
+        const fields = new Map<string, string>();
+        for (const f of metaLead.field_data) {
+          const v = f.values?.[0]?.trim();
+          if (v) fields.set(f.name.toLowerCase(), v);
+        }
+        const quickName = fields.get('nome_e_cognome') || fields.get('full_name') || 'Lead Meta';
+        const quickPhone = fields.get('numero_di_telefono') || fields.get('phone_number') || null;
+        const quickCity = fields.get('città') || fields.get('city') || null;
 
-        // Check for duplicate
-        const existing = await findExistingLead(mapped.name, mapped.phone, mapped.city);
+        // Check for duplicate BEFORE AI rewrite
+        const existing = await findExistingLead(quickName, quickPhone, quickCity);
         
         if (existing) {
-          // Update missing fields on existing lead if we have new data
-          const updates: Record<string, unknown> = {};
-          const updatedFields: string[] = [];
-
-          if (!existing.phone && mapped.phone) {
-            updates.phone = mapped.phone;
-            updatedFields.push('phone');
-          }
-          if (!existing.city && mapped.city) {
-            updates.city = mapped.city;
-            updatedFields.push('city');
-          }
-          if (!existing.needs && mapped.needs) {
-            updates.needs = mapped.needs;
-            updatedFields.push('needs');
-          }
-          if (!existing.source_id && mapped.source_id) {
-            updates.source_id = mapped.source_id;
-            updatedFields.push('source_id');
-          }
-
-          if (Object.keys(updates).length > 0) {
-            const setClauses = Object.keys(updates)
-              .map((key, i) => `${key} = $${i + 2}`)
-              .join(', ');
-            await query(
-              `UPDATE leads SET ${setClauses}, updated_at = NOW() WHERE id = $1`,
-              [existing.id, ...Object.values(updates)]
-            );
-            result.updated.push({ name: mapped.name, fields: updatedFields });
-          } else {
-            result.skipped_duplicate.push({
-              name: mapped.name,
-              reason: `matches existing: ${existing.name} (${existing.phone || existing.email || existing.id})`,
-            });
-          }
+          result.skipped_duplicate.push({
+            name: quickName,
+            reason: `matches: ${existing.name} (${existing.phone || existing.id})`,
+          });
           continue;
         }
 
-        // Create new lead
+        // Not a duplicate → full mapping with AI rewrite for needs
+        const mapped = await mapMetaFieldsToLead(metaLead, sourceId);
+
         const input: LeadCreateInput = {
           name: mapped.name,
           email: mapped.email ?? undefined,
