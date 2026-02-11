@@ -47,6 +47,7 @@ export interface MetaLeadData {
   }>;
   ad_id?: string;
   form_id?: string;
+  platform?: string; // 'fb' | 'ig' | 'messenger' | 'an'
 }
 
 export interface MappedLead {
@@ -106,7 +107,7 @@ export async function fetchLeadData(
   leadgenId: string,
   pageAccessToken: string
 ): Promise<MetaLeadData> {
-  const url = `${GRAPH_API_BASE}/${leadgenId}?access_token=${pageAccessToken}`;
+  const url = `${GRAPH_API_BASE}/${leadgenId}?fields=id,created_time,field_data,ad_id,form_id,platform&access_token=${pageAccessToken}`;
 
   const response = await fetch(url, {
     method: 'GET',
@@ -185,10 +186,19 @@ const STANDARD_FIELD_KEYS = new Set([
  *
  * All non-standard (custom) fields are concatenated into `needs`.
  */
+// Platform → marketing source ID mapping
+const PLATFORM_SOURCE_MAP: Record<string, string> = {
+  fb: '40f088af-9a33-4107-817f-f293bd417345',       // Meta
+  ig: '00ee8f45-b184-41b9-b6a0-e1eeca312831',       // Instagram
+};
+
 export async function mapMetaFieldsToLead(
   metaData: MetaLeadData,
-  sourceId: string | null
+  fallbackSourceId: string | null
 ): Promise<MappedLead> {
+  // Determine source from platform (fb/ig), fallback to META_SOURCE_ID
+  const sourceId = (metaData.platform && PLATFORM_SOURCE_MAP[metaData.platform])
+    || fallbackSourceId;
   const fields = new Map<string, string>();
 
   // Flatten field_data into a simple key-value map
