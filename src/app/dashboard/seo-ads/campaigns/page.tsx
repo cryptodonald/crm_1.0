@@ -47,33 +47,34 @@ const ITEMS_PER_PAGE = 20;
 
 // All available columns with labels
 type ColumnKey =
-  | 'campaign_name' | 'ad_group_name' | 'report_date'
+  | 'keyword' | 'campaign_name' | 'ad_group_name' | 'report_date'
   | 'impressions' | 'clicks' | 'ctr' | 'cpc' | 'cost' | 'conversions' | 'quality_score'
   | 'match_type' | 'keyword_status' | 'serving_status'
   | 'expected_ctr' | 'landing_page_exp' | 'ad_relevance'
   | 'campaign_type' | 'bid_strategy' | 'cost_per_conversion' | 'conversion_rate';
 
 const ALL_COLUMNS: { key: ColumnKey; label: string; defaultVisible: boolean; align?: 'right' }[] = [
+  { key: 'keyword', label: 'Keyword', defaultVisible: true },
   { key: 'campaign_name', label: 'Campagna', defaultVisible: true },
-  { key: 'ad_group_name', label: 'Ad Group', defaultVisible: true },
+  { key: 'ad_group_name', label: 'Ad Group', defaultVisible: false },
   { key: 'report_date', label: 'Data', defaultVisible: true },
+  { key: 'match_type', label: 'Match Type', defaultVisible: true },
+  { key: 'keyword_status', label: 'Stato', defaultVisible: true },
   { key: 'impressions', label: 'Impression', defaultVisible: true, align: 'right' },
   { key: 'clicks', label: 'Click', defaultVisible: true, align: 'right' },
   { key: 'ctr', label: 'CTR', defaultVisible: true, align: 'right' },
   { key: 'cpc', label: 'CPC', defaultVisible: true, align: 'right' },
   { key: 'cost', label: 'Costo', defaultVisible: true, align: 'right' },
   { key: 'conversions', label: 'Conv.', defaultVisible: true, align: 'right' },
+  { key: 'cost_per_conversion', label: 'Costo/Conv.', defaultVisible: true, align: 'right' },
+  { key: 'conversion_rate', label: 'Tasso Conv.', defaultVisible: true, align: 'right' },
   { key: 'quality_score', label: 'QS', defaultVisible: true, align: 'right' },
-  { key: 'match_type', label: 'Match Type', defaultVisible: false },
-  { key: 'keyword_status', label: 'Stato KW', defaultVisible: false },
+  { key: 'expected_ctr', label: 'CTR Atteso', defaultVisible: true },
+  { key: 'landing_page_exp', label: 'Landing Page', defaultVisible: true },
+  { key: 'ad_relevance', label: 'Rilevanza Ad', defaultVisible: true },
   { key: 'serving_status', label: 'Serving', defaultVisible: false },
-  { key: 'expected_ctr', label: 'CTR Atteso', defaultVisible: false },
-  { key: 'landing_page_exp', label: 'Landing Page', defaultVisible: false },
-  { key: 'ad_relevance', label: 'Rilevanza Ad', defaultVisible: false },
   { key: 'campaign_type', label: 'Tipo Camp.', defaultVisible: false },
   { key: 'bid_strategy', label: 'Strategia Bid', defaultVisible: false },
-  { key: 'cost_per_conversion', label: 'Costo/Conv.', defaultVisible: false, align: 'right' },
-  { key: 'conversion_rate', label: 'Tasso Conv.', defaultVisible: false, align: 'right' },
 ];
 
 export default function SeoCampaignsPage() {
@@ -285,26 +286,27 @@ export default function SeoCampaignsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {isCol('keyword') && <TableHead>Keyword</TableHead>}
                     {isCol('campaign_name') && <TableHead>Campagna</TableHead>}
                     {isCol('ad_group_name') && <TableHead>Ad Group</TableHead>}
                     {isCol('report_date') && <TableHead>Data</TableHead>}
+                    {isCol('match_type') && <TableHead>Match Type</TableHead>}
+                    {isCol('keyword_status') && <TableHead>Stato</TableHead>}
                     {isCol('impressions') && <TableHead className="text-right">Impression</TableHead>}
                     {isCol('clicks') && <TableHead className="text-right">Click</TableHead>}
                     {isCol('ctr') && <TableHead className="text-right">CTR</TableHead>}
                     {isCol('cpc') && <TableHead className="text-right">CPC</TableHead>}
                     {isCol('cost') && <TableHead className="text-right">Costo</TableHead>}
                     {isCol('conversions') && <TableHead className="text-right">Conv.</TableHead>}
+                    {isCol('cost_per_conversion') && <TableHead className="text-right">Costo/Conv.</TableHead>}
+                    {isCol('conversion_rate') && <TableHead className="text-right">Tasso Conv.</TableHead>}
                     {isCol('quality_score') && <TableHead className="text-right">QS</TableHead>}
-                    {isCol('match_type') && <TableHead>Match Type</TableHead>}
-                    {isCol('keyword_status') && <TableHead>Stato KW</TableHead>}
-                    {isCol('serving_status') && <TableHead>Serving</TableHead>}
                     {isCol('expected_ctr') && <TableHead>CTR Atteso</TableHead>}
                     {isCol('landing_page_exp') && <TableHead>Landing Page</TableHead>}
                     {isCol('ad_relevance') && <TableHead>Rilevanza Ad</TableHead>}
+                    {isCol('serving_status') && <TableHead>Serving</TableHead>}
                     {isCol('campaign_type') && <TableHead>Tipo Camp.</TableHead>}
                     {isCol('bid_strategy') && <TableHead>Strategia Bid</TableHead>}
-                    {isCol('cost_per_conversion') && <TableHead className="text-right">Costo/Conv.</TableHead>}
-                    {isCol('conversion_rate') && <TableHead className="text-right">Tasso Conv.</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -335,8 +337,13 @@ export default function SeoCampaignsPage() {
 
                         return (
                           <TableRow key={c.id}>
+                            {isCol('keyword') && (
+                              <TableCell className="font-medium max-w-[200px] truncate">
+                                {c.keyword ?? '—'}
+                              </TableCell>
+                            )}
                             {isCol('campaign_name') && (
-                              <TableCell className="font-medium max-w-[180px] truncate">
+                              <TableCell className="max-w-[160px] truncate">
                                 {c.campaign_name}
                               </TableCell>
                             )}
@@ -348,6 +355,18 @@ export default function SeoCampaignsPage() {
                             {isCol('report_date') && (
                               <TableCell className="whitespace-nowrap">
                                 {new Date(c.report_date).toLocaleDateString('it-IT')}
+                              </TableCell>
+                            )}
+                            {isCol('match_type') && (
+                              <TableCell>{c.match_type ?? '—'}</TableCell>
+                            )}
+                            {isCol('keyword_status') && (
+                              <TableCell>
+                                {c.keyword_status ? (
+                                  <Badge variant={c.keyword_status === 'ENABLED' ? 'primary' : 'secondary'}>
+                                    {c.keyword_status}
+                                  </Badge>
+                                ) : '—'}
                               </TableCell>
                             )}
                             {isCol('impressions') && (
@@ -380,6 +399,16 @@ export default function SeoCampaignsPage() {
                                 {c.conversions ?? '—'}
                               </TableCell>
                             )}
+                            {isCol('cost_per_conversion') && (
+                              <TableCell className="text-right">
+                                {c.cost_per_conversion_micros ? `€${microsToEuros(c.cost_per_conversion_micros)}` : '—'}
+                              </TableCell>
+                            )}
+                            {isCol('conversion_rate') && (
+                              <TableCell className="text-right">
+                                {c.conversion_rate ? formatPercent(c.conversion_rate, 2) : '—'}
+                              </TableCell>
+                            )}
                             {isCol('quality_score') && (
                               <TableCell className="text-right">
                                 {c.quality_score != null ? (
@@ -397,27 +426,6 @@ export default function SeoCampaignsPage() {
                                 ) : (
                                   '—'
                                 )}
-                              </TableCell>
-                            )}
-                            {isCol('match_type') && (
-                              <TableCell>{c.match_type ?? '—'}</TableCell>
-                            )}
-                            {isCol('keyword_status') && (
-                              <TableCell>
-                                {c.keyword_status ? (
-                                  <Badge variant={c.keyword_status === 'ENABLED' ? 'primary' : 'secondary'}>
-                                    {c.keyword_status}
-                                  </Badge>
-                                ) : '—'}
-                              </TableCell>
-                            )}
-                            {isCol('serving_status') && (
-                              <TableCell>
-                                {c.serving_status ? (
-                                  <Badge variant={c.serving_status === 'ELIGIBLE' ? 'primary' : 'destructive'}>
-                                    {c.serving_status}
-                                  </Badge>
-                                ) : '—'}
                               </TableCell>
                             )}
                             {isCol('expected_ctr') && (
@@ -447,21 +455,20 @@ export default function SeoCampaignsPage() {
                                 ) : '—'}
                               </TableCell>
                             )}
+                            {isCol('serving_status') && (
+                              <TableCell>
+                                {c.serving_status ? (
+                                  <Badge variant={c.serving_status === 'ELIGIBLE' ? 'primary' : 'destructive'}>
+                                    {c.serving_status}
+                                  </Badge>
+                                ) : '—'}
+                              </TableCell>
+                            )}
                             {isCol('campaign_type') && (
                               <TableCell>{c.campaign_type ?? '—'}</TableCell>
                             )}
                             {isCol('bid_strategy') && (
                               <TableCell>{c.bid_strategy ?? '—'}</TableCell>
-                            )}
-                            {isCol('cost_per_conversion') && (
-                              <TableCell className="text-right">
-                                {c.cost_per_conversion_micros ? `€${microsToEuros(c.cost_per_conversion_micros)}` : '—'}
-                              </TableCell>
-                            )}
-                            {isCol('conversion_rate') && (
-                              <TableCell className="text-right">
-                                {c.conversion_rate ? formatPercent(c.conversion_rate, 2) : '—'}
-                              </TableCell>
                             )}
                           </TableRow>
                         );
@@ -470,9 +477,12 @@ export default function SeoCampaignsPage() {
                       {/* Totals row */}
                       {campaigns.length > 1 && (
                         <TableRow className="bg-muted/50 font-semibold">
-                          {isCol('campaign_name') && <TableCell>Totale</TableCell>}
+                          {isCol('keyword') && <TableCell>Totale</TableCell>}
+                          {isCol('campaign_name') && <TableCell />}
                           {isCol('ad_group_name') && <TableCell />}
                           {isCol('report_date') && <TableCell />}
+                          {isCol('match_type') && <TableCell />}
+                          {isCol('keyword_status') && <TableCell />}
                           {isCol('impressions') && (
                             <TableCell className="text-right">
                               {formatNumber(totals.impressions)}
@@ -507,17 +517,15 @@ export default function SeoCampaignsPage() {
                               {formatNumber(totals.conversions)}
                             </TableCell>
                           )}
+                          {isCol('cost_per_conversion') && <TableCell />}
+                          {isCol('conversion_rate') && <TableCell />}
                           {isCol('quality_score') && <TableCell />}
-                          {isCol('match_type') && <TableCell />}
-                          {isCol('keyword_status') && <TableCell />}
-                          {isCol('serving_status') && <TableCell />}
                           {isCol('expected_ctr') && <TableCell />}
                           {isCol('landing_page_exp') && <TableCell />}
                           {isCol('ad_relevance') && <TableCell />}
+                          {isCol('serving_status') && <TableCell />}
                           {isCol('campaign_type') && <TableCell />}
                           {isCol('bid_strategy') && <TableCell />}
-                          {isCol('cost_per_conversion') && <TableCell />}
-                          {isCol('conversion_rate') && <TableCell />}
                         </TableRow>
                       )}
                     </>
