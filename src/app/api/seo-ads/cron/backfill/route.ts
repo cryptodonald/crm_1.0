@@ -95,6 +95,16 @@ export async function POST(request: NextRequest) {
               conversions: row.conversions || null,
               quality_score: row.quality_score,
               report_date: row.date, // Use actual date from Google Ads
+              match_type: row.match_type,
+              keyword_status: row.keyword_status,
+              serving_status: row.serving_status,
+              expected_ctr: row.expected_ctr,
+              landing_page_exp: row.landing_page_exp,
+              ad_relevance: row.ad_relevance,
+              campaign_type: row.campaign_type,
+              bid_strategy: row.bid_strategy,
+              cost_per_conversion_micros: row.cost_per_conversion_micros,
+              conversion_rate: row.conversion_rate,
             };
           })
           .filter((r): r is NonNullable<typeof r> => r !== null);

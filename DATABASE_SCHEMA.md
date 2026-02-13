@@ -1,8 +1,8 @@
 # CRM 2.0 Database Schema Documentation
 
-**Last Verified**: 2026-02-12 (via `pg_dump`)
+**Last Verified**: 2026-02-13
 **Database**: PostgreSQL 17.6 (Supabase)
-**Total Tables**: 14 + 1 VIEW
+**Total Tables**: 21 + 1 VIEW (14 CRM core + 7 SEO/Ads)
 **Project**: Doctorbed CRM
 
 ---
@@ -34,8 +34,18 @@
 | `google_calendars` | 12 | Synced Google Calendar metadata |
 | `calendar_events` | 17 | Calendar events (Google + CRM) |
 | `dashboard_stats` | VIEW | Statistiche aggregate (security_invoker) |
+| **SEO & Ads** | | |
+| `seo_keywords` | 8 | Keyword monitorate (cluster, priority, landing page) |
+| `seo_keyword_metrics` | 9 | Snapshot periodico volumi/CPC da Keyword Planner |
+| `seo_campaign_performance` | 22 | Performance Google Ads giornaliera a livello keyword |
+| `seo_organic_rankings` | 10 | Posizionamento organico da Search Console |
+| `seo_site_analytics` | 10 | Traffico GA4 per sorgente |
+| `seo_lead_attribution` | 14 | Attribuzione lead → keyword (ROI tracking) |
+| `seo_competitor_insights` | 9 | Auction insights competitor |
 
-**Totali**: 72+ indici, 20+ FK constraints, 13 triggers, 4 functions
+**Totali**: 80+ indici, 27+ FK constraints, 13 triggers, 4 functions
+
+> **Schema SEO dettagliato**: vedi `SEO_ADS_DASHBOARD_ARCHITECTURE.md` §3
 
 ---
 

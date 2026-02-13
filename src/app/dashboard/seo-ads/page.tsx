@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
@@ -37,10 +37,34 @@ export default function SeoAdsDashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [datePreset, setDatePreset] = useState<DatePreset>('30d');
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const { date_from, date_to } = presetToDates(datePreset);
   const { kpis, isLoading, isValidating, error, mutate } = useSeoDashboard(date_from, date_to);
-  const refreshing = isLoading || isValidating;
+  const refreshing = isLoading || isValidating || syncing;
+
+  // On-demand sync: calls Google Ads API then refreshes SWR
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const res = await fetch('/api/seo-ads/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date_from, date_to }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Sync failed (${res.status})`);
+      }
+      await mutate();
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Sincronizzazione fallita');
+    } finally {
+      setSyncing(false);
+    }
+  }, [date_from, date_to, mutate]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -93,13 +117,13 @@ export default function SeoAdsDashboardPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => mutate()}
+                  onClick={handleSync}
                   disabled={refreshing}
                 >
                   <RefreshCw
                     className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
                   />
-                  {refreshing ? 'Aggiornando...' : 'Aggiorna'}
+                  {syncing ? 'Sincronizzando...' : refreshing ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
               </div>
             </div>
@@ -108,11 +132,11 @@ export default function SeoAdsDashboardPage() {
             <SeoSubNav />
 
             {/* Error */}
-            {error && (
+            {(error || syncError) && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  {error.message || 'Errore nel caricamento dei dati SEO'}
+                  {syncError || error?.message || 'Errore nel caricamento dei dati SEO'}
                 </AlertDescription>
               </Alert>
             )}

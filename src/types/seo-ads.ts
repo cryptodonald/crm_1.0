@@ -102,6 +102,18 @@ export interface SeoCampaignPerformance {
   created_at: Timestamptz;
   updated_at: Timestamptz;
 
+  // Keyword-level detail fields (from Google Ads keyword_view)
+  match_type: string | null;         // BROAD, PHRASE, EXACT
+  keyword_status: string | null;     // ENABLED, PAUSED, REMOVED
+  serving_status: string | null;     // ELIGIBLE, RARELY_SERVED
+  expected_ctr: string | null;       // BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE
+  landing_page_exp: string | null;   // BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE
+  ad_relevance: string | null;       // BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE
+  campaign_type: string | null;      // SEARCH, PERFORMANCE_MAX, etc.
+  bid_strategy: string | null;       // MAXIMIZE_CONVERSIONS, TARGET_CPA, etc.
+  cost_per_conversion_micros: number; // bigint micros
+  conversion_rate: number;           // numeric(5,4)
+
   // Computed
   ctr?: number;              // clicks / impressions
   avg_cpc_micros?: number;   // cost_micros / clicks

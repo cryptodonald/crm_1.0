@@ -93,6 +93,17 @@ export interface AdsCampaignRow {
   conversions: number;
   quality_score: number | null;
   date: string; // YYYY-MM-DD
+  // New keyword-level fields
+  match_type: string | null;         // BROAD, PHRASE, EXACT
+  keyword_status: string | null;     // ENABLED, PAUSED, REMOVED
+  serving_status: string | null;     // ELIGIBLE, RARELY_SERVED
+  expected_ctr: string | null;       // BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE
+  landing_page_exp: string | null;   // BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE
+  ad_relevance: string | null;       // BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE
+  campaign_type: string | null;      // SEARCH, PERFORMANCE_MAX, etc.
+  bid_strategy: string | null;       // MAXIMIZE_CONVERSIONS, TARGET_CPA, etc.
+  cost_per_conversion_micros: number;
+  conversion_rate: number;
 }
 
 /**
@@ -114,34 +125,61 @@ export async function fetchCampaignPerformance(
   const results: any[] = await customer.query(`
     SELECT
       campaign.name,
+      campaign.advertising_channel_type,
+      campaign.bidding_strategy_type,
       ad_group.name,
       ad_group_criterion.keyword.text,
+      ad_group_criterion.keyword.match_type,
+      ad_group_criterion.status,
+      ad_group_criterion.system_serving_status,
+      ad_group_criterion.quality_info.quality_score,
+      ad_group_criterion.quality_info.search_predicted_ctr,
+      ad_group_criterion.quality_info.post_click_quality_score,
+      ad_group_criterion.quality_info.creative_quality_score,
       metrics.impressions,
       metrics.clicks,
       metrics.cost_micros,
       metrics.conversions,
-      ad_group_criterion.quality_info.quality_score,
+      metrics.cost_per_conversion,
+      metrics.conversions_from_interactions_rate,
       segments.date
     FROM keyword_view
     WHERE ${dateFilter}
       AND campaign.status = 'ENABLED'
       AND ad_group.status = 'ENABLED'
-      AND metrics.impressions > 0
     ORDER BY metrics.cost_micros DESC
     LIMIT 10000
   `);
 
-  return results.map((r) => ({
-    campaign_name: r.campaign?.name ?? '',
-    ad_group_name: r.ad_group?.name ?? '',
-    keyword_text: r.ad_group_criterion?.keyword?.text ?? '',
-    impressions: Number(r.metrics?.impressions ?? 0),
-    clicks: Number(r.metrics?.clicks ?? 0),
-    cost_micros: Number(r.metrics?.cost_micros ?? 0),
-    conversions: Number(r.metrics?.conversions ?? 0),
-    quality_score: r.ad_group_criterion?.quality_info?.quality_score ?? null,
-    date: r.segments?.date ?? dateFrom,
-  }));
+  return results.map((r) => {
+    const clicks = Number(r.metrics?.clicks ?? 0);
+    const impressions = Number(r.metrics?.impressions ?? 0);
+    const conversions = Number(r.metrics?.conversions ?? 0);
+    const costMicros = Number(r.metrics?.cost_micros ?? 0);
+
+    return {
+      campaign_name: r.campaign?.name ?? '',
+      ad_group_name: r.ad_group?.name ?? '',
+      keyword_text: r.ad_group_criterion?.keyword?.text ?? '',
+      impressions,
+      clicks,
+      cost_micros: costMicros,
+      conversions,
+      quality_score: r.ad_group_criterion?.quality_info?.quality_score ?? null,
+      date: r.segments?.date ?? dateFrom,
+      // New fields
+      match_type: r.ad_group_criterion?.keyword?.match_type ?? null,
+      keyword_status: r.ad_group_criterion?.status ?? null,
+      serving_status: r.ad_group_criterion?.system_serving_status ?? null,
+      expected_ctr: r.ad_group_criterion?.quality_info?.search_predicted_ctr ?? null,
+      landing_page_exp: r.ad_group_criterion?.quality_info?.post_click_quality_score ?? null,
+      ad_relevance: r.ad_group_criterion?.quality_info?.creative_quality_score ?? null,
+      campaign_type: r.campaign?.advertising_channel_type ?? null,
+      bid_strategy: r.campaign?.bidding_strategy_type ?? null,
+      cost_per_conversion_micros: Number(r.metrics?.cost_per_conversion ?? 0),
+      conversion_rate: Number(r.metrics?.conversions_from_interactions_rate ?? 0),
+    };
+  });
 }
 
 // ============================================================================

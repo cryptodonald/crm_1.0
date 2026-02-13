@@ -284,6 +284,8 @@ export async function getCampaignPerformance(
     clicks: Number(row.clicks),
     conversions: row.conversions != null ? Number(row.conversions) : null,
     quality_score: row.quality_score != null ? Number(row.quality_score) : null,
+    cost_per_conversion_micros: Number(row.cost_per_conversion_micros ?? 0),
+    conversion_rate: Number(row.conversion_rate ?? 0),
   }));
 
   return {
@@ -303,6 +305,17 @@ export async function upsertCampaignPerformance(
     conversions: number | null;
     quality_score: number | null;
     report_date: string;
+    // New fields (optional for backward compat with daily-sync)
+    match_type?: string | null;
+    keyword_status?: string | null;
+    serving_status?: string | null;
+    expected_ctr?: string | null;
+    landing_page_exp?: string | null;
+    ad_relevance?: string | null;
+    campaign_type?: string | null;
+    bid_strategy?: string | null;
+    cost_per_conversion_micros?: number;
+    conversion_rate?: number;
   }>
 ): Promise<number> {
   if (rows.length === 0) return 0;
@@ -313,8 +326,11 @@ export async function upsertCampaignPerformance(
       INSERT INTO seo_campaign_performance (
         keyword_id, campaign_name, ad_group_name,
         impressions, clicks, cost_micros, conversions, quality_score,
-        report_date, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        report_date, match_type, keyword_status, serving_status,
+        expected_ctr, landing_page_exp, ad_relevance,
+        campaign_type, bid_strategy, cost_per_conversion_micros, conversion_rate,
+        created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
       ON CONFLICT (keyword_id, campaign_name, ad_group_name, report_date)
       DO UPDATE SET
         impressions = EXCLUDED.impressions,
@@ -322,12 +338,26 @@ export async function upsertCampaignPerformance(
         cost_micros = EXCLUDED.cost_micros,
         conversions = EXCLUDED.conversions,
         quality_score = EXCLUDED.quality_score,
+        match_type = COALESCE(EXCLUDED.match_type, seo_campaign_performance.match_type),
+        keyword_status = COALESCE(EXCLUDED.keyword_status, seo_campaign_performance.keyword_status),
+        serving_status = COALESCE(EXCLUDED.serving_status, seo_campaign_performance.serving_status),
+        expected_ctr = COALESCE(EXCLUDED.expected_ctr, seo_campaign_performance.expected_ctr),
+        landing_page_exp = COALESCE(EXCLUDED.landing_page_exp, seo_campaign_performance.landing_page_exp),
+        ad_relevance = COALESCE(EXCLUDED.ad_relevance, seo_campaign_performance.ad_relevance),
+        campaign_type = COALESCE(EXCLUDED.campaign_type, seo_campaign_performance.campaign_type),
+        bid_strategy = COALESCE(EXCLUDED.bid_strategy, seo_campaign_performance.bid_strategy),
+        cost_per_conversion_micros = EXCLUDED.cost_per_conversion_micros,
+        conversion_rate = EXCLUDED.conversion_rate,
         updated_at = NOW()
     `;
     await query(sql, [
       row.keyword_id, row.campaign_name, row.ad_group_name,
       row.impressions, row.clicks, row.cost_micros,
       row.conversions, row.quality_score, row.report_date,
+      row.match_type ?? null, row.keyword_status ?? null, row.serving_status ?? null,
+      row.expected_ctr ?? null, row.landing_page_exp ?? null, row.ad_relevance ?? null,
+      row.campaign_type ?? null, row.bid_strategy ?? null,
+      row.cost_per_conversion_micros ?? 0, row.conversion_rate ?? 0,
     ]);
     inserted++;
   }

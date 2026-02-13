@@ -113,7 +113,7 @@ Snapshot periodico dei dati di mercato per keyword. Popolata da cron weekly.
 
 #### `seo_campaign_performance`
 
-Dati giornalieri di performance campagne Google Ads.
+Dati giornalieri di performance campagne Google Ads a livello keyword.
 
 | Colonna | Tipo | Nullable | Default | Note |
 |---------|------|----------|---------|------|
@@ -127,6 +127,16 @@ Dati giornalieri di performance campagne Google Ads.
 | `conversions` | integer | SÌ | | Conversioni tracciate |
 | `quality_score` | integer | SÌ | | 1-10 |
 | `report_date` | date | NO | | Data del report |
+| `match_type` | text | SÌ | | BROAD, PHRASE, EXACT |
+| `keyword_status` | text | SÌ | | ENABLED, PAUSED, REMOVED |
+| `serving_status` | text | SÌ | | ELIGIBLE, RARELY_SERVED |
+| `expected_ctr` | text | SÌ | | BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE |
+| `landing_page_exp` | text | SÌ | | BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE |
+| `ad_relevance` | text | SÌ | | BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE |
+| `campaign_type` | text | SÌ | | SEARCH, PERFORMANCE_MAX, DISPLAY, etc. |
+| `bid_strategy` | text | SÌ | | MAXIMIZE_CONVERSIONS, TARGET_CPA, etc. |
+| `cost_per_conversion_micros` | bigint | SÌ | `0` | Costo per conversione in micros |
+| `conversion_rate` | numeric(5,4) | SÌ | `0` | Tasso conversione (0.0000-1.0000) |
 | `created_at` | timestamptz | NO | `now()` | |
 | `updated_at` | timestamptz | NO | `now()` | |
 
@@ -136,6 +146,8 @@ Dati giornalieri di performance campagne Google Ads.
 - `idx_seo_campaign_perf_keyword_date` ON (`keyword_id`, `report_date` DESC)
 - `idx_seo_campaign_perf_date` ON (`report_date` DESC)
 - `idx_seo_campaign_perf_campaign` ON (`campaign_name`)
+- `idx_seo_campaign_perf_match_type` ON (`match_type`)
+- `idx_seo_campaign_perf_kw_status` ON (`keyword_status`)
 
 **Constraint:**
 - `seo_campaign_perf_qs_check`: `quality_score BETWEEN 1 AND 10 OR quality_score IS NULL`
