@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { ActivityFormData, ActivityStato, getActivityStatoColor } from '@/types/activities';
+import { ActivityFormData, ActivityStato, getActivityStatoColor, SYNC_TO_GOOGLE_DEFAULT_TYPES } from '@/types/activities';
 import {
   FormControl,
   FormField,
@@ -33,6 +33,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { Check, ChevronDown, ChevronDownIcon, User, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -60,9 +61,18 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
 
   const { control, setValue, watch } = form;
   const { users, loading: usersLoading } = useUsers();
+  const userToggledSyncRef = useRef(false);
 
   // Watch per valori selezionati
   const selectedAssegnatario = watch('Assegnatario');
+  const selectedTipo = watch('Tipo');
+
+  // Smart default: auto-set sync toggle based on activity type (unless user manually toggled)
+  useEffect(() => {
+    if (!userToggledSyncRef.current && selectedTipo) {
+      setValue('Sincronizza Google', SYNC_TO_GOOGLE_DEFAULT_TYPES.has(selectedTipo));
+    }
+  }, [selectedTipo, setValue]);
 
   // Convert users object to array
   const usersArray = users ? Object.values(users) : [];
@@ -244,6 +254,31 @@ export function ProgrammazioneStep({ form }: ProgrammazioneStepProps) {
             )}
           />
         </div>
+
+        {/* Sincronizzazione Google Calendar */}
+        <FormField
+          control={control}
+          name="Sincronizza Google"
+          render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <FormLabel className="text-sm font-medium">Sincronizza con Google Calendar</FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Crea un evento nel calendario Google collegato.
+                </p>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value ?? false}
+                  onCheckedChange={(checked) => {
+                    userToggledSyncRef.current = true;
+                    field.onChange(checked);
+                  }}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
         {/* Assegnatario - Sezione separata */}
         <div className="w-full">

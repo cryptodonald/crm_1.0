@@ -137,7 +137,7 @@ export function useUpdateActivity(id: string) {
 }
 
 /**
- * Hook: Delete activity mutation
+ * Hook: Delete activity mutation con optimistic updates (CRITICAL-001 pattern)
  * 
  * @example
  * const { deleteActivity, isDeleting, error } = useDeleteActivity();
@@ -153,22 +153,41 @@ export function useDeleteActivity() {
     setError(null);
 
     try {
+      // 1. Optimistic update — rimuovi immediatamente dalla UI (CRITICAL-001)
+      mutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/activities'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (current: any) => {
+          if (!current) return current;
+          if (Array.isArray(current)) {
+            return current.filter((act: Activity) => act.id !== id);
+          }
+          return current;
+        },
+        { revalidate: false },
+      );
+
+      // 2. API call reale
       const res = await fetch(`/api/activities/${id}`, {
         method: 'DELETE',
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to delete activity');
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to delete activity');
       }
 
-      // Invalidate all activity caches
+      // 3. Successo — revalidate per dati freschi dal server
       mutate((key) => typeof key === 'string' && key.startsWith('/api/activities'));
 
       return true;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
+
+      // 4. Rollback — re-fetch per ripristinare lo stato reale (CRITICAL-001)
+      mutate((key) => typeof key === 'string' && key.startsWith('/api/activities'));
+
       return false;
     } finally {
       setIsDeleting(false);

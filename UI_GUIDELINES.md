@@ -166,15 +166,42 @@ Componenti Radix più usati:
 - `@radix-ui/react-progress` - Progress bars
 - `@radix-ui/react-slider` - Sliders
 
-## Styling con Tailwind CSS
+## Styling con Tailwind CSS v4
 
-### Tailwind v4
+### Overview Tailwind v4
 
-CRM 2.0 usa **Tailwind CSS v4** (nuova versione).
+CRM 2.0 usa **Tailwind CSS v4** — una riscrittura completa rispetto a v3.
 
 **Documentazione**: https://tailwindcss.com/docs
 
-#### Utility Classes Comuni
+#### Differenze chiave da v3
+
+- **CSS-first configuration**: No `tailwind.config.ts`. Tutto configurato in `globals.css` via `@theme`, `@plugin`, `@custom-variant`
+- **`@import 'tailwindcss'`** sostituisce le vecchie direttive `@tailwind base/components/utilities`
+- **`@plugin`** per caricare plugin (es. `@plugin '@tailwindcss/typography'`)
+- **`@theme inline`** per definire design tokens direttamente in CSS
+- **`@custom-variant`** per varianti personalizzate (es. dark mode)
+- **Colori `oklch()`**: Spazio colore perceptually uniform (già usato nel progetto)
+- **Niente PurgeCSS manuale**: Content detection automatica
+
+#### Configurazione Attuale (`globals.css`)
+
+```css
+@import 'tailwindcss';          /* Core framework */
+@import 'tw-animate-css';       /* Animazioni */
+
+@plugin '@tailwindcss/typography'; /* Prose styling */
+
+@custom-variant dark (&:is(.dark *));  /* Dark mode variant */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-primary: var(--primary);
+  /* ... tutti i design tokens */
+}
+```
+
+### Utility Classes Comuni
 
 ```typescript
 // Layout
@@ -191,7 +218,7 @@ CRM 2.0 usa **Tailwind CSS v4** (nuova versione).
 <p className="text-sm font-medium text-muted-foreground">
 <h1 className="text-2xl font-bold tracking-tight">
 
-// Colors
+// Colors (usa SEMPRE design tokens, MAI colori hardcoded)
 <div className="bg-card text-card-foreground">
 <div className="bg-destructive text-destructive-foreground">
 <Button className="bg-primary hover:bg-primary/90">
@@ -205,13 +232,142 @@ CRM 2.0 usa **Tailwind CSS v4** (nuova versione).
 <div className="shadow-md">
 
 // Responsive
-<div className="hidden md:block">        // hidden on mobile, visible on tablet+
-<div className="flex-col md:flex-row">   // column on mobile, row on tablet+
+<div className="hidden md:block">        // hidden su mobile, visibile da tablet
+<div className="flex-col md:flex-row">   // colonna su mobile, riga da tablet
 ```
 
-#### Design Tokens
+### Funzionalità Nuove di Tailwind v4
 
-CRM 2.0 usa design tokens Tailwind per colori consistenti:
+#### 1. Container Queries (Built-in)
+
+Non serve plugin esterno. Utili per componenti responsive indipendenti dal viewport:
+
+```typescript
+// Definisci container
+<div className="@container">
+  {/* Responsive al container, non al viewport */}
+  <div className="@sm:flex-row flex-col">
+    <span className="@md:text-lg text-sm">Testo</span>
+  </div>
+</div>
+
+// Con container named
+<div className="@container/card">
+  <p className="@lg/card:text-xl">Responsive al card container</p>
+</div>
+```
+
+Breakpoints container: `@3xs` (8rem), `@2xs` (12rem), `@xs` (16rem), `@sm` (20rem), `@md` (24rem), `@lg` (28rem), `@xl` (32rem), `@2xl`–`@7xl`.
+
+**Uso nel CRM**: Ideale per card lead, sidebar panels, dashboard widgets che devono adattarsi al loro contenitore.
+
+#### 2. Typography Plugin (`@tailwindcss/typography`)
+
+Stilizza automaticamente contenuto HTML ricco (note, descrizioni, email) con la classe `prose`:
+
+```typescript
+// Base: contenuto ricco stilizzato automaticamente
+<div className="prose">
+  <h2>Titolo Nota</h2>
+  <p>Testo della nota con <strong>bold</strong> e <a href="#">link</a>.</p>
+  <ul>
+    <li>Punto 1</li>
+    <li>Punto 2</li>
+  </ul>
+</div>
+
+// Sizes
+<div className="prose prose-sm">   {/* Testo più piccolo */}
+<div className="prose prose-lg">   {/* Testo più grande */}
+
+// Dark mode
+<div className="prose dark:prose-invert">
+
+// Limita larghezza massima
+<div className="prose max-w-none">  {/* Rimuovi max-width default */}
+
+// Colori custom
+<div className="prose prose-neutral">  {/* Toni neutri (match design system) */}
+```
+
+**Uso nel CRM**: Per visualizzare note lead, contenuto email, descrizioni attività.
+
+#### 3. `text-wrap: balance` e `pretty`
+
+```typescript
+// Balance: distribuisce testo equamente su più righe (heading)
+<h1 className="text-balance text-2xl font-bold">Titolo lungo che va su più righe</h1>
+
+// Pretty: evita "orphans" (parole singole sull'ultima riga)
+<p className="text-pretty text-muted-foreground">Descrizione lunga del lead...</p>
+```
+
+**Uso nel CRM**: `text-balance` per titoli dashboard/card, `text-pretty` per descrizioni lead.
+
+#### 4. `field-sizing: content` (Auto-resize textarea)
+
+```typescript
+// Textarea che si ridimensiona automaticamente in base al contenuto
+<textarea className="field-sizing-content min-h-20 max-h-64 resize-none" />
+```
+
+**Uso nel CRM**: Note lead, commenti attività — si espandono automaticamente.
+
+#### 5. `size-*` Utility
+
+Shorthand per `width` + `height` contemporaneamente:
+
+```typescript
+// ✅ v4 - shorthand
+<div className="size-10">        {/* width: 2.5rem + height: 2.5rem */}
+<Avatar className="size-8">      {/* 32x32px avatar */}
+<Icon className="size-4">        {/* 16x16px icona */}
+
+// ❌ v3 vecchio modo
+<div className="w-10 h-10">
+```
+
+#### 6. `inset-*` Shorthands
+
+```typescript
+// Shorthand per posizionamento
+<div className="inset-0">            {/* top/right/bottom/left: 0 */}
+<div className="inset-x-4">          {/* left: 1rem + right: 1rem */}
+<div className="inset-y-2">          {/* top: 0.5rem + bottom: 0.5rem */}
+```
+
+#### 7. `not-*` Variant
+
+```typescript
+// Stile per elementi che NON matchano un selettore
+<div className="not-last:border-b">   {/* bordo bottom su tutti tranne ultimo */}
+<div className="not-first:mt-2">     {/* margine top su tutti tranne primo */}
+```
+
+#### 8. `@starting-style` per Entry Animations
+
+```css
+/* In globals.css — animazioni di ingresso native CSS */
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+```
+
+#### 9. Arbitrary Values e CSS Functions
+
+```typescript
+// Arbitrary values (come v3 ma più potente)
+<div className="grid-cols-[1fr_2fr_1fr]">  {/* grid custom */}
+<div className="w-[calc(100%-2rem)]">       {/* calc() */}
+<div className="text-[oklch(0.5_0.2_240)]">  {/* colore oklch inline */}
+```
+
+### Design Tokens
+
+CRM 2.0 usa design tokens definiti in `globals.css` (dentro `@theme inline`), **NON** in `tailwind.config.ts` (che non esiste in v4).
 
 ```typescript
 // ✅ GOOD - usa design tokens
@@ -221,20 +377,33 @@ CRM 2.0 usa design tokens Tailwind per colori consistenti:
 <div className="bg-white text-gray-900 border border-gray-200">
 ```
 
-Tokens disponibili (in `tailwind.config.ts`):
-- `background` - Background principale
-- `foreground` - Testo principale
-- `card` - Background card
-- `card-foreground` - Testo card
-- `primary` - Colore primario (brand)
-- `primary-foreground` - Testo su primary
-- `secondary` - Colore secondario
-- `muted` - Background muted
-- `muted-foreground` - Testo secondario/disabilitato
+Tokens disponibili (definiti in `src/app/globals.css`):
+- `background` / `foreground` - Background e testo principale
+- `card` / `card-foreground` - Card container
+- `primary` / `primary-foreground` - Colore primario (brand)
+- `secondary` / `secondary-foreground` - Colore secondario
+- `muted` / `muted-foreground` - Background muted / testo disabilitato
+- `accent` / `accent-foreground` - Colore accent
 - `destructive` - Colore errore/eliminazione
-- `border` - Colore bordi
+- `border` - Bordi
 - `input` - Background input
-- `ring` - Focus ring color
+- `ring` - Focus ring
+- `chart-1` … `chart-5` - Colori per grafici Recharts
+- `sidebar` / `sidebar-*` - Colori sidebar
+- `--radius` - Border radius base (con varianti `sm`, `md`, `lg`, `xl`…`4xl`)
+
+Per aggiungere un nuovo token:
+```css
+/* In globals.css, dentro @theme inline */
+@theme inline {
+  --color-success: var(--success);
+}
+
+/* Poi definire il valore in :root */
+:root {
+  --success: oklch(0.65 0.2 145);
+}
+```
 
 ## Form Handling
 
@@ -480,23 +649,111 @@ Prima di creare nuovo componente UI:
 - [ ] Test responsive (mobile, tablet, desktop)
 - [ ] Verifica dark mode support (se implementato in futuro)
 
+## shadcn/ui con Tailwind v4
+
+### Configurazione (`components.json`)
+
+```json
+{
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",           // Vuoto in v4 (no tailwind.config.ts)
+    "css": "src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui"
+  }
+}
+```
+
+### Installare Nuovi Componenti (CLI shadcn v4)
+
+```bash
+# Aggiungere un componente
+npx shadcn@latest add [component-name]
+
+# Esempi
+npx shadcn@latest add button
+npx shadcn@latest add dialog
+npx shadcn@latest add table
+
+# Aggiungere multipli
+npx shadcn@latest add card badge separator
+
+# Lista componenti disponibili
+npx shadcn@latest add
+```
+
+> Il CLI è compatibile Tailwind v4: genera componenti con le utility classes corrette.
+
+### Utility `cn()` — Class Merging
+
+```typescript
+import { cn } from '@/lib/utils';
+
+// Merge condizionale senza conflitti
+<div className={cn(
+  'flex items-center gap-2 rounded-md border p-3',
+  isActive && 'border-primary bg-primary/5',
+  isDisabled && 'opacity-50 pointer-events-none',
+  className  // props esterne hanno priorità
+)}>
+```
+
+`cn()` usa `clsx` + `tailwind-merge`: risolve conflitti Tailwind automaticamente (es. `p-2 p-4` → `p-4`).
+
+### Class Variance Authority (CVA)
+
+Per componenti con variants tipizzate:
+
+```typescript
+import { cva, type VariantProps } from 'class-variance-authority';
+
+const badgeVariants = cva(
+  'inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold',
+  {
+    variants: {
+      variant: {
+        default: 'border-transparent bg-primary text-primary-foreground',
+        secondary: 'border-transparent bg-secondary text-secondary-foreground',
+        destructive: 'border-transparent bg-destructive text-destructive-foreground',
+        outline: 'text-foreground',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  }
+);
+```
+
 ## Riferimenti Rapidi
 
 ### Documentazione Esterna
 
 1. **shadcn/ui**: https://ui.shadcn.com/docs/components
 2. **Radix UI**: https://www.radix-ui.com/primitives/docs/components
-3. **Tailwind CSS**: https://tailwindcss.com/docs
-4. **React Hook Form**: https://react-hook-form.com/docs
-5. **Zod**: https://zod.dev
-6. **Sonner (Toast)**: https://sonner.emilkowal.ski/
-7. **Lucide Icons**: https://lucide.dev/icons
-8. **Next.js**: https://nextjs.org/docs
+3. **Tailwind CSS v4**: https://tailwindcss.com/docs
+4. **@tailwindcss/typography**: https://github.com/tailwindlabs/tailwindcss-typography
+5. **React Hook Form**: https://react-hook-form.com/docs
+6. **Zod**: https://zod.dev
+7. **Sonner (Toast)**: https://sonner.emilkowal.ski/
+8. **Lucide Icons**: https://lucide.dev/icons
+9. **Next.js**: https://nextjs.org/docs
 
 ### File Locali
 
-- `src/components/ui/` - Componenti shadcn installati
-- `tailwind.config.ts` - Configurazione Tailwind + design tokens
+- `src/app/globals.css` - **Configurazione Tailwind v4** (design tokens, plugins, custom variants)
+- `src/components/ui/` - Componenti shadcn installati (63 componenti)
+- `src/lib/utils.ts` - `cn()` utility (clsx + tailwind-merge)
+- `components.json` - Configurazione shadcn/ui CLI
 - `src/types/leads-form.ts` - Zod schemas per forms
 - `AGENTS.md` - Patterns critici e business rules
 - `DATABASE_SCHEMA.md` - Schema DB completo (per capire i types delle form)

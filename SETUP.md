@@ -61,9 +61,15 @@ Dipendenze principali installate:
 - `@upstash/redis` - Cache client
 - `next-auth@4.x` - Authentication
 - `swr@2.x` - Data fetching
-- `zod@3.x` - Validation
-- `radix-ui/*` - UI primitives
-- `tailwindcss@4.x` - Styling
+- `zod@4.x` - Validation
+- `radix-ui/*` - UI primitives (shadcn/ui, 63 componenti)
+- `tailwindcss@4.x` - Styling (CSS-first config, no tailwind.config.ts)
+- `@tailwindcss/typography` - Prose styling plugin (`prose` class)
+- `tw-animate-css` - Animazioni CSS per shadcn
+- `class-variance-authority` - Component variants tipizzate (CVA)
+- `clsx` + `tailwind-merge` - Class merging (`cn()` utility)
+- `lucide-react` - Icon library
+- `recharts` - Grafici dashboard
 
 ## 3. Environment Variables
 

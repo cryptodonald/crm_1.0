@@ -89,6 +89,7 @@ function mapApiToForm(activity: any): ActivityFormData {
     'Prossima azione': undefined,
     'Data prossima azione': undefined,
     'Note prossima azione': undefined,
+    'Sincronizza Google': activity.sync_to_google ?? false,
   };
 }
 
@@ -109,6 +110,7 @@ function mapFormToApi(data: ActivityFormData): Record<string, unknown> {
     objective: data.Obiettivo || null,
     priority: data['Priorità'] || null,
     estimated_duration: timeStringToMinutes(data['Durata stimata']),
+    sync_to_google: data['Sincronizza Google'] ?? false,
   };
 }
 
@@ -304,7 +306,7 @@ export function NewActivityModal({
   };
 
   // 🤖 Funzione per gestire le automazioni post-creazione attività
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const handleActivityAutomations = async (activityData: ActivityFormData, _createdActivity?: any) => {
     try {
       

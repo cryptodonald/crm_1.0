@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/seo-ads/cron/daily-sync",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/seo-ads/cron/weekly-research",
+      "schedule": "0 7 * * 1"
+    },
+    {
+      "path": "/api/cron/calendar-sync",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}

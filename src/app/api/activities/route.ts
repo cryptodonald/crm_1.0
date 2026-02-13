@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
-import { getActivities, createActivity } from '@/lib/postgres';
+import { getActivities, createActivity, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
+import { syncActivityToGoogle } from '@/lib/calendar-sync';
 import type { ActivityCreateInput, ActivityType, ActivityStatus } from '@/types/database';
 // import { triggerOnCreate } from '@/lib/automation-engine'; // TODO: Migra automations dopo
 
@@ -123,10 +124,28 @@ export async function POST(request: NextRequest) {
       outcome: body.outcome || null,
       objective: body.objective || null,
       priority: body.priority || null,
+      sync_to_google: body.sync_to_google || false,
     };
 
     // Create activity
     const newActivity = await createActivity(input);
+
+    // Sync to Google Calendar (fire-and-forget, non-blocking)
+    // Activity is already saved — don't delay the API response for Google sync
+    if (newActivity.sync_to_google && newActivity.activity_date) {
+      const userEmail = session.user.email;
+      // Use void to explicitly mark as fire-and-forget
+      void (async () => {
+        try {
+          const user = await getUserByEmail(userEmail);
+          if (user) {
+            await syncActivityToGoogle(newActivity, user.id);
+          }
+        } catch (syncError) {
+          console.error('[API] Google Calendar sync failed (activity still created):', syncError);
+        }
+      })();
+    }
 
     // TODO: Trigger automations (commentato per ora)
     // triggerOnCreate('Activity', newActivity).catch(err => {

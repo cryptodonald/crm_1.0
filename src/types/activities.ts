@@ -23,6 +23,7 @@ export const ActivityFormSchema = z.object({
   'Durata stimata': z.string().optional(),
   Stato: z.string().min(1, 'Seleziona uno stato'),
   Assegnatario: z.array(z.string()).optional(),
+  'Sincronizza Google': z.boolean().optional(),
   
   // Step 3: Risultati
   Note: z.string().optional(),
@@ -60,7 +61,15 @@ export const DEFAULT_ACTIVITY_DATA: Partial<ActivityFormData> = {
   Priorità: 'Media',
   'ID Lead': [],
   Assegnatario: [],
+  'Sincronizza Google': true, // Default ON per Chiamata
 };
+
+// Smart defaults: activity types that sync to Google Calendar by default
+export const SYNC_TO_GOOGLE_DEFAULT_TYPES = new Set([
+  'Chiamata',
+  'Consulenza',
+  'Follow-up',
+]);
 
 // Sistema colori dinamico usando Tailwind e Badge variant="outline"
 // Stessi colori utilizzati nel sistema Note per consistenza UI

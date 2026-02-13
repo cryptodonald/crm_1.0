@@ -1,8 +1,8 @@
 # CRM 2.0 Database Schema Documentation
 
-**Last Verified**: 2026-02-11 (via `pg_dump`)
+**Last Verified**: 2026-02-12 (via `pg_dump`)
 **Database**: PostgreSQL 17.6 (Supabase)
-**Total Tables**: 11 + 1 VIEW
+**Total Tables**: 14 + 1 VIEW
 **Project**: Doctorbed CRM
 
 ---
@@ -30,9 +30,12 @@
 | `automation_logs` | 7 | Execution history |
 | `tasks` | 14 | User tasks/todos |
 | `user_preferences` | 9 | UI color customization |
+| `google_accounts` | 13 | Google OAuth accounts per calendar sync |
+| `google_calendars` | 12 | Synced Google Calendar metadata |
+| `calendar_events` | 17 | Calendar events (Google + CRM) |
 | `dashboard_stats` | VIEW | Statistiche aggregate (security_invoker) |
 
-**Totali**: 59 indici, 15 FK constraints, 10 triggers, 4 functions
+**Totali**: 72+ indici, 20+ FK constraints, 13 triggers, 4 functions
 
 ---
 
@@ -93,7 +96,7 @@ Core lead/contact management con full-text search, source tracking e referral ch
 
 Track tutte le interazioni con leads (chiamate, email, meeting, consulenze) con FTS.
 
-#### Columns (14)
+#### Columns (16)
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -112,6 +115,8 @@ Track tutte le interazioni con leads (chiamate, email, meeting, consulenze) con 
 | `search_vector` | tsvector | YES | - | FTS index (auto-updated) |
 | `lead_id` | uuid | YES | - | FK → `leads` (CASCADE) |
 | `assigned_to` | uuid | YES | - | FK → `users` (SET NULL) |
+| `sync_to_google` | boolean | NO | `false` | Sync to Google Calendar flag |
+| `google_event_id` | text | YES | - | Linked Google Calendar event ID |
 
 #### Foreign Keys
 
@@ -443,6 +448,131 @@ UI customization (color schemes per entity type/value).
 
 ---
 
+### `google_accounts`
+
+Google OAuth accounts linked to CRM users for calendar sync.
+
+#### Columns (13)
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NO | `gen_random_uuid()` | Primary key |
+| `user_id` | uuid | NO | - | FK → `users` |
+| `google_email` | text | NO | - | Google account email |
+| `access_token_encrypted` | text | NO | - | AES-256-GCM encrypted access token |
+| `refresh_token_encrypted` | text | NO | - | AES-256-GCM encrypted refresh token |
+| `token_expires_at` | timestamptz | NO | - | Token expiration |
+| `scopes` | text[] | NO | - | OAuth scopes granted |
+| `is_corporate` | boolean | NO | `false` | Corporate account flag |
+| `connected_at` | timestamptz | NO | `now()` | When account was linked |
+| `last_sync_at` | timestamptz | YES | - | Last successful sync |
+| `sync_status` | text | NO | `'idle'` | idle/syncing/error |
+| `sync_error` | text | YES | - | Last sync error message |
+| `created_at` | timestamptz | NO | `now()` | Creation timestamp |
+| `updated_at` | timestamptz | NO | `now()` | Last update |
+
+#### Constraints
+
+- `google_accounts_user_email_unique` UNIQUE ON (`user_id`, `google_email`)
+- `google_accounts_sync_status_check`: `sync_status IN ('idle', 'syncing', 'error')`
+
+#### Foreign Keys
+
+- `user_id` → `users(id)` ON DELETE CASCADE
+
+#### Indices (3)
+
+- `idx_google_accounts_user_id` ON (`user_id`)
+- `idx_google_accounts_sync_status` ON (`sync_status`)
+
+---
+
+### `google_calendars`
+
+Google calendars discovered per connected account, with visibility toggle.
+
+#### Columns (12)
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NO | `gen_random_uuid()` | Primary key |
+| `google_account_id` | uuid | NO | - | FK → `google_accounts` |
+| `google_calendar_id` | text | NO | - | Google Calendar API ID |
+| `name` | text | NO | - | Calendar display name |
+| `color` | text | YES | - | Calendar color hex |
+| `is_visible` | boolean | NO | `true` | Show in CRM calendar |
+| `is_primary` | boolean | NO | `false` | Primary calendar flag |
+| `is_writable` | boolean | NO | `false` | Can create events |
+| `sync_token` | text | YES | - | Incremental sync token |
+| `last_sync_at` | timestamptz | YES | - | Last sync |
+| `created_at` | timestamptz | NO | `now()` | Creation timestamp |
+| `updated_at` | timestamptz | NO | `now()` | Last update |
+
+#### Constraints
+
+- `google_calendars_account_calendar_unique` UNIQUE ON (`google_account_id`, `google_calendar_id`)
+
+#### Foreign Keys
+
+- `google_account_id` → `google_accounts(id)` ON DELETE CASCADE
+
+#### Indices (3)
+
+- `idx_google_calendars_account_id` ON (`google_account_id`)
+- `idx_google_calendars_visible` ON (`is_visible`) WHERE `is_visible = true`
+
+---
+
+### `calendar_events`
+
+Stored calendar events from Google + CRM-created events.
+
+#### Columns (17)
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NO | `gen_random_uuid()` | Primary key |
+| `google_calendar_id` | uuid | NO | - | FK → `google_calendars` |
+| `google_event_id` | text | NO | - | Google Calendar event ID |
+| `title` | text | YES | - | Event title/summary |
+| `description` | text | YES | - | Event description |
+| `location` | text | YES | - | Event location |
+| `start_time` | timestamptz | NO | - | Event start |
+| `end_time` | timestamptz | YES | - | Event end |
+| `all_day` | boolean | NO | `false` | All-day event flag |
+| `status` | text | NO | `'confirmed'` | confirmed/tentative/cancelled |
+| `color` | text | YES | - | Event-specific color |
+| `recurrence` | text[] | YES | - | RRULE recurrence rules |
+| `activity_id` | uuid | YES | - | FK → `activities` (CRM link) |
+| `source` | text | NO | `'google'` | google/crm |
+| `etag` | text | YES | - | Google API etag |
+| `google_updated_at` | timestamptz | YES | - | Last update on Google side |
+| `last_synced_at` | timestamptz | YES | - | Last sync timestamp |
+| `created_at` | timestamptz | NO | `now()` | Creation timestamp |
+| `updated_at` | timestamptz | NO | `now()` | Last update |
+
+#### Constraints
+
+- `calendar_events_calendar_event_unique` UNIQUE ON (`google_calendar_id`, `google_event_id`)
+- `calendar_events_status_check`: `status IN ('confirmed', 'tentative', 'cancelled')`
+- `calendar_events_source_check`: `source IN ('google', 'crm')`
+
+#### Foreign Keys
+
+- `google_calendar_id` → `google_calendars(id)` ON DELETE CASCADE
+- `activity_id` → `activities(id)` ON DELETE SET NULL
+
+#### Indices (6)
+
+- `idx_calendar_events_calendar_id` ON (`google_calendar_id`)
+- `idx_calendar_events_activity_id` ON (`activity_id`) WHERE `activity_id IS NOT NULL`
+- `idx_calendar_events_time_range` ON (`google_calendar_id`, `start_time`, `end_time`)
+- `idx_calendar_events_source` ON (`source`)
+- `idx_calendar_events_status` ON (`status`)
+- `idx_calendar_events_last_synced` ON (`last_synced_at`)
+
+---
+
 ### `dashboard_stats` (VIEW)
 
 Vista aggregata per statistiche dashboard. Usa `security_invoker = true` (rispetta RLS).
@@ -471,7 +601,8 @@ users
   ├─→ automations.created_by_id
   ├─→ tasks.assigned_to_id
   ├─→ tasks.created_by_id
-  └─→ user_preferences.user_id
+  ├─→ user_preferences.user_id
+  └─→ google_accounts.user_id
 
 marketing_sources
   └─→ leads.source_id
@@ -483,12 +614,19 @@ leads
   └─→ tasks.lead_id
 
 activities
-  └─→ tasks.activity_id
+  ├─→ tasks.activity_id
+  └─→ calendar_events.activity_id
 
 automations
   ├─→ automation_triggers.automation_id
   ├─→ automation_actions.automation_id
   └─→ automation_logs.automation_id
+
+google_accounts
+  └─→ google_calendars.google_account_id
+
+google_calendars
+  └─→ calendar_events.google_calendar_id
 ```
 
 ---
@@ -623,5 +761,5 @@ psql "$NEW_DATABASE_URL" -f schema.sql
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2026-02-11
+**Document Version**: 2.1
+**Last Updated**: 2026-02-12

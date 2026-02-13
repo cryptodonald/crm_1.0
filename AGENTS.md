@@ -399,19 +399,61 @@ Retention: 1 year
 
 - `DATABASE_SCHEMA.md`: Schema Postgres completo verificato (11 tabelle + 1 VIEW, 59 indici, FK, FTS)
 - `schema.sql`: Dump schema per ricreazione DB (generato da `pg_dump`)
-- `UI_GUIDELINES.md`: Linee guida UI, componenti shadcn/ui, Radix UI, Tailwind patterns
+- `UI_GUIDELINES.md`: Linee guida UI, shadcn/ui, Tailwind v4 features, typography plugin, CVA, container queries
 - `SETUP.md`: Setup completo nuovo ambiente di sviluppo
+- `src/app/globals.css`: Configurazione Tailwind v4 (tokens, plugins, custom variants)
+- `components.json`: Configurazione shadcn/ui CLI
 - `src/types/database.ts`: TypeScript interfaces per tutte le tabelle
 - `README.md`: Quick start, stack, env vars
 - `.env.example`: Template environment variables
+- `.warp/skills/`: AI Agent skills (vedi sezione "AI Skills" sotto)
+
+### AI Skills (`.warp/skills/`)
+
+Skill installate da [skills.sh](https://skills.sh/) — knowledge base specializzate per l'AI agent.
+Per leggere una skill: `read_skill` con `skill_path` = `.warp/skills/<nome>/SKILL.md`.
+
+#### UI & Design
+- **`react-best-practices`** — React 19 patterns, hooks, Server Components, performance (vercel-labs)
+- **`frontend-design`** — UI/UX design principles, layout, typography, color theory (anthropics)
+- **`web-design-guidelines`** — Web design standards, accessibility, responsive (vercel-labs)
+- **`shadcn-ui`** — shadcn/ui patterns, Radix primitives, component customization (giuseppe-trisciuoglio)
+- **`tailwind-css-patterns`** — Tailwind CSS v4 patterns, utilities, responsive design (giuseppe-trisciuoglio)
+
+#### Next.js & React
+- **`composition-patterns`** — React composition, Server/Client boundaries, streaming (vercel-labs)
+- **`next-best-practices`** — Next.js App Router, file conventions, RSC, data patterns, error handling (vercel-labs)
+  - Reference files: `async-patterns.md`, `data-patterns.md`, `directives.md`, `error-handling.md`, `file-conventions.md`, `route-handlers.md`, `rsc-boundaries.md`
+- **`next-cache-components`** — Next.js caching, revalidation, `use cache`, `cacheLife`, `cacheTag` (vercel-labs)
+
+#### TypeScript & Backend
+- **`typescript-advanced-types`** — Generics, conditional types, mapped types, type guards (wshobson)
+- **`nodejs-backend-patterns`** — Node.js API patterns, middleware, error handling (wshobson)
+- **`architecture-patterns`** — Software architecture, layered design, SOLID, DDD (wshobson)
+- **`api-design-principles`** — RESTful API design, versioning, pagination, error responses (wshobson)
+
+#### Quando Usare le Skills
+- **Prima di creare componenti React**: Leggi `react-best-practices` e `composition-patterns`
+- **Per UI/styling**: Leggi `shadcn-ui` e `tailwind-css-patterns`
+- **Per nuove API routes**: Leggi `api-design-principles` e `nodejs-backend-patterns`
+- **Per Next.js patterns**: Leggi `next-best-practices` e `next-cache-components`
+- **Per TypeScript complesso**: Leggi `typescript-advanced-types`
 
 ### Stack Details
 
 - **Framework**: Next.js 16 (App Router)
 - **React**: 19.2.3 (Hooks, Server Components where appropriate)
 - **TypeScript**: Strict mode enabled
-- **Styling**: Tailwind CSS v4
-- **UI Components**: Radix UI + shadcn/ui
+- **Styling**: Tailwind CSS v4 (CSS-first config in `globals.css`, no `tailwind.config.ts`)
+  - Plugin: `@tailwindcss/typography` (prose styling per note/contenuti ricchi)
+  - Plugin: `tw-animate-css` (animazioni shadcn)
+  - Config: `@theme inline` per design tokens, `@plugin` per plugins, `@custom-variant` per dark mode
+  - Colori: `oklch()` color space
+  - Features v4: container queries built-in, `text-balance`, `text-pretty`, `size-*`, `field-sizing-content`, `not-*` variants
+- **UI Components**: Radix UI + shadcn/ui (new-york style, 63 componenti in `src/components/ui/`)
+  - CLI: `npx shadcn@latest add [component]`
+  - Class merging: `cn()` da `@/lib/utils` (clsx + tailwind-merge)
+  - Variants: Class Variance Authority (CVA)
 - **Auth**: NextAuth v4
 - **Database**: PostgreSQL 17.6 (Supabase)
 - **Cache**: Upstash Redis

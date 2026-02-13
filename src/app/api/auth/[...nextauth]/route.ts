@@ -144,6 +144,22 @@ export const authOptions: AuthOptions = {
         token.image = user.image;
       }
 
+      // Auto-heal stale JWTs with Airtable IDs (pre-migration tokens)
+      // UUID v4 format: 8-4-4-4-12 hex chars
+      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token.id);
+      if (!isValidUuid && token.email) {
+        try {
+          const freshUser = await getUserByEmail(token.email);
+          if (freshUser) {
+            token.id = freshUser.id;
+            token.name = freshUser.name || token.name;
+            token.role = (freshUser.role as 'admin' | 'manager' | 'user') || token.role;
+          }
+        } catch (e) {
+          console.error('[NextAuth] Failed to refresh stale user ID:', e);
+        }
+      }
+
       // Google OAuth sign in
       if (account?.provider === 'google' && user) {
         try {

@@ -57,8 +57,20 @@ Lettura consigliata in ordine:
 
 1. **[SETUP.md](SETUP.md)** — Setup ambiente, env vars, database, deploy
 2. **[DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)** — Schema DB completo (verificato via `pg_dump`)
-3. **[UI_GUIDELINES.md](UI_GUIDELINES.md)** — Componenti UI, Tailwind, form patterns
-4. **[AGENTS.md](AGENTS.md)** — Guidelines per AI agent (Warp), patterns critici, business rules
+3. **[UI_GUIDELINES.md](UI_GUIDELINES.md)** — Componenti UI, Tailwind v4, shadcn/ui, typography plugin
+4. **[AGENTS.md](AGENTS.md)** — Guidelines per AI agent (Warp), patterns critici, business rules, AI skills
+
+---
+
+## AI Skills
+
+12 skill installate in `.warp/skills/` da [skills.sh](https://skills.sh/) per l'AI agent:
+
+- **UI/Design**: `react-best-practices`, `frontend-design`, `web-design-guidelines`, `shadcn-ui`, `tailwind-css-patterns`
+- **Next.js**: `composition-patterns`, `next-best-practices`, `next-cache-components`
+- **TypeScript/Backend**: `typescript-advanced-types`, `nodejs-backend-patterns`, `architecture-patterns`, `api-design-principles`
+
+Vedi **[AGENTS.md](AGENTS.md#ai-skills-warpskills)** per dettagli su quando usare ciascuna skill.
 
 ---
 

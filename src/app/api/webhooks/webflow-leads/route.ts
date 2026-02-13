@@ -254,6 +254,7 @@ try {
 // Email Notification
 // ============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function esc(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

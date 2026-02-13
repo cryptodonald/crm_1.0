@@ -66,9 +66,14 @@ const envSchema = z.object({
   OPENROUTER_API_KEY: z.string().optional(),
 
   // ========================================
-  // Encryption (OPTIONAL but recommended)
+  // Encryption (REQUIRED for Google Calendar token storage)
   // ========================================
-  ENCRYPTION_MASTER_KEY: z.string().optional(),
+  ENCRYPTION_MASTER_KEY: z.string().min(32, 'ENCRYPTION_MASTER_KEY must be at least 32 characters'),
+
+  // ========================================
+  // Google Calendar (OPTIONAL - required for calendar sync)
+  // ========================================
+  GOOGLE_CALENDAR_REDIRECT_URI: z.string().url().optional(),
 
   // ========================================
   // Google Maps/Places (OPTIONAL)
@@ -84,6 +89,31 @@ const envSchema = z.object({
   META_PAGE_ACCESS_TOKEN: z.string().optional(),
   META_VERIFY_TOKEN: z.string().optional(),
   META_SOURCE_ID: z.string().uuid().optional(),
+
+  // ========================================
+  // Google Ads API (OPTIONAL - SEO & Ads Dashboard)
+  // ========================================
+  GOOGLE_ADS_CLIENT_ID: z.string().optional(),
+  GOOGLE_ADS_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_ADS_DEVELOPER_TOKEN: z.string().optional(),
+  GOOGLE_ADS_CUSTOMER_ID: z.string().optional(),
+  GOOGLE_ADS_REFRESH_TOKEN: z.string().optional(),
+
+  // ========================================
+  // GA4 + Search Console (OPTIONAL - SEO Dashboard)
+  // ========================================
+  GA4_PROPERTY_ID: z.string().optional(),
+  GOOGLE_SERVICE_ACCOUNT_KEY: z.string().optional(), // JSON string
+
+  // ========================================
+  // Webflow Webhook (OPTIONAL - Lead Attribution)
+  // ========================================
+  WEBFLOW_WEBHOOK_SECRET: z.string().optional(),
+
+  // ========================================
+  // Vercel Cron (OPTIONAL - SEO Dashboard cron jobs)
+  // ========================================
+  CRON_SECRET: z.string().optional(),
 
   // ========================================
   // Other

@@ -105,6 +105,10 @@ export interface Activity {
   
   // Meta
   search_vector: string | null;
+  
+  // Google Calendar sync
+  sync_to_google: boolean;
+  google_event_id: string | null;
 }
 
 export type ActivityType =
@@ -133,6 +137,7 @@ export interface ActivityCreateInput {
   estimated_duration?: number;
   lead_id: UUID;
   assigned_to?: UUID;
+  sync_to_google?: boolean;
 }
 
 export type ActivityUpdateInput = Partial<ActivityCreateInput>;
@@ -479,4 +484,94 @@ export interface QueryResult<T = DbRow> {
 
 export interface TransactionClient {
   query<T = DbRow>(sql: string, params?: unknown[]): Promise<QueryResult<T>>;
+}
+
+// ============================================================================
+// GOOGLE CALENDAR
+// ============================================================================
+
+export type GoogleAccountSyncStatus = 'idle' | 'syncing' | 'error';
+
+export interface GoogleAccount {
+  id: UUID;
+  user_id: UUID;
+  google_email: string;
+  access_token_encrypted: string;
+  refresh_token_encrypted: string;
+  token_expires_at: Timestamptz;
+  scopes: string[];
+  is_corporate: boolean;
+  connected_at: Timestamptz;
+  last_sync_at: Timestamptz | null;
+  sync_status: GoogleAccountSyncStatus;
+  sync_error: string | null;
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+}
+
+export interface GoogleCalendar {
+  id: UUID;
+  google_account_id: UUID;
+  google_calendar_id: string;
+  name: string;
+  color: string | null;
+  is_visible: boolean;
+  is_primary: boolean;
+  is_writable: boolean;
+  sync_token: string | null;
+  last_sync_at: Timestamptz | null;
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+}
+
+export type CalendarEventStatus = 'confirmed' | 'tentative' | 'cancelled';
+export type CalendarEventSource = 'google' | 'crm';
+
+export interface CalendarEvent {
+  id: UUID;
+  google_calendar_id: UUID;
+  google_event_id: string;
+  title: string | null;
+  description: string | null;
+  location: string | null;
+  start_time: Timestamptz;
+  end_time: Timestamptz | null;
+  all_day: boolean;
+  status: CalendarEventStatus;
+  color: string | null;
+  recurrence: string[] | null;
+  // CRM linking
+  activity_id: UUID | null;
+  source: CalendarEventSource;
+  // Sync metadata
+  etag: string | null;
+  google_updated_at: Timestamptz | null;
+  last_synced_at: Timestamptz | null;
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  // Aggregated fields (from JOINs)
+  calendar_name?: string;
+  calendar_color?: string;
+  activity_title?: string;
+  lead_name?: string;
+}
+
+export interface CalendarEventCreateInput {
+  google_calendar_id: UUID;
+  title: string;
+  description?: string;
+  location?: string;
+  start_time: Timestamptz;
+  end_time?: Timestamptz;
+  all_day?: boolean;
+  activity_id?: UUID;
+}
+
+export type CalendarEventUpdateInput = Partial<CalendarEventCreateInput>;
+
+export interface CalendarEventFilters {
+  start: Timestamptz;
+  end: Timestamptz;
+  calendar_ids?: UUID[];
+  source?: CalendarEventSource;
 }

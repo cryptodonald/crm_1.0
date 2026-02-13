@@ -15,6 +15,7 @@ import {
   Command,
   CheckSquare,
   Palette,
+  Search,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -80,6 +81,11 @@ const mainNavItems: NavItem[] = [
     title: 'Calendario',
     url: '/calendar',
     icon: Calendar,
+  },
+  {
+    title: 'SEO & Ads',
+    url: '/dashboard/seo-ads',
+    icon: Search,
   },
 ];
 
