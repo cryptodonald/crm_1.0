@@ -8,6 +8,7 @@ import {
 import { isGA4Configured, fetchTrafficBySource } from '@/lib/seo-ads/ga4-client';
 import { isSearchConsoleConfigured, fetchOrganicPerformance } from '@/lib/seo-ads/search-console-client';
 import {
+  createSeoKeyword,
   upsertCampaignPerformance,
   upsertOrganicRanking,
   upsertSiteAnalytics,
@@ -48,6 +49,26 @@ export async function POST(request: NextRequest) {
     if (isAdsConfigured()) {
       try {
         const adsRows = await fetchCampaignPerformance(yesterday);
+        let autoCreated = 0;
+
+        // Auto-create missing keywords from Google Ads campaigns
+        for (const row of adsRows) {
+          const kwLower = row.keyword_text.toLowerCase();
+          if (!keywordMap.has(kwLower) && row.keyword_text.trim()) {
+            try {
+              const newKw = await createSeoKeyword({
+                keyword: row.keyword_text.toLowerCase(),
+                cluster: row.campaign_name,
+                priority: 'media',
+                is_active: true,
+              });
+              keywordMap.set(kwLower, newKw);
+              autoCreated++;
+            } catch {
+              // Keyword might already exist (race condition) — ignore
+            }
+          }
+        }
 
         const mappedRows = adsRows
           .map(row => {
@@ -70,7 +91,7 @@ export async function POST(request: NextRequest) {
           .filter((r): r is NonNullable<typeof r> => r !== null);
 
         const count = await upsertCampaignPerformance(mappedRows);
-        results.ads = { status: 'success', fetched: adsRows.length, synced: count };
+        results.ads = { status: 'success', fetched: adsRows.length, synced: count, autoCreated };
       } catch (err) {
         console.error('[Cron] Google Ads sync error:', err);
         results.ads = { status: 'error', error: err instanceof Error ? err.message : 'Unknown' };
