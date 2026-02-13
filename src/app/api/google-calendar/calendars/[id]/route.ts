@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { queryOne } from '@/lib/postgres';
+import { queryOne, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { GoogleCalendar } from '@/types/database';
 
@@ -16,7 +16,7 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -26,6 +26,11 @@ export async function PATCH(
         { error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
         { status: 429 },
       );
+    }
+
+    const user = await getUserByEmail(session.user.email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const { id } = await params;
@@ -43,7 +48,7 @@ export async function PATCH(
       `SELECT gc.* FROM google_calendars gc
        JOIN google_accounts ga ON gc.google_account_id = ga.id
        WHERE gc.id = $1 AND ga.user_id = $2`,
-      [id, session.user.id],
+      [id, user.id],
     );
 
     if (!calendar) {

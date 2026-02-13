@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { syncGoogleAccount } from '@/lib/calendar-sync';
-import { getGoogleAccountsForUser } from '@/lib/google-calendar';
-import { query } from '@/lib/postgres';
+import { query, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { GoogleAccount } from '@/types/database';
 
@@ -15,7 +13,7 @@ import type { GoogleAccount } from '@/types/database';
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -27,18 +25,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve real Postgres UUID
+    const user = await getUserByEmail(session.user.email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const { accountId } = body;
 
+    // Dynamic import to avoid loading googleapis at compile time
+    const { syncGoogleAccount } = await import('@/lib/calendar-sync');
+    const { getGoogleAccountsForUser } = await import('@/lib/google-calendar');
+
     let accounts: GoogleAccount[];
     if (accountId) {
-      const account = await query<GoogleAccount>(
+      accounts = await query<GoogleAccount>(
         `SELECT * FROM google_accounts WHERE id = $1 AND user_id = $2`,
-        [accountId, session.user.id],
+        [accountId, user.id],
       );
-      accounts = account;
     } else {
-      accounts = await getGoogleAccountsForUser(session.user.id);
+      accounts = await getGoogleAccountsForUser(user.id);
     }
 
     if (accounts.length === 0) {
@@ -74,14 +81,20 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Resolve real Postgres UUID
+    const user = await getUserByEmail(session.user.email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const accounts = await query<Pick<GoogleAccount, 'id' | 'google_email' | 'sync_status' | 'sync_error' | 'last_sync_at'>>(
       `SELECT id, google_email, sync_status, sync_error, last_sync_at
        FROM google_accounts WHERE user_id = $1`,
-      [session.user.id],
+      [user.id],
     );
 
     return NextResponse.json({ accounts });

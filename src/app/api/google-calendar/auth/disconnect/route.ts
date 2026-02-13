@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getGoogleAccountById, revokeToken } from '@/lib/google-calendar';
-import { query } from '@/lib/postgres';
+import { query, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 
 /**
@@ -14,7 +13,7 @@ import { checkRateLimit } from '@/lib/ratelimit';
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -24,6 +23,11 @@ export async function POST(request: NextRequest) {
         { error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
         { status: 429 },
       );
+    }
+
+    const user = await getUserByEmail(session.user.email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const body = await request.json();
@@ -36,9 +40,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Dynamic import to avoid loading googleapis at compile time
+    const { getGoogleAccountById, revokeToken } = await import('@/lib/google-calendar');
+
     // Verify ownership
     const account = await getGoogleAccountById(accountId);
-    if (!account || account.user_id !== session.user.id) {
+    if (!account || account.user_id !== user.id) {
       return NextResponse.json(
         { error: 'Account not found', code: 'NOT_FOUND' },
         { status: 404 },

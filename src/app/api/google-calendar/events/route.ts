@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { query } from '@/lib/postgres';
+import { query, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
-import { getAuthenticatedClient, getGoogleAccountById, createEvent as googleCreateEvent } from '@/lib/google-calendar';
 import type { CalendarEvent, GoogleCalendar } from '@/types/database';
 
 /**
@@ -14,7 +13,7 @@ import type { CalendarEvent, GoogleCalendar } from '@/types/database';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -24,6 +23,11 @@ export async function GET(request: NextRequest) {
         { error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
         { status: 429 },
       );
+    }
+
+    const user = await getUserByEmail(session.user.email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -55,7 +59,7 @@ export async function GET(request: NextRequest) {
            AND (ce.end_time > $2 OR (ce.end_time IS NULL AND ce.start_time >= $2))
            AND ce.status != 'cancelled'
          ORDER BY ce.start_time ASC`,
-        [session.user.id, start, end, calendarIds],
+        [user.id, start, end, calendarIds],
       );
     } else {
       events = await query<CalendarEvent>(
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
            AND (ce.end_time > $2 OR (ce.end_time IS NULL AND ce.start_time >= $2))
            AND ce.status != 'cancelled'
          ORDER BY ce.start_time ASC`,
-        [session.user.id, start, end],
+        [user.id, start, end],
       );
     }
 
@@ -91,7 +95,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -101,6 +105,11 @@ export async function POST(request: NextRequest) {
         { error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
         { status: 429 },
       );
+    }
+
+    const user = await getUserByEmail(session.user.email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const body = await request.json();
@@ -113,12 +122,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Dynamic import to avoid loading googleapis at compile time
+    const { getAuthenticatedClient, getGoogleAccountById, createEvent: googleCreateEvent } = await import('@/lib/google-calendar');
+
     // Verify ownership and writability
     const calendar = await query<GoogleCalendar & { google_account_id: string }>(
       `SELECT gc.* FROM google_calendars gc
        JOIN google_accounts ga ON gc.google_account_id = ga.id
        WHERE gc.id = $1 AND ga.user_id = $2 AND gc.is_writable = true`,
-      [calendarId, session.user.id],
+      [calendarId, user.id],
     );
 
     if (calendar.length === 0) {

@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { query, queryOne } from '@/lib/postgres';
+import { query, queryOne, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
-import {
-  getAuthenticatedClient,
-  getGoogleAccountById,
-  updateEvent as googleUpdateEvent,
-  deleteEvent as googleDeleteEvent,
-} from '@/lib/google-calendar';
 import type { CalendarEvent } from '@/types/database';
 
 /**
@@ -21,7 +15,7 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -33,8 +27,16 @@ export async function PATCH(
       );
     }
 
+    const user = await getUserByEmail(session.user.email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const { id } = await params;
     const body = await request.json();
+
+    // Dynamic import to avoid loading googleapis at compile time
+    const { getAuthenticatedClient, getGoogleAccountById, updateEvent: googleUpdateEvent } = await import('@/lib/google-calendar');
 
     // Get event with ownership check
     const event = await queryOne<CalendarEvent & { google_cal_id: string; account_id: string }>(
@@ -43,7 +45,7 @@ export async function PATCH(
        JOIN google_calendars gc ON ce.google_calendar_id = gc.id
        JOIN google_accounts ga ON gc.google_account_id = ga.id
        WHERE ce.id = $1 AND ga.user_id = $2`,
-      [id, session.user.id],
+      [id, user.id],
     );
 
     if (!event) {
@@ -140,7 +142,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -152,7 +154,15 @@ export async function DELETE(
       );
     }
 
+    const user = await getUserByEmail(session.user.email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const { id } = await params;
+
+    // Dynamic import to avoid loading googleapis at compile time
+    const { getAuthenticatedClient, getGoogleAccountById, deleteEvent: googleDeleteEvent } = await import('@/lib/google-calendar');
 
     // Get event with ownership check
     const event = await queryOne<CalendarEvent & { google_cal_id: string; account_id: string }>(
@@ -161,7 +171,7 @@ export async function DELETE(
        JOIN google_calendars gc ON ce.google_calendar_id = gc.id
        JOIN google_accounts ga ON gc.google_account_id = ga.id
        WHERE ce.id = $1 AND ga.user_id = $2`,
-      [id, session.user.id],
+      [id, user.id],
     );
 
     if (!event) {
