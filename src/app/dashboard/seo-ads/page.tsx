@@ -39,7 +39,8 @@ export default function SeoAdsDashboardPage() {
   const [datePreset, setDatePreset] = useState<DatePreset>('30d');
 
   const { date_from, date_to } = presetToDates(datePreset);
-  const { kpis, isLoading, error, mutate } = useSeoDashboard(date_from, date_to);
+  const { kpis, isLoading, isValidating, error, mutate } = useSeoDashboard(date_from, date_to);
+  const refreshing = isLoading || isValidating;
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -93,12 +94,12 @@ export default function SeoAdsDashboardPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => mutate()}
-                  disabled={isLoading}
+                  disabled={refreshing}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
                   />
-                  {isLoading ? 'Aggiornando...' : 'Aggiorna'}
+                  {refreshing ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
               </div>
             </div>

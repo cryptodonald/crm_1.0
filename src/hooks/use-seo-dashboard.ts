@@ -31,19 +31,20 @@ export function useSeoDashboard(periodStart?: string, periodEnd?: string) {
 
   const url = `/api/seo-ads/dashboard${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<{ kpis: SeoDashboardKPIs }>(
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{ kpis: SeoDashboardKPIs }>(
     url,
     fetcher,
     {
       revalidateOnFocus: false,
       refreshInterval: 300_000, // 5 min
-      dedupingInterval: 30_000,
+      dedupingInterval: 5_000,
     }
   );
 
   return {
     kpis: data?.kpis || null,
     isLoading,
+    isValidating,
     error,
     mutate,
   };
