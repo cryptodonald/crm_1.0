@@ -357,7 +357,7 @@ export async function upsertCampaignPerformance(
       row.match_type ?? null, row.keyword_status ?? null, row.serving_status ?? null,
       row.expected_ctr ?? null, row.landing_page_exp ?? null, row.ad_relevance ?? null,
       row.campaign_type ?? null, row.bid_strategy ?? null,
-      row.cost_per_conversion_micros ?? 0, row.conversion_rate ?? 0,
+      Math.round(row.cost_per_conversion_micros ?? 0), row.conversion_rate ?? 0,
     ]);
     inserted++;
   }

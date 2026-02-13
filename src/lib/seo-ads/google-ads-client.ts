@@ -176,7 +176,7 @@ export async function fetchCampaignPerformance(
       ad_relevance: r.ad_group_criterion?.quality_info?.creative_quality_score ?? null,
       campaign_type: r.campaign?.advertising_channel_type ?? null,
       bid_strategy: r.campaign?.bidding_strategy_type ?? null,
-      cost_per_conversion_micros: Number(r.metrics?.cost_per_conversion ?? 0),
+      cost_per_conversion_micros: Math.round(Number(r.metrics?.cost_per_conversion ?? 0)),
       conversion_rate: Number(r.metrics?.conversions_from_interactions_rate ?? 0),
     };
   });
