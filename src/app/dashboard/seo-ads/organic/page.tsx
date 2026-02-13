@@ -49,7 +49,7 @@ export default function SeoOrganicPage() {
 
   const { date_from, date_to } = presetToDates(datePreset);
 
-  const { rankings, total, isLoading, error, mutate } = useSeoOrganic({
+  const { rankings, total, isLoading, isValidating, error, mutate } = useSeoOrganic({
     date_from,
     date_to,
     page,
@@ -122,12 +122,12 @@ export default function SeoOrganicPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => mutate()}
-                  disabled={isLoading}
+                  disabled={isLoading || isValidating}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${isLoading || isValidating ? 'animate-spin' : ''}`}
                   />
-                  Aggiorna
+                  {isLoading || isValidating ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
               </div>
             </div>

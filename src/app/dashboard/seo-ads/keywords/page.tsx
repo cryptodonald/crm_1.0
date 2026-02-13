@@ -102,7 +102,7 @@ export default function SeoKeywordsPage() {
   const [newPriority, setNewPriority] = useState<KeywordPriority>('media');
 
   // Data
-  const { keywords, total, isLoading, error, mutate } = useSeoKeywords({
+  const { keywords, total, isLoading, isValidating, error, mutate } = useSeoKeywords({
     search: search || undefined,
     cluster: cluster || undefined,
     priority: (priority || undefined) as KeywordPriority | undefined,
@@ -201,12 +201,12 @@ export default function SeoKeywordsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => mutate()}
-                  disabled={isLoading}
+                  disabled={isLoading || isValidating}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${isLoading || isValidating ? 'animate-spin' : ''}`}
                   />
-                  Aggiorna
+                  {isLoading || isValidating ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
                 <Button size="sm" onClick={() => setShowCreateModal(true)}>
                   <Plus className="mr-2 h-4 w-4" />

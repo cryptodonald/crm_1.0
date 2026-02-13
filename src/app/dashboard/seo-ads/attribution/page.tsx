@@ -92,7 +92,7 @@ export default function SeoAttributionPage() {
 
   const { date_from, date_to } = presetToDates(datePreset);
 
-  const { attributions, total, isLoading, error, mutate } = useSeoAttribution({
+  const { attributions, total, isLoading, isValidating, error, mutate } = useSeoAttribution({
     date_from,
     date_to,
     source: (sourceFilter || undefined) as AttributionSource | undefined,
@@ -101,7 +101,7 @@ export default function SeoAttributionPage() {
     limit: ITEMS_PER_PAGE,
   });
 
-  const { kpis, isLoading: kpisLoading } = useSeoDashboard(date_from, date_to);
+  const { kpis, isLoading: kpisLoading, isValidating: kpisValidating } = useSeoDashboard(date_from, date_to);
 
   const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
 
@@ -138,7 +138,7 @@ export default function SeoAttributionPage() {
 
   if (!session) return null;
 
-  const loading = isLoading || kpisLoading;
+  const loading = isLoading || isValidating || kpisLoading || kpisValidating;
 
   return (
     <AppLayoutCustom>
@@ -168,7 +168,7 @@ export default function SeoAttributionPage() {
                   <RefreshCw
                     className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
                   />
-                  Aggiorna
+                  {loading ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
               </div>
             </div>

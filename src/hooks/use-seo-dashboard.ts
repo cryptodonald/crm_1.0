@@ -71,7 +71,7 @@ export function useSeoCampaigns(filters?: {
 
   const url = `/api/seo-ads/campaigns${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<{
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
     campaigns: SeoCampaignPerformance[];
     total: number;
     pagination: PaginatedResponse<SeoCampaignPerformance>['pagination'];
@@ -82,6 +82,7 @@ export function useSeoCampaigns(filters?: {
     total: data?.total || 0,
     pagination: data?.pagination,
     isLoading,
+    isValidating,
     error,
     mutate,
   };
@@ -106,7 +107,7 @@ export function useSeoOrganic(filters?: {
 
   const url = `/api/seo-ads/organic${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<{
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
     rankings: SeoOrganicRanking[];
     total: number;
     pagination: PaginatedResponse<SeoOrganicRanking>['pagination'];
@@ -117,6 +118,7 @@ export function useSeoOrganic(filters?: {
     total: data?.total || 0,
     pagination: data?.pagination,
     isLoading,
+    isValidating,
     error,
     mutate,
   };
@@ -141,7 +143,7 @@ export function useSeoAnalytics(filters?: {
 
   const url = `/api/seo-ads/analytics${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<{
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
     analytics: SeoSiteAnalytics[];
     total: number;
     pagination: PaginatedResponse<SeoSiteAnalytics>['pagination'];
@@ -152,6 +154,7 @@ export function useSeoAnalytics(filters?: {
     total: data?.total || 0,
     pagination: data?.pagination,
     isLoading,
+    isValidating,
     error,
     mutate,
   };
@@ -180,7 +183,7 @@ export function useSeoAttribution(filters?: {
 
   const url = `/api/seo-ads/attribution${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<{
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
     attributions: SeoLeadAttribution[];
     total: number;
     pagination: PaginatedResponse<SeoLeadAttribution>['pagination'];
@@ -191,6 +194,7 @@ export function useSeoAttribution(filters?: {
     total: data?.total || 0,
     pagination: data?.pagination,
     isLoading,
+    isValidating,
     error,
     mutate,
   };
@@ -217,7 +221,7 @@ export function useSeoCompetitors(filters?: {
 
   const url = `/api/seo-ads/competitors${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<{
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
     competitors: SeoCompetitorInsight[];
     total: number;
     pagination: PaginatedResponse<SeoCompetitorInsight>['pagination'];
@@ -228,6 +232,7 @@ export function useSeoCompetitors(filters?: {
     total: data?.total || 0,
     pagination: data?.pagination,
     isLoading,
+    isValidating,
     error,
     mutate,
   };

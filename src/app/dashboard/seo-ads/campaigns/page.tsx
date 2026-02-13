@@ -48,13 +48,14 @@ export default function SeoCampaignsPage() {
 
   const { date_from, date_to } = presetToDates(datePreset);
 
-  const { campaigns, total, isLoading, error, mutate } = useSeoCampaigns({
+  const { campaigns, total, isLoading, isValidating, error, mutate } = useSeoCampaigns({
     date_from,
     date_to,
     campaign_name: campaignSearch || undefined,
     page,
     limit: ITEMS_PER_PAGE,
   });
+  const refreshing = isLoading || isValidating;
 
   const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
 
@@ -128,12 +129,12 @@ export default function SeoCampaignsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => mutate()}
-                  disabled={isLoading}
+                  disabled={refreshing}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
                   />
-                  Aggiorna
+                  {refreshing ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
               </div>
             </div>
@@ -239,7 +240,7 @@ export default function SeoCampaignsPage() {
                               {c.ad_group_name}
                             </TableCell>
                             <TableCell className="whitespace-nowrap">
-                              {c.report_date}
+                              {new Date(c.report_date).toLocaleDateString('it-IT')}
                             </TableCell>
                             <TableCell className="text-right">
                               {formatNumber(c.impressions)}

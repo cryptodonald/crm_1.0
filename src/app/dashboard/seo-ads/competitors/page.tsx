@@ -54,7 +54,7 @@ export default function SeoCompetitorsPage() {
 
   const { date_from, date_to } = presetToDates(datePreset);
 
-  const { competitors, total, isLoading, error, mutate } = useSeoCompetitors({
+  const { competitors, total, isLoading, isValidating, error, mutate } = useSeoCompetitors({
     date_from,
     date_to,
     page,
@@ -139,12 +139,12 @@ export default function SeoCompetitorsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => mutate()}
-                  disabled={isLoading}
+                  disabled={isLoading || isValidating}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${isLoading || isValidating ? 'animate-spin' : ''}`}
                   />
-                  Aggiorna
+                  {isLoading || isValidating ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
               </div>
             </div>

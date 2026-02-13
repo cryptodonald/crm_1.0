@@ -35,7 +35,7 @@ export function useSeoKeywords(filters?: SeoKeywordFilters) {
 
   const url = `/api/seo-ads/keywords${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<{
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
     keywords: SeoKeyword[];
     total: number;
     pagination: PaginatedResponse<SeoKeyword>['pagination'];
@@ -49,6 +49,7 @@ export function useSeoKeywords(filters?: SeoKeywordFilters) {
     total: data?.total || 0,
     pagination: data?.pagination,
     isLoading,
+    isValidating,
     error,
     mutate,
   };

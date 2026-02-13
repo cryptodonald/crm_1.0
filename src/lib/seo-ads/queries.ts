@@ -274,7 +274,17 @@ export async function getCampaignPerformance(
   `;
   params.push(limit, offset);
 
-  const data = await query<SeoCampaignPerformance>(dataSql, params);
+  const rawData = await query<SeoCampaignPerformance>(dataSql, params);
+
+  // Coerce bigint strings to numbers (PostgreSQL returns bigint as string)
+  const data = rawData.map(row => ({
+    ...row,
+    cost_micros: Number(row.cost_micros),
+    impressions: Number(row.impressions),
+    clicks: Number(row.clicks),
+    conversions: row.conversions != null ? Number(row.conversions) : null,
+    quality_score: row.quality_score != null ? Number(row.quality_score) : null,
+  }));
 
   return {
     data,
