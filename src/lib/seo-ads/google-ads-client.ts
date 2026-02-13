@@ -96,13 +96,19 @@ export interface AdsCampaignRow {
 }
 
 /**
- * Fetch campaign performance at ad_group + keyword level for a date.
+ * Fetch campaign performance at ad_group + keyword level.
+ * Supports single date or date range (GAQL BETWEEN).
  * Uses GAQL (Google Ads Query Language).
  */
 export async function fetchCampaignPerformance(
-  date: string
+  dateFrom: string,
+  dateTo?: string
 ): Promise<AdsCampaignRow[]> {
   const customer = getAdsCustomer();
+
+  const dateFilter = dateTo
+    ? `segments.date BETWEEN '${dateFrom}' AND '${dateTo}'`
+    : `segments.date = '${dateFrom}'`;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const results: any[] = await customer.query(`
@@ -117,12 +123,12 @@ export async function fetchCampaignPerformance(
       ad_group_criterion.quality_info.quality_score,
       segments.date
     FROM keyword_view
-    WHERE segments.date = '${date}'
+    WHERE ${dateFilter}
       AND campaign.status = 'ENABLED'
       AND ad_group.status = 'ENABLED'
       AND metrics.impressions > 0
     ORDER BY metrics.cost_micros DESC
-    LIMIT 1000
+    LIMIT 10000
   `);
 
   return results.map((r) => ({
@@ -134,7 +140,7 @@ export async function fetchCampaignPerformance(
     cost_micros: Number(r.metrics?.cost_micros ?? 0),
     conversions: Number(r.metrics?.conversions ?? 0),
     quality_score: r.ad_group_criterion?.quality_info?.quality_score ?? null,
-    date: r.segments?.date ?? date,
+    date: r.segments?.date ?? dateFrom,
   }));
 }
 
@@ -158,9 +164,14 @@ export interface AdsAuctionInsightRow {
  * for all accounts. Falls back gracefully.
  */
 export async function fetchAuctionInsights(
-  date: string
+  dateFrom: string,
+  dateTo?: string
 ): Promise<AdsAuctionInsightRow[]> {
   const customer = getAdsCustomer();
+
+  const dateFilter = dateTo
+    ? `segments.date BETWEEN '${dateFrom}' AND '${dateTo}'`
+    : `segments.date = '${dateFrom}'`;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -173,7 +184,7 @@ export async function fetchAuctionInsights(
         metrics.auction_insight_search_position_above_rate,
         segments.date
       FROM campaign_audience_view
-      WHERE segments.date = '${date}'
+      WHERE ${dateFilter}
         AND campaign.status = 'ENABLED'
       LIMIT 500
     `);
@@ -185,8 +196,8 @@ export async function fetchAuctionInsights(
       impression_share: Number(r.metrics?.auction_insight_search_impression_share ?? 0),
       overlap_rate: Number(r.metrics?.auction_insight_search_overlap_rate ?? 0),
       position_above_rate: Number(r.metrics?.auction_insight_search_position_above_rate ?? 0),
-      date: r.segments?.date ?? date,
-    })).filter(r => r.competitor_domain !== ''); // Filter out empty domains
+      date: r.segments?.date ?? dateFrom,
+    })).filter(r => r.competitor_domain !== '');
   } catch (err) {
     // Auction insights may not be available for all account types
     console.warn('[GoogleAds] Auction insights not available:', err instanceof Error ? err.message : err);
