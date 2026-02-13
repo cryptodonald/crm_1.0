@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
 
     const results = [];
     for (const account of accounts) {
-      const result = await syncGoogleAccount(account.id);
+      // Manual sync forces full sync to clean up orphaned events
+      const result = await syncGoogleAccount(account.id, true);
       results.push(result);
     }
 

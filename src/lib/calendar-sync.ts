@@ -52,7 +52,7 @@ export interface SyncResult {
  * Syncs all visible calendars for a Google account.
  * Uses incremental sync with syncToken when available.
  */
-export async function syncGoogleAccount(accountId: string): Promise<SyncResult> {
+export async function syncGoogleAccount(accountId: string, forceFullSync = false): Promise<SyncResult> {
   const result: SyncResult = {
     accountId,
     calendarsProcessed: 0,
@@ -76,6 +76,14 @@ export async function syncGoogleAccount(accountId: string): Promise<SyncResult> 
 
   try {
     const auth = await getAuthenticatedClient(account);
+
+    // On manual sync (forceFullSync), clear tokens to do full sync with orphan cleanup
+    if (forceFullSync) {
+      await query(
+        `UPDATE google_calendars SET sync_token = NULL WHERE google_account_id = $1`,
+        [accountId],
+      );
+    }
 
     // Get visible calendars
     const calendars = await query<GoogleCalendar>(
@@ -157,6 +165,10 @@ async function syncCalendar(
     return syncCalendar(auth, { ...calendar, sync_token: null });
   }
 
+  // Track Google event IDs for orphan cleanup (full sync only)
+  const isFullSync = !calendar.sync_token;
+  const seenGoogleEventIds: string[] = [];
+
   // Process each event
   for (const googleEvent of events) {
     try {
@@ -168,6 +180,8 @@ async function syncCalendar(
         );
         if (result.length > 0) deleted++;
       } else {
+        seenGoogleEventIds.push(googleEvent.id);
+
         // Upsert event
         const existing = await queryOne<CalendarEvent>(
           `SELECT * FROM calendar_events WHERE google_calendar_id = $1 AND google_event_id = $2`,
@@ -193,6 +207,20 @@ async function syncCalendar(
     } catch (error) {
       console.error(`[CalendarSync] Error processing event ${googleEvent.id}:`, error);
     }
+  }
+
+  // On full sync, remove local events that no longer exist on Google
+  // (handles events deleted on Google before showDeleted fix)
+  if (isFullSync && seenGoogleEventIds.length > 0) {
+    const orphans = await query<{ id: string }>(
+      `DELETE FROM calendar_events 
+       WHERE google_calendar_id = $1 
+         AND source = 'google'
+         AND google_event_id != ALL($2)
+       RETURNING id`,
+      [calendar.id, seenGoogleEventIds],
+    );
+    deleted += orphans.length;
   }
 
   // Save new sync token

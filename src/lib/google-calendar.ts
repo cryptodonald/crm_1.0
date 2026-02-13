@@ -246,15 +246,17 @@ export async function listEvents(
       calendarId,
       maxResults: opts.maxResults || 250,
       singleEvents: true,
-      orderBy: 'startTime',
+      showDeleted: true, // Required to detect cancelled/deleted events during sync
       pageToken,
     };
 
     // Incremental sync with syncToken
     if (opts.syncToken) {
       params.syncToken = opts.syncToken;
+      // Don't use orderBy with syncToken (Google API restriction)
     } else {
       // Full sync with time range
+      params.orderBy = 'startTime';
       if (opts.timeMin) params.timeMin = opts.timeMin;
       if (opts.timeMax) params.timeMax = opts.timeMax;
     }
