@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { getActivityById, updateActivity, deleteActivity } from '@/lib/postgres';
+import { getActivityById, updateActivity, deleteActivity, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { ActivityUpdateInput } from '@/types/database';
 // import { triggerOnUpdate, triggerOnDelete } from '@/lib/automation-engine'; // TODO: Migra automations dopo
@@ -145,11 +145,27 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // TODO: Fetch record before deletion (per audit/automazioni)
-    // const record = await getActivityById(id);
+    // Fetch activity before deletion to check Google Calendar sync
+    const activity = await getActivityById(id);
 
-    // Delete activity
+    // Delete activity from DB
     await deleteActivity(id);
+
+    // Delete from Google Calendar if synced (fire-and-forget)
+    if (activity?.google_event_id) {
+      const userEmail = session.user.email;
+      void (async () => {
+        try {
+          const { deleteActivityFromGoogle } = await import('@/lib/calendar-sync');
+          const user = await getUserByEmail(userEmail);
+          if (user) {
+            await deleteActivityFromGoogle(activity, user.id);
+          }
+        } catch (syncError) {
+          console.error('[API] Google Calendar delete failed:', syncError);
+        }
+      })();
+    }
 
     // TODO: Trigger automations (commentato per ora)
     // triggerOnDelete('Activity', record).catch(err => {
