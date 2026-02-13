@@ -146,12 +146,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 3. Bidirectional cleanup: deactivate CRM keywords not found in Google Ads
+    const adsKeywordTexts = new Set(
+      adsRows
+        .filter(r => r.keyword_text.trim())
+        .map(r => r.keyword_text.toLowerCase())
+    );
+
+    let deactivated = 0;
+    for (const [kwText, kw] of keywordMap) {
+      if (!adsKeywordTexts.has(kwText)) {
+        // Keyword exists in CRM but NOT in Google Ads → deactivate
+        await query(
+          'UPDATE seo_keywords SET is_active = false, updated_at = NOW() WHERE id = $1 AND is_active = true',
+          [kw.id]
+        );
+        deactivated++;
+      }
+    }
+
+    // 4. Delete orphaned campaign performance rows for deactivated keywords
+    if (deactivated > 0) {
+      await query(
+        `DELETE FROM seo_campaign_performance
+         WHERE keyword_id IN (
+           SELECT id FROM seo_keywords WHERE is_active = false
+         )`
+      );
+    }
+
     return NextResponse.json({
       success: true,
       date_from: dateFrom,
       date_to: dateTo,
       campaigns: { fetched: adsRows.length, synced: campaignCount, autoCreated },
       competitors: { synced: competitorCount },
+      cleanup: { deactivated },
     });
   } catch (error: unknown) {
     console.error('[API] POST /api/seo-ads/sync error:', error);

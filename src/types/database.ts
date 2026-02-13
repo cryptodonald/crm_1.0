@@ -575,3 +575,121 @@ export interface CalendarEventFilters {
   calendar_ids?: UUID[];
   source?: CalendarEventSource;
 }
+
+// ============================================================================
+// LEAD ANALYSIS (Anamnesi & Configuratore Materasso)
+// ============================================================================
+
+export type BodyShape = 'v_shape' | 'a_shape' | 'normal' | 'h_shape' | 'round';
+export type SleepPosition = 'side' | 'supine' | 'prone' | 'mixed';
+export type FirmnessPreference = 'soft' | 'neutral' | 'firm';
+export type HealthIssue =
+  | 'lordosis'
+  | 'kyphosis'
+  | 'lower_back_pain'
+  | 'shoulder_pain'
+  | 'hip_pain'
+  | 'sciatica'
+  | 'fibromyalgia';
+
+export type MattressModel = 'one' | 'plus' | 'pro';
+export type BaseDensity = 'soft' | 'medium' | 'hard';
+export type CylinderType = 'none' | 'super_soft_6' | 'soft_8' | 'medium_8' | 'firm_8';
+export type LumbarCylinderType = 'soft_8' | 'medium_8' | 'firm_8';
+export type PillowCervicalSide = 'gentle' | 'pronounced';
+
+export interface LeadAnalysis {
+  id: UUID;
+  lead_id: UUID;
+  person_label: string;
+  sex: 'male' | 'female' | null;
+  weight_kg: number;
+  height_cm: number;
+  body_shape: BodyShape | null;
+  sleep_position: SleepPosition | null;
+  firmness_preference: FirmnessPreference;
+  health_issues: HealthIssue[];
+  circulation_issues: boolean;
+  snoring_apnea: boolean;
+  reads_watches_in_bed: boolean;
+  mattress_width_cm: number | null;
+  mattress_length_cm: number | null;
+  created_at: Timestamptz;
+  updated_at: Timestamptz;
+  created_by: UUID | null;
+  // Aggregated from JOINs
+  configs?: LeadAnalysisConfig[];
+}
+
+export interface LeadAnalysisConfig {
+  id: UUID;
+  analysis_id: UUID;
+  model: MattressModel;
+  base_density: BaseDensity;
+  topper_level: number; // 1-6
+  cylinder_shoulders: CylinderType | null;
+  cylinder_lumbar: LumbarCylinderType | null;
+  cylinder_legs: CylinderType | null;
+  recommend_motorized_base: boolean;
+  recommend_pillow: boolean;
+  pillow_height_inserts: number | null; // 0-4
+  pillow_cervical_side: PillowCervicalSide | null;
+  is_manual_override: boolean;
+  algorithm_scores: AlgorithmScores;
+  created_at: Timestamptz;
+}
+
+export interface AlgorithmScores {
+  weight_score_topper?: number;
+  weight_score_base?: number;
+  weight_score_lumbar?: number;
+  modifier_total_topper?: number;
+  modifier_total_base?: number;
+  modifier_total_lumbar?: number;
+  final_score_topper?: number;
+  final_score_base?: number;
+  final_score_lumbar?: number;
+  guardrail_applied?: boolean;
+}
+
+export interface LeadAnalysisCreateInput {
+  lead_id: UUID;
+  person_label?: string;
+  sex?: 'male' | 'female';
+  weight_kg: number;
+  height_cm: number;
+  body_shape?: BodyShape;
+  sleep_position?: SleepPosition;
+  firmness_preference?: FirmnessPreference;
+  health_issues?: HealthIssue[];
+  circulation_issues?: boolean;
+  snoring_apnea?: boolean;
+  reads_watches_in_bed?: boolean;
+  mattress_width_cm?: number;
+  mattress_length_cm?: number;
+}
+
+export type LeadAnalysisUpdateInput = Partial<Omit<LeadAnalysisCreateInput, 'lead_id'>>;
+
+export interface AlgorithmSetting {
+  id: UUID;
+  category: string;
+  key: string;
+  value: number;
+  label: string;
+  description: string | null;
+  min_value: number | null;
+  max_value: number | null;
+  updated_at: Timestamptz;
+  updated_by: UUID | null;
+}
+
+export type AlgorithmSettingCategory =
+  | 'weight_anchors_topper'
+  | 'weight_anchors_base'
+  | 'weight_anchors_lumbar'
+  | 'topper_modifiers'
+  | 'base_modifiers'
+  | 'lumbar_modifiers'
+  | 'guardrails'
+  | 'shoulder_rules';
