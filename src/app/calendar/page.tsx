@@ -461,7 +461,7 @@ function EventChip({
             'w-full text-left rounded px-1.5 py-0.5 text-xs truncate transition-colors hover:opacity-80',
             expanded ? 'flex items-center gap-2 py-1.5 px-3 rounded-md border' : '',
           )}
-          style={!expanded ? { backgroundColor: `${color}20`, color, borderLeft: `3px solid ${color}` } : undefined}
+          style={!expanded ? { backgroundColor: `${color}30`, borderLeft: `3px solid ${color}` } : undefined}
         >
           {expanded && (
             <div className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />

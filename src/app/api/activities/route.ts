@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { getActivities, createActivity, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
-import { syncActivityToGoogle } from '@/lib/calendar-sync';
 import type { ActivityCreateInput, ActivityType, ActivityStatus } from '@/types/database';
 // import { triggerOnCreate } from '@/lib/automation-engine'; // TODO: Migra automations dopo
 
@@ -131,12 +130,12 @@ export async function POST(request: NextRequest) {
     const newActivity = await createActivity(input);
 
     // Sync to Google Calendar (fire-and-forget, non-blocking)
-    // Activity is already saved — don't delay the API response for Google sync
+    // Dynamic import to avoid loading googleapis at compile time (huge package)
     if (newActivity.sync_to_google && newActivity.activity_date) {
       const userEmail = session.user.email;
-      // Use void to explicitly mark as fire-and-forget
       void (async () => {
         try {
+          const { syncActivityToGoogle } = await import('@/lib/calendar-sync');
           const user = await getUserByEmail(userEmail);
           if (user) {
             await syncActivityToGoogle(newActivity, user.id);

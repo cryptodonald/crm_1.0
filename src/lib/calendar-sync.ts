@@ -281,8 +281,18 @@ export async function syncActivityToGoogle(
 
   const auth = await getAuthenticatedClient(account);
 
+  // Fetch lead name for event title context
+  let leadName: string | undefined;
+  if (activity.lead_id) {
+    const lead = await queryOne<{ name: string }>(
+      `SELECT name FROM leads WHERE id = $1`,
+      [activity.lead_id],
+    );
+    leadName = lead?.name || undefined;
+  }
+
   // Build Google event from activity
-  const eventInput = activityToGoogleEvent(activity);
+  const eventInput = activityToGoogleEvent(activity, leadName);
 
   if (activity.google_event_id) {
     // Update existing event
@@ -506,19 +516,24 @@ export async function syncAllUsers(): Promise<{
 // Helpers
 // ============================================================================
 
-function activityToGoogleEvent(activity: Activity): GoogleEventInput {
+function activityToGoogleEvent(activity: Activity, leadName?: string): GoogleEventInput {
   const activityDate = new Date(activity.activity_date as string);
   const duration = activity.estimated_duration || 60; // Default 1 hour
   const endDate = new Date(activityDate.getTime() + duration * 60 * 1000);
 
+  // Build title with lead name for context
+  const baseTitle = activity.title || `${activity.type || 'Attivit\u00e0'} CRM`;
+  const summary = leadName ? `${baseTitle} | ${leadName}` : baseTitle;
+
   // Build description with CRM context
   const descParts: string[] = [];
+  if (leadName) descParts.push(`Lead: ${leadName}`);
   if (activity.objective) descParts.push(`Obiettivo: ${activity.objective}`);
   if (activity.notes) descParts.push(`Note: ${activity.notes}`);
   descParts.push(`[CRM Activity - ${activity.type || 'Altro'}]`);
 
   return {
-    summary: activity.title || `${activity.type || 'Attività'} CRM`,
+    summary,
     description: descParts.join('\n'),
     start: { dateTime: activityDate.toISOString() },
     end: { dateTime: endDate.toISOString() },
