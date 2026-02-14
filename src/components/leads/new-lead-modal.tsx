@@ -212,7 +212,6 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       const now = new Date().toISOString();
       const optimisticLead: Lead = {
         id: tempId,
-        airtable_id: '', // Campo legacy, vuoto per nuovi lead
         name: Nome,
         phone: normalizedPhone ?? null,
         email: Email ?? null,

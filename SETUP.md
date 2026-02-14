@@ -156,15 +156,18 @@ psql "$POSTGRES_URL_NON_POOLING" -c "\dt public.*"
 
 ### Schema Overview
 
-11 tabelle principali:
-- `leads` - Lead management
-- `activities` - Attività legate a leads
+21 tabelle + 1 VIEW (14 CRM core + 7 SEO/Ads):
+- `leads` - Lead management con FTS + trigram search
+- `activities` - Attività legate a leads con FTS + Google Calendar sync
 - `notes` - Note con highlights
 - `users` - Utenti sistema
 - `marketing_sources` - Fonti lead (Meta, Google, etc.)
 - `automations` + triggers/actions/logs - Workflow automation
 - `tasks` - User tasks
 - `user_preferences` - UI customization
+- `google_accounts`, `google_calendars`, `calendar_events` - Google Calendar sync
+- 7 tabelle SEO/Ads (`seo_keywords`, `seo_campaign_performance`, etc.)
+- `dashboard_stats` (VIEW) - Statistiche aggregate
 
 Vedi `DATABASE_SCHEMA.md` per dettagli completi.
 

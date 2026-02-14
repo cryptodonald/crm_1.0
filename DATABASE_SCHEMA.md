@@ -749,7 +749,7 @@ psql "$NEW_DATABASE_URL" -f schema.sql
 
 1. **Constraint gender duplicato** su `leads`: `leads_Gender_check` (legacy, senza 'other') e `leads_gender_check` (corretto). Non causa problemi ma andrebbe pulito.
 2. **Funzione `search_leads()`**: Usa nomi colonne in italiano. Legacy, non usata dal codice.
-3. **`airtable_id` rimosso**: Le colonne `airtable_id` sono state droppate da tutte le tabelle. La migrazione da Airtable è completata.
+3. **Colonne legacy rimosse**: Le colonne ID legacy sono state droppate da tutte le tabelle.
 
 ---
 

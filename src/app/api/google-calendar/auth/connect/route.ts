@@ -27,7 +27,7 @@ export async function GET() {
       );
     }
 
-    // Look up real Postgres UUID by email (handles stale JWT with Airtable IDs)
+    // Look up real Postgres UUID by email (handles stale JWT with non-UUID IDs)
     const user = await getUserByEmail(session.user.email);
     if (!user) {
       return NextResponse.json(

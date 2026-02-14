@@ -41,7 +41,14 @@ import {
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
+  TrendingDown,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -328,12 +335,28 @@ export default function SeoCampaignsPage() {
                       {campaigns.map((c) => {
                         const ctr = c.impressions > 0 ? c.clicks / c.impressions : 0;
                         const cpc = c.clicks > 0 ? c.cost_micros / c.clicks : 0;
+                        // Wasted spend: 0 conversions with cost > €50 (google-ads audit checklist)
+                        const isWastedSpend = (c.conversions === 0 || c.conversions === null) && c.cost_micros > 50_000_000;
 
                         return (
-                          <TableRow key={c.id}>
+                          <TableRow key={c.id} className={isWastedSpend ? 'bg-destructive/5' : undefined}>
                             {isCol('keyword') && (
                               <TableCell className="font-medium max-w-[200px] truncate">
-                                {c.keyword ?? '—'}
+                                <span className="flex items-center gap-1.5">
+                                  {c.keyword ?? '—'}
+                                  {isWastedSpend && (
+                                    <TooltipProvider delayDuration={200}>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <TrendingDown className="h-3.5 w-3.5 shrink-0 text-destructive" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Spesa senza conversioni: €{microsToEuros(c.cost_micros)}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                </span>
                               </TableCell>
                             )}
                             {isCol('campaign_name') && (

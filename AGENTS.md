@@ -4,7 +4,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-CRM 2.0 per Doctorbed con database **PostgreSQL** (Supabase). Migrato completamente da Airtable (Feb 2026).
+CRM 2.0 per Doctorbed con database **PostgreSQL** (Supabase).
 
 **Stack**:
 - Database: PostgreSQL 17.6 (Supabase) con Full-Text Search + pg_trgm
@@ -14,9 +14,9 @@ CRM 2.0 per Doctorbed con database **PostgreSQL** (Supabase). Migrato completame
 - Deploy: Vercel
 
 **Key Features**:
-- 11 tabelle + 1 VIEW normalizzate (leads, activities, notes, users, etc.)
+- 21 tabelle + 1 VIEW normalizzate (14 CRM core + 7 SEO/Ads)
 - FTS con custom trigger functions + trigram fuzzy search (pg_trgm)
-- 59 indici per performance (GIN, partial, composite, DESC)
+- 80+ indici per performance (GIN, partial, composite, DESC)
 - Schema completamente in English snake_case
 - Schema completo verificato: vedi `DATABASE_SCHEMA.md` e `schema.sql`
 
@@ -210,9 +210,11 @@ Cache TTL strategy:
 
 ### Postgres Schema Reference
 
-**11 tabelle + 1 VIEW** (vedi `DATABASE_SCHEMA.md` per schema completo verificato via `pg_dump`):
+**21 tabelle + 1 VIEW** (vedi `DATABASE_SCHEMA.md` per schema completo verificato via `pg_dump`):
+
+**CRM Core (14 tabelle)**:
 - **leads** (17 colonne): Core lead management con FTS + trigram search
-- **activities** (14 colonne): Attività linked a leads con FTS
+- **activities** (16 colonne): Attività linked a leads con FTS + Google Calendar sync
 - **notes** (7 colonne): Note con pin flag
 - **users** (11 colonne): System users (admin/sales)
 - **marketing_sources** (6 colonne): Lead sources (Meta, Instagram, Google)
@@ -220,7 +222,10 @@ Cache TTL strategy:
 - **automation_triggers**, **automation_actions**, **automation_logs** (RLS abilitato)
 - **tasks** (14 colonne): User tasks/todos
 - **user_preferences** (9 colonne): UI color customization
+- **google_accounts**, **google_calendars**, **calendar_events**: Google Calendar sync
 - **dashboard_stats** (VIEW): Statistiche aggregate
+
+**SEO & Ads (7 tabelle)**: `seo_keywords`, `seo_keyword_metrics`, `seo_campaign_performance`, `seo_organic_rankings`, `seo_site_analytics`, `seo_lead_attribution`, `seo_competitor_insights`
 
 Key relationships:
 - Lead → Activities (1:N via `activities.lead_id`, CASCADE)
@@ -228,7 +233,6 @@ Key relationships:
 - Lead → MarketingSource (N:1 via `leads.source_id`, SET NULL)
 - Lead → Lead (self-reference via `leads.referral_lead_id`, SET NULL)
 
-> ⚠️ Le colonne `airtable_id` sono state droppate da tutte le tabelle. Migrazione completata.
 
 ### UI Parity Requirements
 
@@ -397,24 +401,33 @@ Retention: 1 year
 
 ### Reference Documentation
 
-- `DATABASE_SCHEMA.md`: Schema Postgres completo verificato (11 tabelle + 1 VIEW, 59 indici, FK, FTS)
+- `DATABASE_SCHEMA.md`: Schema Postgres completo verificato (21 tabelle + 1 VIEW, 80+ indici, FK, FTS)
 - `schema.sql`: Dump schema per ricreazione DB (generato da `pg_dump`)
 - `UI_GUIDELINES.md`: Linee guida UI, shadcn/ui, Tailwind v4 features, typography plugin, CVA, container queries
 - `SETUP.md`: Setup completo nuovo ambiente di sviluppo
+- `SKILLS.md`: Catalogo completo 35+ AI skills installate, categorizzate per dominio
 - `src/app/globals.css`: Configurazione Tailwind v4 (tokens, plugins, custom variants)
 - `components.json`: Configurazione shadcn/ui CLI
 - `src/types/database.ts`: TypeScript interfaces per tutte le tabelle
 - `README.md`: Quick start, stack, env vars
 - `.env.example`: Template environment variables
-- `.agents/skills/`: AI Agent skills (vedi sezione "AI Skills" sotto)
+- `.agents/skills/`: AI Agent skills (vedi `SKILLS.md` per catalogo completo)
 
 ### AI Skills (`.agents/skills/`)
 
 Skill installate da [skills.sh](https://skills.sh/) — knowledge base specializzate per l'AI agent.
 Per leggere una skill: `read_skill` con `skill_path` = `.agents/skills/<nome>/SKILL.md`.
 
+**UI & Design:**
 - **`web-design-guidelines`** — Review UI code for Web Interface Guidelines compliance (vercel-labs)
 - **`ui-ux-pro-max`** — Design intelligence: 50+ stili, 97 palette, 57 font pairings, 99 UX guidelines, script Python per design system (nextlevelbuilder)
+
+**SEO & Google Ads:**
+- **`google-ads`** — Query, audit e ottimizzazione campagne Google Ads via API o browser automation (jdrhyne)
+- **`seo-audit`** — Audit SEO completo: crawlability, indexation, on-page, Core Web Vitals, E-E-A-T (coreyhaines31)
+- **`gsc`** — Query Google Search Console: top queries, top pages, CTR opportunities, URL inspection, sitemaps (jdrhyne)
+
+**Utility:**
 - **`find-skills`** — Cerca e installa nuove skill dall'ecosistema skills.sh (vercel-labs)
 
 ### Stack Details

@@ -1,5 +1,5 @@
 /**
- * DEPRECATED types - stub per compatibilità
+ * Legacy task type - stub per compatibilità
  * TODO: Sostituire con Task da database.ts
  */
 
@@ -7,7 +7,7 @@
 import type { Task } from './database';
 
 // Alias per compatibility - ora usa struttura Postgres diretta
-export interface AirtableUserTask {
+export interface UserTask {
   id: string;
   title: string;
   description?: string | null;

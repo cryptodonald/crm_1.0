@@ -18,7 +18,6 @@ export type Timestamptz = Date | string;
 
 export interface Lead {
   id: UUID;
-  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
   created_at: Timestamptz;
   updated_at: Timestamptz;
   
@@ -82,7 +81,6 @@ export type LeadUpdateInput = Partial<LeadCreateInput>;
 
 export interface Activity {
   id: UUID;
-  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
   created_at: Timestamptz;
   updated_at: Timestamptz;
   
@@ -148,7 +146,6 @@ export type ActivityUpdateInput = Partial<ActivityCreateInput>;
 
 export interface Note {
   id: UUID;
-  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
   created_at: Timestamptz;
   updated_at: Timestamptz;
   
@@ -178,7 +175,6 @@ export type NoteUpdateInput = Partial<NoteCreateInput>;
 
 export interface User {
   id: UUID;
-  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
   created_at: Timestamptz;
   updated_at: Timestamptz;
   
@@ -219,7 +215,6 @@ export interface UserUpdateInput {
 
 export interface MarketingSource {
   id: UUID;
-  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
   created_at: Timestamptz;
   updated_at: Timestamptz;
   
@@ -242,7 +237,6 @@ export type MarketingSourceUpdateInput = Partial<MarketingSourceCreateInput>;
 
 export interface Task {
   id: UUID;
-  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
   created_at: Timestamptz;
   updated_at: Timestamptz;
   
@@ -290,7 +284,6 @@ export interface TaskUpdateInput extends Partial<TaskCreateInput> {
 
 export interface Automation {
   id: UUID;
-  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
   created_at: Timestamptz;
   updated_at: Timestamptz;
   
@@ -371,7 +364,6 @@ export type AutomationStatus = 'success' | 'failed' | 'partial' | 'skipped';
 
 export interface UserPreference {
   id: UUID;
-  airtable_id: string; // TODO: Drop dopo full verification (LOW PRIORITY)
   created_at: Timestamptz;
   updated_at: Timestamptz;
   

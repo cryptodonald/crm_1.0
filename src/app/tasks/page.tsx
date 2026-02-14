@@ -18,7 +18,7 @@ import {
   KanbanOverlay,
 } from '@/components/ui/kanban';
 import { useUserTasks } from '@/hooks/use-user-tasks';
-import { AirtableUserTask } from '@/types/developer';
+import { UserTask } from '@/types/developer';
 import { GripVertical, Phone, Mail, MessageSquare, Calendar, Users, Filter, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import useSWR from 'swr';
 import { format, isPast } from 'date-fns';
@@ -68,10 +68,10 @@ const TYPE_ICONS = {
 };
 
 interface TaskCardProps {
-  task: AirtableUserTask; // Legacy type name (uses Postgres Task internally)
+  task: UserTask; // Legacy type name (uses Postgres Task internally)
   asHandle?: boolean;
-  onEdit?: (task: AirtableUserTask) => void;
-  onDelete?: (task: AirtableUserTask) => void;
+  onEdit?: (task: UserTask) => void;
+  onDelete?: (task: UserTask) => void;
   currentUserId?: string;
   currentUserRole?: string;
   usersMap?: Record<string, { id: string; nome: string; avatarUrl?: string }>;
@@ -185,10 +185,10 @@ function TaskCard({ task, asHandle, onEdit, onDelete, currentUserId, currentUser
 
 interface TaskColumnProps {
   value: string;
-  tasks: AirtableUserTask[]; // Legacy type name (uses Postgres Task internally)
+  tasks: UserTask[]; // Legacy type name (uses Postgres Task internally)
   isOverlay?: boolean;
-  onEdit?: (task: AirtableUserTask) => void;
-  onDelete?: (task: AirtableUserTask) => void;
+  onEdit?: (task: UserTask) => void;
+  onDelete?: (task: UserTask) => void;
   currentUserId?: string;
   currentUserRole?: string;
   usersMap?: Record<string, { id: string; nome: string; avatarUrl?: string }>;
@@ -232,8 +232,8 @@ export default function TasksPage() {
   const { deleteTask, isDeleting } = useDeleteUserTask();
   
   const [isNewTaskOpen, setIsNewTaskOpen] = React.useState(false);
-  const [editingTask, setEditingTask] = React.useState<AirtableUserTask | null>(null);
-  const [deletingTask, setDeletingTask] = React.useState<AirtableUserTask | null>(null);
+  const [editingTask, setEditingTask] = React.useState<UserTask | null>(null);
+  const [deletingTask, setDeletingTask] = React.useState<UserTask | null>(null);
   const [priorityFilter, setPriorityFilter] = React.useState<string>('all');
   const [typeFilter, setTypeFilter] = React.useState<string>('all');
   
@@ -256,7 +256,7 @@ export default function TasksPage() {
 
   // Group tasks by status
   const columns = React.useMemo(() => {
-    const grouped: Record<string, AirtableUserTask[]> = {
+    const grouped: Record<string, UserTask[]> = {
       todo: [],
       in_progress: [],
       done: [],
@@ -334,14 +334,14 @@ export default function TasksPage() {
   ).length;
 
   // Check permissions: can manage if creator or admin
-  const canManageTask = React.useCallback((task: AirtableUserTask) => {
+  const canManageTask = React.useCallback((task: UserTask) => {
     const isCreator = task.fields.CreatedBy?.includes(session?.user?.id || '');
     const isAdmin = session?.user?.role === 'admin';
     return isCreator || isAdmin;
   }, [session]);
 
   // Handler for edit
-  const handleEdit = React.useCallback((task: AirtableUserTask) => {
+  const handleEdit = React.useCallback((task: UserTask) => {
     if (canManageTask(task)) {
       setEditingTask(task);
     } else {
@@ -350,7 +350,7 @@ export default function TasksPage() {
   }, [canManageTask]);
 
   // Handler for delete
-  const handleDelete = React.useCallback((task: AirtableUserTask) => {
+  const handleDelete = React.useCallback((task: UserTask) => {
     if (canManageTask(task)) {
       setDeletingTask(task);
     } else {

@@ -1801,7 +1801,19 @@ npm install google-ads-api @google-analytics/data googleapis
 
 ---
 
-## 17. Prossimi Passi Immediati
+## 17. AI Agent Skills
+
+Skill specializzate installate in `.agents/skills/` per assistenza AI su questo modulo:
+
+- **`google-ads`** — Knowledge base Google Ads API: GAQL queries, keyword_view, campaign management, audit checklist, wasted spend detection
+- **`seo-audit`** — Framework audit SEO: crawlability, indexation, Core Web Vitals, on-page, E-E-A-T, output strutturato per report
+- **`gsc`** — Google Search Console API: top queries, top pages, CTR opportunities, URL inspection, sitemaps
+
+Installazione: `npx skills add <owner/repo@skill> -y` (vedi `.agents/skills/find-skills/SKILL.md`).
+
+---
+
+## 18. Prossimi Passi Immediati
 
 1. **Richiedere Developer Token** Google Ads (2-5 giorni lavorativi)
 2. **Creare Google Cloud Project** con API abilitate (Ads, GA4, Search Console)

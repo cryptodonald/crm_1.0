@@ -144,7 +144,7 @@ export const authOptions: AuthOptions = {
         token.image = user.image;
       }
 
-      // Auto-heal stale JWTs with Airtable IDs (pre-migration tokens)
+      // Auto-heal stale JWTs with non-UUID IDs (pre-migration tokens)
       // UUID v4 format: 8-4-4-4-12 hex chars
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token.id);
       if (!isValidUuid && token.email) {

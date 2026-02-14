@@ -7,118 +7,192 @@ interface MattressCrossSectionProps {
   isOne?: boolean;
 }
 
-// Color scales
-const BASE_COLORS: Record<string, string> = {
-  soft: '#d4d4d4',    // light gray
-  medium: '#9ca3af',  // medium gray
-  hard: '#4b5563',    // dark gray
+// ============================================================================
+// Color scales using CSS custom properties where possible.
+// SVG fill/stroke require computed values — we use semantic oklch tokens
+// from the Tailwind theme so they adapt to light/dark mode.
+// ============================================================================
+
+/** Base density → fill color (progressively darker for harder bases) */
+const BASE_FILLS: Record<string, { fill: string; textFill: string }> = {
+  soft:   { fill: 'var(--muted)',            textFill: 'var(--muted-foreground)' },
+  medium: { fill: 'var(--border)',            textFill: 'var(--foreground)' },
+  hard:   { fill: 'var(--muted-foreground)',  textFill: 'var(--background)' },
 };
 
-const TOPPER_COLORS: Record<number, { soft: string; hard: string }> = {
-  1: { soft: '#e5e7eb', hard: '#e5e7eb' },    // all soft → very light
-  2: { soft: '#e5e7eb', hard: '#d1d5db' },
-  3: { soft: '#e5e7eb', hard: '#9ca3af' },
-  4: { soft: '#d1d5db', hard: '#6b7280' },
-  5: { soft: '#9ca3af', hard: '#6b7280' },     // all hard → darker
-  6: { soft: '#6b7280', hard: '#a3a3a3' },     // hard + HR
+/**
+ * Topper layers use opacity-stepped variants of muted/foreground
+ * to communicate soft → hard progression without hardcoded hex.
+ */
+const TOPPER_FILLS: Record<number, { soft: string; hard: string; softOpacity: number; hardOpacity: number }> = {
+  1: { soft: 'var(--muted)', hard: 'var(--muted)',            softOpacity: 1,   hardOpacity: 1 },
+  2: { soft: 'var(--muted)', hard: 'var(--border)',           softOpacity: 1,   hardOpacity: 1 },
+  3: { soft: 'var(--muted)', hard: 'var(--muted-foreground)', softOpacity: 1,   hardOpacity: 0.4 },
+  4: { soft: 'var(--border)', hard: 'var(--muted-foreground)', softOpacity: 1,  hardOpacity: 0.6 },
+  5: { soft: 'var(--muted-foreground)', hard: 'var(--muted-foreground)', softOpacity: 0.4, hardOpacity: 0.6 },
+  6: { soft: 'var(--muted-foreground)', hard: 'var(--ring)',  softOpacity: 0.6, hardOpacity: 0.7 },
 };
 
-const CYLINDER_COLORS: Record<string, string> = {
-  none: 'transparent',
-  super_soft_6: '#bfdbfe', // light blue
-  soft_8: '#93c5fd',       // blue
-  medium_8: '#3b82f6',     // medium blue
-  firm_8: '#1d4ed8',       // dark blue
+/** Cylinder types use chart colors (semantic, theme-aware) */
+const CYLINDER_FILLS: Record<string, string> = {
+  none:         'transparent',
+  super_soft_6: 'var(--chart-2)',
+  soft_8:       'var(--chart-2)',
+  medium_8:     'var(--chart-1)',
+  firm_8:       'var(--chart-3)',
 };
+
+const CYLINDER_OPACITIES: Record<string, number> = {
+  none: 0,
+  super_soft_6: 0.35,
+  soft_8: 0.55,
+  medium_8: 0.75,
+  firm_8: 1,
+};
+
+// ============================================================================
+// Descriptive labels for a11y
+// ============================================================================
+
+const BASE_LABELS: Record<string, string> = {
+  soft: 'morbida', medium: 'media', hard: 'rigida',
+};
+
+const CYLINDER_LABELS: Record<string, string> = {
+  none: 'vuoto', super_soft_6: 'super soft 6cm', soft_8: 'soft 8cm',
+  medium_8: 'medium 8cm', firm_8: 'firm 8cm',
+};
+
+function buildAriaLabel(config: LeadAnalysisConfig, isOne?: boolean): string {
+  const model = config.model.toUpperCase();
+  const base = BASE_LABELS[config.base_density] || config.base_density;
+  const topper = isOne ? 'fisso' : `livello ${config.topper_level}`;
+  let label = `Sezione ${model}: base ${base}, topper ${topper}`;
+  if (config.model === 'pro') {
+    const sh = CYLINDER_LABELS[config.cylinder_shoulders || 'none'];
+    const lu = CYLINDER_LABELS[config.cylinder_lumbar || 'none'];
+    const le = CYLINDER_LABELS[config.cylinder_legs || 'none'];
+    label += `, cilindri spalle ${sh}, lombare ${lu}, gambe ${le}`;
+  }
+  return label;
+}
+
+// ============================================================================
+// Component
+// ============================================================================
 
 export function MattressCrossSection({ config, isOne }: MattressCrossSectionProps) {
-  const totalHeight = 230; // 23cm scaled to 230
+  const totalHeight = 230;
   const width = 300;
-  const baseH = isOne ? 170 : 140; // 17cm or 14cm
-  const topperH = isOne ? 50 : 80;  // 5cm or 8cm
-  const coverH = 10; // cover (visual)
+  const baseH = isOne ? 170 : 140;
+  const topperH = isOne ? 50 : 80;
+  const coverH = 10;
 
-  const baseColor = BASE_COLORS[config.base_density] || BASE_COLORS.medium;
+  const baseFill = BASE_FILLS[config.base_density] || BASE_FILLS.medium;
   const topperLevel = config.topper_level || 3;
-  const topperColor = TOPPER_COLORS[topperLevel] || TOPPER_COLORS[3];
+  const topperFill = TOPPER_FILLS[topperLevel] || TOPPER_FILLS[3];
 
-  // Topper layers (soft on top, hard below)
   const softRatio = isOne ? 0.5 : [1, 0.75, 0.5, 0.25, 0, 0.5][topperLevel - 1];
   const softH = topperH * softRatio;
   const hardH = topperH - softH;
 
-  // PRO: cylinders embedded in top 80 of baseH
   const isPro = config.model === 'pro';
   const cylinderZoneH = isPro ? 80 : 0;
   const solidBaseH = baseH - cylinderZoneH;
 
+  // Semantic color references
+  const strokeColor = 'var(--border)';
+  const textMuted = 'var(--muted-foreground)';
+  const textSubtle = 'var(--ring)';
+
   return (
     <svg
       viewBox={`0 0 ${width} ${totalHeight + 20}`}
-      className="w-full h-auto"
+      className="w-full h-auto max-w-[300px] mx-auto"
       role="img"
-      aria-label={`Cross-section ${config.model.toUpperCase()}`}
+      aria-label={buildAriaLabel(config, isOne)}
     >
       {/* Cover top */}
-      <rect x={10} y={5} width={width - 20} height={coverH} rx={4}
-        fill="#e0e7ef" stroke="#c7cdd4" strokeWidth={0.5} />
-      <text x={width / 2} y={12} textAnchor="middle" fontSize={7} fill="#64748b">Cover</text>
+      <rect
+        x={10} y={5} width={width - 20} height={coverH} rx={4}
+        fill="var(--muted)" stroke={strokeColor} strokeWidth={0.5}
+      />
+      <text x={width / 2} y={12} textAnchor="middle" fontSize={7} fill={textSubtle}>
+        Cover
+      </text>
 
-      {/* Topper — soft layer (top) */}
-      <rect x={10} y={5 + coverH} width={width - 20} height={softH} rx={0}
-        fill={topperColor.soft} stroke="#b0b8c1" strokeWidth={0.5} />
+      {/* Topper — soft layer */}
+      <rect
+        x={10} y={5 + coverH} width={width - 20} height={softH}
+        fill={topperFill.soft} fillOpacity={topperFill.softOpacity}
+        stroke={strokeColor} strokeWidth={0.5}
+      />
       {softH > 15 && (
-        <text x={width / 2} y={5 + coverH + softH / 2 + 3} textAnchor="middle" fontSize={7} fill="#64748b">
+        <text
+          x={width / 2} y={5 + coverH + softH / 2 + 3}
+          textAnchor="middle" fontSize={7} fill={textMuted}
+        >
           Visco Soft
         </text>
       )}
 
-      {/* Topper — hard layer (bottom) */}
-      <rect x={10} y={5 + coverH + softH} width={width - 20} height={hardH} rx={0}
-        fill={topperColor.hard} stroke="#b0b8c1" strokeWidth={0.5} />
+      {/* Topper — hard layer */}
+      <rect
+        x={10} y={5 + coverH + softH} width={width - 20} height={hardH}
+        fill={topperFill.hard} fillOpacity={topperFill.hardOpacity}
+        stroke={strokeColor} strokeWidth={0.5}
+      />
       {hardH > 15 && (
-        <text x={width / 2} y={5 + coverH + softH + hardH / 2 + 3} textAnchor="middle" fontSize={7} fill="#4a5568">
+        <text
+          x={width / 2} y={5 + coverH + softH + hardH / 2 + 3}
+          textAnchor="middle" fontSize={7} fill={textMuted}
+        >
           {topperLevel === 6 ? 'HR + Hard' : 'Visco Hard'}
         </text>
       )}
 
-      {/* Separator line */}
-      <line x1={10} y1={5 + coverH + topperH} x2={width - 10} y2={5 + coverH + topperH}
-        stroke="#94a3b8" strokeWidth={1} strokeDasharray="4,3" />
+      {/* Separator */}
+      <line
+        x1={10} y1={5 + coverH + topperH}
+        x2={width - 10} y2={5 + coverH + topperH}
+        stroke={textSubtle} strokeWidth={1} strokeDasharray="4,3"
+      />
 
-      {/* Base — cylinder zone (PRO only) */}
+      {/* Cylinder zone (PRO) */}
       {isPro && (
         <g>
-          <rect x={10} y={5 + coverH + topperH} width={width - 20} height={cylinderZoneH}
-            fill={baseColor} fillOpacity={0.3} stroke="#b0b8c1" strokeWidth={0.5} />
-
-          {/* Cylinders: 3 shoulders + 4 lumbar + 3 legs */}
-          {renderCylinders(config, width, 5 + coverH + topperH, cylinderZoneH)}
+          <rect
+            x={10} y={5 + coverH + topperH}
+            width={width - 20} height={cylinderZoneH}
+            fill={baseFill.fill} fillOpacity={0.3}
+            stroke={strokeColor} strokeWidth={0.5}
+          />
+          {renderCylinders(config, width, 5 + coverH + topperH, cylinderZoneH, strokeColor, textSubtle)}
         </g>
       )}
 
-      {/* Base — solid part (or full for ONE/PLUS) */}
+      {/* Solid base */}
       <rect
         x={10}
         y={5 + coverH + topperH + cylinderZoneH}
         width={width - 20}
         height={solidBaseH}
-        rx={isPro ? 0 : 0}
-        fill={baseColor}
-        stroke="#b0b8c1"
+        fill={baseFill.fill}
+        stroke={strokeColor}
         strokeWidth={0.5}
       />
       <text
         x={width / 2}
         y={5 + coverH + topperH + cylinderZoneH + solidBaseH / 2 + 3}
-        textAnchor="middle" fontSize={8} fill={config.base_density === 'hard' ? '#fff' : '#4a5568'}
+        textAnchor="middle" fontSize={8}
+        fill={baseFill.textFill}
       >
         SmartBase™ {config.base_density.charAt(0).toUpperCase() + config.base_density.slice(1)}
       </text>
 
-      {/* Scanalature (ONE & PLUS only) */}
+      {/* Scanalature (ONE & PLUS) */}
       {!isPro && (
-        <g opacity={0.3}>
+        <g opacity={0.25}>
           {Array.from({ length: 6 }).map((_, i) => (
             <line
               key={i}
@@ -126,7 +200,7 @@ export function MattressCrossSection({ config, isOne }: MattressCrossSectionProp
               y1={5 + coverH + topperH + 5}
               x2={10 + (i + 1) * ((width - 20) / 7)}
               y2={5 + coverH + topperH + baseH - 20}
-              stroke="#94a3b8"
+              stroke={textSubtle}
               strokeWidth={1.5}
               strokeDasharray="2,4"
             />
@@ -135,34 +209,47 @@ export function MattressCrossSection({ config, isOne }: MattressCrossSectionProp
       )}
 
       {/* Cover bottom */}
-      <rect x={10} y={5 + coverH + topperH + baseH} width={width - 20} height={coverH} rx={4}
-        fill="#d1d5db" stroke="#c7cdd4" strokeWidth={0.5} />
+      <rect
+        x={10} y={5 + coverH + topperH + baseH}
+        width={width - 20} height={coverH} rx={4}
+        fill="var(--border)" stroke={strokeColor} strokeWidth={0.5}
+      />
 
       {/* Height label */}
-      <text x={width - 5} y={totalHeight / 2 + 10} textAnchor="end" fontSize={8} fill="#94a3b8" transform={`rotate(-90, ${width - 5}, ${totalHeight / 2 + 10})`}>
+      <text
+        x={width - 5} y={totalHeight / 2 + 10}
+        textAnchor="end" fontSize={8} fill={textSubtle}
+        transform={`rotate(-90, ${width - 5}, ${totalHeight / 2 + 10})`}
+      >
         23cm
       </text>
     </svg>
   );
 }
 
+// ============================================================================
+// Cylinder renderer (PRO model)
+// ============================================================================
+
 function renderCylinders(
   config: LeadAnalysisConfig,
   svgWidth: number,
   yStart: number,
   zoneH: number,
+  strokeColor: string,
+  textColor: string,
 ) {
   const cylinders: Array<{ type: string; zone: string }> = [];
 
-  // 3 shoulders
   const sh = config.cylinder_shoulders || 'super_soft_6';
   cylinders.push({ type: sh, zone: 'S' }, { type: sh, zone: 'S' }, { type: sh, zone: 'S' });
 
-  // 4 lumbar
   const lu = config.cylinder_lumbar || 'medium_8';
-  cylinders.push({ type: lu, zone: 'L' }, { type: lu, zone: 'L' }, { type: lu, zone: 'L' }, { type: lu, zone: 'L' });
+  cylinders.push(
+    { type: lu, zone: 'L' }, { type: lu, zone: 'L' },
+    { type: lu, zone: 'L' }, { type: lu, zone: 'L' },
+  );
 
-  // 3 legs (mirror shoulders)
   const le = config.cylinder_legs || sh;
   cylinders.push({ type: le, zone: 'G' }, { type: le, zone: 'G' }, { type: le, zone: 'G' });
 
@@ -176,7 +263,8 @@ function renderCylinders(
       {cylinders.map((c, i) => {
         const cx = 10 + i * cylW + cylW / 2;
         const cy = yStart + zoneH / 2;
-        const color = CYLINDER_COLORS[c.type] || CYLINDER_COLORS.medium_8;
+        const fill = CYLINDER_FILLS[c.type] || CYLINDER_FILLS.medium_8;
+        const opacity = CYLINDER_OPACITIES[c.type] ?? 0.75;
         const isNone = c.type === 'none';
 
         return (
@@ -185,21 +273,32 @@ function renderCylinders(
               cx={cx}
               cy={cy}
               r={cylR}
-              fill={isNone ? 'none' : color}
-              stroke={isNone ? '#cbd5e1' : '#6b7280'}
+              fill={isNone ? 'none' : fill}
+              fillOpacity={opacity}
+              stroke={isNone ? strokeColor : 'var(--muted-foreground)'}
               strokeWidth={0.5}
               strokeDasharray={isNone ? '2,2' : 'none'}
             />
-            <text x={cx} y={cy + 3} textAnchor="middle" fontSize={6} fill={isNone ? '#94a3b8' : '#1e3a5f'}>
+            <text
+              x={cx} y={cy + 3}
+              textAnchor="middle" fontSize={6}
+              fill={isNone ? textColor : 'var(--foreground)'}
+            >
               {c.zone}
             </text>
           </g>
         );
       })}
       {/* Zone labels */}
-      <text x={10 + 1.5 * cylW} y={yStart - 3} textAnchor="middle" fontSize={6} fill="#94a3b8">Spalle</text>
-      <text x={10 + 5 * cylW} y={yStart - 3} textAnchor="middle" fontSize={6} fill="#94a3b8">Lombare</text>
-      <text x={10 + 8.5 * cylW} y={yStart - 3} textAnchor="middle" fontSize={6} fill="#94a3b8">Gambe</text>
+      <text x={10 + 1.5 * cylW} y={yStart - 3} textAnchor="middle" fontSize={6} fill={textColor}>
+        Spalle
+      </text>
+      <text x={10 + 5 * cylW} y={yStart - 3} textAnchor="middle" fontSize={6} fill={textColor}>
+        Lombare
+      </text>
+      <text x={10 + 8.5 * cylW} y={yStart - 3} textAnchor="middle" fontSize={6} fill={textColor}>
+        Gambe
+      </text>
     </>
   );
 }

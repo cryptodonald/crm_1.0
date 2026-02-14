@@ -14,7 +14,7 @@ import { env } from '@/env';
  * encrypts and stores them, then fetches calendar list.
  * 
  * User ID is resolved from Postgres via email (not from JWT) to handle
- * stale JWTs that may contain Airtable-format IDs.
+ * stale JWTs that may contain non-UUID format IDs.
  */
 export async function GET(request: NextRequest) {
   try {

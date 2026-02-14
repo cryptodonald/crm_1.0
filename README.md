@@ -28,7 +28,7 @@ Per setup completo (env vars, database, deploy): vedi **[SETUP.md](SETUP.md)**
 
 ## Database
 
-11 tabelle + 1 VIEW, 59 indici, 15 FK constraints.
+21 tabelle + 1 VIEW (14 CRM core + 7 SEO/Ads), 80+ indici.
 
 | Risorsa | Descrizione |
 |---------|-------------|
@@ -58,19 +58,18 @@ Lettura consigliata in ordine:
 1. **[SETUP.md](SETUP.md)** — Setup ambiente, env vars, database, deploy
 2. **[DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)** — Schema DB completo (verificato via `pg_dump`)
 3. **[UI_GUIDELINES.md](UI_GUIDELINES.md)** — Componenti UI, Tailwind v4, shadcn/ui, typography plugin
-4. **[AGENTS.md](AGENTS.md)** — Guidelines per AI agent (Warp), patterns critici, business rules, AI skills
+4. **[AGENTS.md](AGENTS.md)** — Guidelines per AI agent (Warp), patterns critici, business rules
+5. **[SKILLS.md](SKILLS.md)** — Catalogo completo 35+ AI skills installate
 
 ---
 
 ## AI Skills
 
-12 skill installate in `.warp/skills/` da [skills.sh](https://skills.sh/) per l'AI agent:
+35+ skill installate in `.agents/skills/` da [skills.sh](https://skills.sh/) per l'AI agent.
 
-- **UI/Design**: `react-best-practices`, `frontend-design`, `web-design-guidelines`, `shadcn-ui`, `tailwind-css-patterns`
-- **Next.js**: `composition-patterns`, `next-best-practices`, `next-cache-components`
-- **TypeScript/Backend**: `typescript-advanced-types`, `nodejs-backend-patterns`, `architecture-patterns`, `api-design-principles`
+Categorizzate per: React/Next.js, TypeScript, Database/Postgres, UI/Design, SEO/Ads, e utility.
 
-Vedi **[AGENTS.md](AGENTS.md#ai-skills-warpskills)** per dettagli su quando usare ciascuna skill.
+Vedi **[SKILLS.md](SKILLS.md)** per catalogo completo con trigger d'uso e task-to-skill mapping.
 
 ---
 

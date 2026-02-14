@@ -74,7 +74,6 @@ export function useNotes(leadId: string | undefined): UseNotesReturn {
       content: noteData.content,
       pinned: noteData.pinned ?? false,
       user_id: null,
-      airtable_id: '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       author_name: null, // Risolto dal server dopo POST

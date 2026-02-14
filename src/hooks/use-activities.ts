@@ -226,7 +226,6 @@ export function useCreateActivity() {
             {
               id: tempId,
               ...data,
-              airtable_id: '',
               search_vector: null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),

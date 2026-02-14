@@ -1,17 +1,17 @@
 /**
  * DEPRECATED: usa use-tasks invece
- * Stub per retrocompatibilità - map Task → AirtableUserTask
+ * Stub per retrocompatibilità - map Task → UserTask
  */
 
 import { useTasks, useDeleteTask } from './use-tasks';
 import type { Task } from '@/types/database';
-import type { AirtableUserTask } from '@/types/developer';
+import type { UserTask } from '@/types/developer';
 
 export function useUserTasks() {
   const { tasks, isLoading, error, mutate } = useTasks();
   
-  // Map Task[] → AirtableUserTask[] per backward compatibility
-  const mappedTasks = tasks.map((task: Task): AirtableUserTask => ({
+  // Map Task[] → UserTask[] per backward compatibility
+  const mappedTasks = tasks.map((task: Task): UserTask => ({
     id: task.id,
     title: task.title || '',
     description: task.description,

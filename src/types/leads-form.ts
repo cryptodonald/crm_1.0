@@ -38,13 +38,13 @@ export interface LeadFormData {
   // Attachments and avatar
   Avatar?: string; // Custom avatar URL
   Gender?: 'male' | 'female' | 'unknown'; // AI-detected gender
-  Allegati?: AirtableAttachment[]; // Legacy: not implemented in Postgres v1
+  Allegati?: FileAttachment[]; // Not implemented in Postgres v1
 }
 
 /**
- * Allegato (legacy)
+ * Allegato file
  */
-export interface AirtableAttachment {
+export interface FileAttachment {
   id: string;
   url: string;
   filename: string;
