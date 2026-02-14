@@ -1,5 +1,5 @@
 /**
- * Next.js Middleware — Security Layer
+ * Next.js Proxy — Security Layer
  * 
  * Protects all /api/* routes with:
  * 1. JWT auth verification (via NextAuth getToken)
@@ -65,10 +65,10 @@ function getClientIp(request: NextRequest): string {
 }
 
 // ============================================================================
-// Middleware
+// Proxy
 // ============================================================================
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only protect /api/* routes
@@ -126,7 +126,7 @@ export async function middleware(request: NextRequest) {
 }
 
 // ============================================================================
-// Matcher — only run middleware on API routes
+// Matcher — only run proxy on API routes
 // ============================================================================
 
 export const config = {
