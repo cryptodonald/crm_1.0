@@ -106,15 +106,60 @@ export interface AdsCampaignRow {
   conversion_rate: number;
 }
 
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/** Validate YYYY-MM-DD format to prevent GAQL injection */
+function assertDateFormat(date: string, label: string): void {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error(`Invalid ${label}: expected YYYY-MM-DD, got "${date}"`);
+  }
+}
+
+/** Retry with exponential backoff (for RESOURCE_EXHAUSTED / transient errors) */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  { maxRetries = 3, baseDelayMs = 1000 } = {}
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      const isRetryable =
+        err instanceof Error &&
+        (err.message.includes('RESOURCE_EXHAUSTED') ||
+         err.message.includes('INTERNAL') ||
+         err.message.includes('UNAVAILABLE') ||
+         err.message.includes('DEADLINE_EXCEEDED'));
+
+      if (!isRetryable || attempt === maxRetries) throw err;
+
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[GoogleAds] Retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
+      }
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error('Unreachable');
+}
+
 /**
  * Fetch campaign performance at ad_group + keyword level.
  * Supports single date or date range (GAQL BETWEEN).
  * Uses GAQL (Google Ads Query Language).
+ *
+ * Filters: ENABLED campaigns/ad_groups, excludes REMOVED keywords.
+ * Retries on transient Google Ads API errors (RESOURCE_EXHAUSTED, etc.).
  */
 export async function fetchCampaignPerformance(
   dateFrom: string,
   dateTo?: string
 ): Promise<AdsCampaignRow[]> {
+  assertDateFormat(dateFrom, 'dateFrom');
+  if (dateTo) assertDateFormat(dateTo, 'dateTo');
+
   const customer = getAdsCustomer();
 
   const dateFilter = dateTo
@@ -122,7 +167,7 @@ export async function fetchCampaignPerformance(
     : `segments.date = '${dateFrom}'`;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const results: any[] = await customer.query(`
+  const results: any[] = await withRetry(() => customer.query(`
     SELECT
       campaign.name,
       campaign.advertising_channel_type,
@@ -147,9 +192,10 @@ export async function fetchCampaignPerformance(
     WHERE ${dateFilter}
       AND campaign.status = 'ENABLED'
       AND ad_group.status = 'ENABLED'
+      AND ad_group_criterion.status != 'REMOVED'
     ORDER BY metrics.cost_micros DESC
     LIMIT 10000
-  `);
+  `));
 
   return results.map((r) => {
     const clicks = Number(r.metrics?.clicks ?? 0);
@@ -205,6 +251,9 @@ export async function fetchAuctionInsights(
   dateFrom: string,
   dateTo?: string
 ): Promise<AdsAuctionInsightRow[]> {
+  assertDateFormat(dateFrom, 'dateFrom');
+  if (dateTo) assertDateFormat(dateTo, 'dateTo');
+
   const customer = getAdsCustomer();
 
   const dateFilter = dateTo
@@ -213,7 +262,7 @@ export async function fetchAuctionInsights(
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const results: any[] = await customer.query(`
+    const results: any[] = await withRetry(() => customer.query(`
       SELECT
         campaign.name,
         auction_insight.display_domain,
@@ -225,7 +274,7 @@ export async function fetchAuctionInsights(
       WHERE ${dateFilter}
         AND campaign.status = 'ENABLED'
       LIMIT 500
-    `);
+    `));
 
     return results.map((r) => ({
       campaign_name: r.campaign?.name ?? '',

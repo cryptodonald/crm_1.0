@@ -40,7 +40,9 @@ function CalendarSettingsContent() {
   const { calendars, isLoading: calendarsLoading } = useGoogleCalendars();
   const { triggerSync, disconnectAccount, toggleCalendarVisibility, refreshCalendars } = useCalendarSync();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    requestAnimationFrame(() => setMounted(true));
+  }, []);
 
   // Handle OAuth callback messages
   useEffect(() => {
