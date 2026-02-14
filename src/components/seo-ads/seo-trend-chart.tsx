@@ -6,7 +6,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from 'recharts';
 import type { SeoTrendDataPoint } from '@/types/seo-ads';
@@ -42,7 +42,7 @@ export function SeoTrendChart({
       <CardContent>
         {loading ? (
           <div
-            className="animate-pulse rounded bg-muted"
+            className="animate-pulse rounded bg-muted motion-reduce:animate-none"
             style={{ height }}
           />
         ) : data.length === 0 ? (
@@ -54,57 +54,57 @@ export function SeoTrendChart({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={height}>
-            <AreaChart
-              data={data}
-              margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={color} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                className="stroke-border"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="date"
-                className="text-xs"
-                tick={{ fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                className="text-xs"
-                tick={{ fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                width={50}
-              />
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null;
-                  return (
-                    <div className="rounded-lg border bg-background px-3 py-2 shadow-sm">
-                      <p className="text-xs text-muted-foreground">{label}</p>
-                      <p className="text-sm font-semibold">
-                        {valueFormatter(payload[0].value as number)}
-                      </p>
-                    </div>
-                  );
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke={color}
-                strokeWidth={2}
-                fill={`url(#gradient-${title})`}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+              <AreaChart
+                data={data}
+                margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={color} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-border"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  className="text-xs"
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  className="text-xs"
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={50}
+                />
+                <RechartsTooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="rounded-lg border bg-background px-3 py-2 shadow-sm">
+                        <p className="text-xs text-muted-foreground">{label}</p>
+                        <p className="text-sm font-semibold tabular-nums">
+                          {valueFormatter(payload[0].value as number)}
+                        </p>
+                      </div>
+                    );
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke={color}
+                  strokeWidth={2}
+                  fill={`url(#gradient-${title})`}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
         )}
       </CardContent>
     </Card>

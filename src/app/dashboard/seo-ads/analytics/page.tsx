@@ -9,14 +9,11 @@ import { SeoSubNav } from '@/components/seo-ads/seo-sub-nav';
 import { SeoDateFilter, presetToDates } from '@/components/seo-ads/seo-date-filter';
 import type { DatePreset } from '@/components/seo-ads/seo-date-filter';
 import { SeoTrendChart } from '@/components/seo-ads/seo-trend-chart';
-import {
-  formatNumber,
-  formatPercent,
-  formatPosition,
-} from '@/components/seo-ads/seo-currency-helpers';
-import { useSeoOrganic } from '@/hooks/use-seo-dashboard';
+import { formatNumber, formatPercent } from '@/components/seo-ads/seo-currency-helpers';
+import { useSeoAnalytics } from '@/hooks/use-seo-dashboard';
 
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
@@ -31,16 +28,27 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  ExternalLink,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 25;
 
-export default function SeoOrganicPage() {
+// Source badge color mapping
+function sourceBadgeVariant(source: string): 'primary' | 'secondary' | 'destructive' | 'outline' {
+  const s = source.toLowerCase();
+  if (s === 'google') return 'primary';
+  if (['facebook', 'instagram', 'meta'].includes(s)) return 'secondary';
+  if (s === '(direct)' || s === 'direct') return 'outline';
+  return 'secondary';
+}
+
+function formatDuration(seconds: number | null): string {
+  if (seconds == null || seconds === 0) return '—';
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+export default function SeoAnalyticsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
@@ -51,7 +59,7 @@ export default function SeoOrganicPage() {
 
   const { date_from, date_to } = presetToDates(datePreset);
 
-  const { rankings, total, isLoading, isValidating, error, mutate } = useSeoOrganic({
+  const { analytics, total, isLoading, isValidating, error, mutate } = useSeoAnalytics({
     date_from,
     date_to,
     page,
@@ -61,7 +69,7 @@ export default function SeoOrganicPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
 
-  // On-demand sync: calls Search Console + GA4 via the unified sync endpoint
+  // On-demand sync
   const handleSync = useCallback(async () => {
     setSyncing(true);
     setSyncError(null);
@@ -85,10 +93,9 @@ export default function SeoOrganicPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/dashboard/seo-ads/organic');
+      router.push('/login?callbackUrl=/dashboard/seo-ads/analytics');
     }
   }, [status, router]);
-
 
   if (status === 'loading') {
     return (
@@ -103,26 +110,31 @@ export default function SeoOrganicPage() {
 
   if (!session) return null;
 
-  // Trend chart: average position over time
-  const positionByDate = new Map<string, { sum: number; count: number }>();
-  rankings.forEach((r) => {
-    const existing = positionByDate.get(r.report_date) || { sum: 0, count: 0 };
-    existing.sum += r.avg_position;
-    existing.count += 1;
-    positionByDate.set(r.report_date, existing);
-  });
-  const positionTrend = Array.from(positionByDate.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, d]) => ({ date, value: d.sum / d.count }));
-
-  // Totals
-  const totals = rankings.reduce(
-    (acc, r) => ({
-      clicks: acc.clicks + r.clicks,
-      impressions: acc.impressions + r.impressions,
+  // Aggregate totals
+  const totals = analytics.reduce(
+    (acc, a) => ({
+      sessions: acc.sessions + a.sessions,
+      page_views: acc.page_views + a.page_views,
+      form_submissions: acc.form_submissions + (a.form_submissions ?? 0),
     }),
-    { clicks: 0, impressions: 0 }
+    { sessions: 0, page_views: 0, form_submissions: 0 }
   );
+
+  // Weighted bounce rate
+  const totalSessionsForBounce = analytics.reduce((s, a) => s + a.sessions, 0);
+  const weightedBounceRate = totalSessionsForBounce > 0
+    ? analytics.reduce((s, a) => s + (a.bounce_rate ?? 0) * a.sessions, 0) / totalSessionsForBounce
+    : 0;
+
+  // Trend chart: sessions by date (aggregate across sources)
+  const sessionsByDate = new Map<string, number>();
+  analytics.forEach((a) => {
+    const existing = sessionsByDate.get(a.report_date) || 0;
+    sessionsByDate.set(a.report_date, existing + a.sessions);
+  });
+  const sessionsTrend = Array.from(sessionsByDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, value]) => ({ date, value }));
 
   return (
     <AppLayoutCustom>
@@ -135,10 +147,10 @@ export default function SeoOrganicPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <h1 className="text-2xl font-bold tracking-tight text-pretty">
-                  Organic Rankings
+                  Site Analytics
                 </h1>
                 <p className="text-muted-foreground text-pretty">
-                  Posizionamento organico da Google Search Console
+                  Traffico sito da Google Analytics 4
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -172,40 +184,38 @@ export default function SeoOrganicPage() {
             {/* Summary cards */}
             <div className="grid gap-4 md:grid-cols-4">
               <div className="rounded-lg border bg-card p-4">
-                <p className="text-sm text-muted-foreground">Click Organici</p>
+                <p className="text-sm text-muted-foreground">Sessioni</p>
                 <p className="mt-1 text-2xl font-bold tabular-nums">
-                  {isLoading ? '—' : formatNumber(totals.clicks)}
+                  {isLoading ? '—' : formatNumber(totals.sessions)}
                 </p>
               </div>
               <div className="rounded-lg border bg-card p-4">
-                <p className="text-sm text-muted-foreground">Impressioni</p>
+                <p className="text-sm text-muted-foreground">Pagine Viste</p>
                 <p className="mt-1 text-2xl font-bold tabular-nums">
-                  {isLoading ? '—' : formatNumber(totals.impressions)}
+                  {isLoading ? '—' : formatNumber(totals.page_views)}
                 </p>
               </div>
               <div className="rounded-lg border bg-card p-4">
-                <p className="text-sm text-muted-foreground">CTR Medio</p>
+                <p className="text-sm text-muted-foreground">Bounce Rate</p>
                 <p className="mt-1 text-2xl font-bold tabular-nums">
-                  {isLoading || totals.impressions === 0
-                    ? '—'
-                    : formatPercent(totals.clicks / totals.impressions)}
+                  {isLoading ? '—' : formatPercent(weightedBounceRate)}
                 </p>
               </div>
               <div className="rounded-lg border bg-card p-4">
-                <p className="text-sm text-muted-foreground">Keywords Tracciate</p>
+                <p className="text-sm text-muted-foreground">Form Compilati</p>
                 <p className="mt-1 text-2xl font-bold tabular-nums">
-                  {isLoading ? '—' : formatNumber(total)}
+                  {isLoading ? '—' : formatNumber(totals.form_submissions)}
                 </p>
               </div>
             </div>
 
-            {/* Position trend chart */}
+            {/* Sessions trend chart */}
             <SeoTrendChart
-              title="Posizione Organica Media (più basso = meglio)"
-              data={positionTrend}
-              valueFormatter={(v) => formatPosition(v)}
+              title="Sessioni Giornaliere"
+              data={sessionsTrend}
+              valueFormatter={(v) => formatNumber(v)}
               height={220}
-              color="hsl(var(--chart-3))"
+              color="hsl(var(--chart-4))"
               loading={isLoading}
             />
 
@@ -214,13 +224,13 @@ export default function SeoOrganicPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Keyword</TableHead>
-                    <TableHead className="text-right">Posizione</TableHead>
-                    <TableHead className="text-center">Trend</TableHead>
-                    <TableHead className="text-right">Click</TableHead>
-                    <TableHead className="text-right">Impressioni</TableHead>
-                    <TableHead className="text-right">CTR</TableHead>
-                    <TableHead>URL</TableHead>
+                    <TableHead>Sorgente</TableHead>
+                    <TableHead>Mezzo</TableHead>
+                    <TableHead className="text-right">Sessioni</TableHead>
+                    <TableHead className="text-right">Pagine Viste</TableHead>
+                    <TableHead className="text-right">Bounce Rate</TableHead>
+                    <TableHead className="text-right">Durata Media</TableHead>
+                    <TableHead className="text-right">Form</TableHead>
                     <TableHead>Data</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -235,78 +245,71 @@ export default function SeoOrganicPage() {
                         ))}
                       </TableRow>
                     ))
-                  ) : rankings.length === 0 ? (
+                  ) : analytics.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={8}
                         className="h-24 text-center text-muted-foreground"
                       >
-                        Nessun dato organico nel periodo selezionato
+                        Nessun dato analytics nel periodo selezionato.
+                        Premi &quot;Aggiorna&quot; per sincronizzare da GA4.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    rankings.map((r) => {
-                      // Position quality indicator
-                      const posColor =
-                        r.avg_position <= 3
-                          ? 'text-emerald-600'
-                          : r.avg_position <= 10
-                            ? 'text-amber-600'
-                            : 'text-red-600';
-
-                      // Simple trend based on position (lower = better)
-                      const trendIcon =
-                        r.avg_position <= 5 ? (
-                          <TrendingUp className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-                        ) : r.avg_position <= 15 ? (
-                          <Minus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-600" aria-hidden="true" />
-                        );
-
-                      return (
-                        <TableRow key={r.id}>
-                          <TableCell className="font-medium">
-                            {r.keyword || '—'}
+                    <>
+                      {analytics.map((a) => (
+                        <TableRow key={a.id}>
+                          <TableCell>
+                            <Badge variant={sourceBadgeVariant(a.source)}>
+                              {a.source}
+                            </Badge>
                           </TableCell>
-                          <TableCell
-                            className={cn('text-right font-semibold tabular-nums', posColor)}
-                          >
-                            {formatPosition(r.avg_position)}
+                          <TableCell className="text-muted-foreground">
+                            {a.medium ?? '—'}
                           </TableCell>
-                          <TableCell className="text-center">
-                            {trendIcon}
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {formatNumber(a.sessions)}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {formatNumber(r.clicks)}
+                            {formatNumber(a.page_views)}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {formatNumber(r.impressions)}
+                            {a.bounce_rate != null ? formatPercent(a.bounce_rate) : '—'}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {formatPercent(r.ctr)}
+                            {formatDuration(a.avg_session_duration_seconds)}
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate">
-                            {r.page_url ? (
-                              <a
-                                href={r.page_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                              >
-                                {r.page_url.replace(/^https?:\/\//, '').slice(0, 35)}
-                                <ExternalLink className="h-3 w-3 shrink-0" />
-                              </a>
-                            ) : (
-                              '—'
-                            )}
+                          <TableCell className="text-right tabular-nums">
+                            {a.form_submissions ?? 0}
                           </TableCell>
                           <TableCell className="whitespace-nowrap tabular-nums">
-                            {new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(r.report_date))}
+                            {new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(a.report_date))}
                           </TableCell>
                         </TableRow>
-                      );
-                    })
+                      ))}
+
+                      {/* Totals row */}
+                      {analytics.length > 1 && (
+                        <TableRow className="bg-muted/50 font-semibold">
+                          <TableCell>Totale</TableCell>
+                          <TableCell />
+                          <TableCell className="text-right tabular-nums">
+                            {formatNumber(totals.sessions)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatNumber(totals.page_views)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatPercent(weightedBounceRate)}
+                          </TableCell>
+                          <TableCell />
+                          <TableCell className="text-right tabular-nums">
+                            {formatNumber(totals.form_submissions)}
+                          </TableCell>
+                          <TableCell />
+                        </TableRow>
+                      )}
+                    </>
                   )}
                 </TableBody>
               </Table>

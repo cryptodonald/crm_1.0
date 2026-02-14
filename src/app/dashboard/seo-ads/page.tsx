@@ -78,8 +78,8 @@ export default function SeoAdsDashboardPage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary" />
-          <p className="text-sm text-muted-foreground">Caricamento...</p>
+          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary motion-reduce:animate-none" />
+          <p className="text-sm text-muted-foreground">Caricamento…</p>
         </div>
       </div>
     );
@@ -101,10 +101,10 @@ export default function SeoAdsDashboardPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-pretty">
                   SEO & Ads Intelligence
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-pretty">
                   Performance campagne, posizionamento organico e attribuzione lead
                 </p>
               </div>
@@ -117,9 +117,10 @@ export default function SeoAdsDashboardPage() {
                   disabled={refreshing}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin motion-reduce:animate-none' : ''}`}
+                    aria-hidden="true"
                   />
-                  {syncing ? 'Sincronizzando...' : refreshing ? 'Aggiornando...' : 'Aggiorna'}
+                  {syncing ? 'Sincronizzando…' : refreshing ? 'Aggiornando…' : 'Aggiorna'}
                 </Button>
               </div>
             </div>
@@ -129,8 +130,8 @@ export default function SeoAdsDashboardPage() {
 
             {/* Error */}
             {(error || syncError) && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
+              <Alert variant="destructive" role="alert">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
                   {syncError || error?.message || 'Errore nel caricamento dei dati SEO'}
                 </AlertDescription>
@@ -232,7 +233,7 @@ export default function SeoAdsDashboardPage() {
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Sessioni Totali
                 </h3>
-                <p className="mt-1 text-2xl font-bold">
+                <p className="mt-1 text-2xl font-bold tabular-nums">
                   {kpis ? formatNumber(kpis.total_sessions) : '—'}
                 </p>
               </div>
@@ -240,7 +241,7 @@ export default function SeoAdsDashboardPage() {
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Form Submissions
                 </h3>
-                <p className="mt-1 text-2xl font-bold">
+                <p className="mt-1 text-2xl font-bold tabular-nums">
                   {kpis ? formatNumber(kpis.total_form_submissions) : '—'}
                 </p>
               </div>
@@ -248,7 +249,7 @@ export default function SeoAdsDashboardPage() {
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Revenue Attribuita
                 </h3>
-                <p className="mt-1 text-2xl font-bold">
+                <p className="mt-1 text-2xl font-bold tabular-nums">
                   {kpis ? `€${centsToEuros(kpis.total_deal_value_cents)}` : '—'}
                 </p>
               </div>

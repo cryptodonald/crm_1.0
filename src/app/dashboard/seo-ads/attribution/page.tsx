@@ -8,7 +8,7 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
 } from 'recharts';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
@@ -129,8 +129,8 @@ export default function SeoAttributionPage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary" />
-          <p className="text-sm text-muted-foreground">Caricamento...</p>
+          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary motion-reduce:animate-none" />
+          <p className="text-sm text-muted-foreground">Caricamento…</p>
         </div>
       </div>
     );
@@ -150,10 +150,10 @@ export default function SeoAttributionPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-pretty">
                   ROI & Attribution
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-pretty">
                   Attribuzione lead e ritorno sull&apos;investimento pubblicitario
                 </p>
               </div>
@@ -166,9 +166,10 @@ export default function SeoAttributionPage() {
                   disabled={loading}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`}
+                    aria-hidden="true"
                   />
-                  {loading ? 'Aggiornando...' : 'Aggiorna'}
+                  {loading ? 'Aggiornando…' : 'Aggiorna'}
                 </Button>
               </div>
             </div>
@@ -176,8 +177,8 @@ export default function SeoAttributionPage() {
             <SeoSubNav />
 
             {error && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
+              <Alert variant="destructive" role="alert">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
                   {error.message || 'Errore nel caricamento'}
                 </AlertDescription>
@@ -222,46 +223,46 @@ export default function SeoAttributionPage() {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="h-[250px] animate-pulse rounded bg-muted" />
+                  <div className="h-[250px] animate-pulse rounded bg-muted motion-reduce:animate-none" />
                 ) : sourceBreakdown.length === 0 ? (
                   <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
                     Nessun dato di attribuzione
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={sourceBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {sourceBreakdown.map((entry) => (
-                          <Cell
-                            key={entry.source}
-                            fill={SOURCE_COLORS[entry.source]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          const d = payload[0];
-                          return (
-                            <div className="rounded-lg border bg-background px-3 py-2 shadow-sm">
-                              <p className="text-sm font-semibold">{d.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {d.value} lead
-                              </p>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Legend />
-                    </PieChart>
+                      <PieChart>
+                        <Pie
+                          data={sourceBreakdown}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {sourceBreakdown.map((entry) => (
+                            <Cell
+                              key={entry.source}
+                              fill={SOURCE_COLORS[entry.source]}
+                            />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0];
+                            return (
+                              <div className="rounded-lg border bg-background px-3 py-2 shadow-sm">
+                                <p className="text-sm font-semibold">{d.name}</p>
+                                <p className="text-xs text-muted-foreground tabular-nums">
+                                  {d.value} lead
+                                </p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Legend />
+                      </PieChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>
@@ -328,7 +329,7 @@ export default function SeoAttributionPage() {
                       <TableRow key={i}>
                         {Array.from({ length: 7 }).map((_, j) => (
                           <TableCell key={j}>
-                            <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                            <div className="h-4 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
                           </TableCell>
                         ))}
                       </TableRow>
@@ -363,7 +364,7 @@ export default function SeoAttributionPage() {
                           {a.gclid || '—'}
                         </TableCell>
                         <TableCell>{a.utm_campaign || '—'}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {a.deal_value_cents != null
                             ? `€${centsToEuros(a.deal_value_cents)}`
                             : '—'}
@@ -387,10 +388,11 @@ export default function SeoAttributionPage() {
                     size="sm"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
+                    aria-label="Pagina precedente"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </Button>
-                  <span className="text-sm">
+                  <span className="text-sm tabular-nums">
                     {page} / {totalPages}
                   </span>
                   <Button
@@ -398,8 +400,9 @@ export default function SeoAttributionPage() {
                     size="sm"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
+                    aria-label="Pagina successiva"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </div>

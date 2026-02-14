@@ -170,8 +170,8 @@ export default function SeoKeywordsPage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary" />
-          <p className="text-sm text-muted-foreground">Caricamento...</p>
+          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary motion-reduce:animate-none" />
+          <p className="text-sm text-muted-foreground">Caricamento…</p>
         </div>
       </div>
     );
@@ -189,10 +189,10 @@ export default function SeoKeywordsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-pretty">
                   Keyword Manager
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-pretty">
                   Gestisci le keyword monitorate per SEO e Google Ads
                 </p>
               </div>
@@ -204,12 +204,13 @@ export default function SeoKeywordsPage() {
                   disabled={isLoading || isValidating}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${isLoading || isValidating ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${isLoading || isValidating ? 'animate-spin motion-reduce:animate-none' : ''}`}
+                    aria-hidden="true"
                   />
-                  {isLoading || isValidating ? 'Aggiornando...' : 'Aggiorna'}
+                  {isLoading || isValidating ? 'Aggiornando…' : 'Aggiorna'}
                 </Button>
                 <Button size="sm" onClick={() => setShowCreateModal(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
                   Nuova Keyword
                 </Button>
               </div>
@@ -219,8 +220,8 @@ export default function SeoKeywordsPage() {
 
             {/* Error */}
             {error && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
+              <Alert variant="destructive" role="alert">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
                   {error.message || 'Errore nel caricamento'}
                 </AlertDescription>
@@ -230,9 +231,11 @@ export default function SeoKeywordsPage() {
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
-                  placeholder="Cerca keyword..."
+                  placeholder="Cerca keyword…"
+                  aria-label="Cerca keyword"
+                  spellCheck={false}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                   className="pl-9"
@@ -298,7 +301,7 @@ export default function SeoKeywordsPage() {
                       <TableRow key={i}>
                         {Array.from({ length: 8 }).map((_, j) => (
                           <TableCell key={j}>
-                            <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                            <div className="h-4 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
                           </TableCell>
                         ))}
                       </TableRow>
@@ -326,17 +329,17 @@ export default function SeoKeywordsPage() {
                             {kw.priority}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {kw.latest_avg_monthly_searches != null
                             ? formatNumber(kw.latest_avg_monthly_searches)
                             : '—'}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {kw.latest_avg_cpc_micros != null
                             ? `€${microsToEuros(kw.latest_avg_cpc_micros)}`
                             : '—'}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {kw.latest_avg_position != null
                             ? formatPosition(kw.latest_avg_position)
                             : '—'}
@@ -362,8 +365,9 @@ export default function SeoKeywordsPage() {
                             size="sm"
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                             onClick={() => setDeleteTarget(kw)}
+                            aria-label={`Elimina keyword ${kw.keyword}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -385,10 +389,11 @@ export default function SeoKeywordsPage() {
                     size="sm"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
+                    aria-label="Pagina precedente"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </Button>
-                  <span className="text-sm">
+                  <span className="text-sm tabular-nums">
                     {page} / {totalPages}
                   </span>
                   <Button
@@ -396,8 +401,9 @@ export default function SeoKeywordsPage() {
                     size="sm"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
+                    aria-label="Pagina successiva"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
@@ -469,7 +475,7 @@ export default function SeoKeywordsPage() {
               Annulla
             </Button>
             <Button onClick={handleCreate} disabled={isCreating}>
-              {isCreating ? 'Creazione...' : 'Crea Keyword'}
+              {isCreating ? 'Creazione…' : 'Crea Keyword'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -496,7 +502,7 @@ export default function SeoKeywordsPage() {
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? 'Eliminazione...' : 'Elimina'}
+              {isDeleting ? 'Eliminazione…' : 'Elimina'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

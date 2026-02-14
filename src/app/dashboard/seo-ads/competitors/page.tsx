@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from 'recharts';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
@@ -107,8 +107,8 @@ export default function SeoCompetitorsPage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary" />
-          <p className="text-sm text-muted-foreground">Caricamento...</p>
+          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary motion-reduce:animate-none" />
+          <p className="text-sm text-muted-foreground">Caricamento…</p>
         </div>
       </div>
     );
@@ -126,10 +126,10 @@ export default function SeoCompetitorsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-pretty">
                   Competitor Analysis
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-pretty">
                   Auction Insights e confronto con i competitor su Google Ads
                 </p>
               </div>
@@ -142,9 +142,10 @@ export default function SeoCompetitorsPage() {
                   disabled={isLoading || isValidating}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${isLoading || isValidating ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${isLoading || isValidating ? 'animate-spin motion-reduce:animate-none' : ''}`}
+                    aria-hidden="true"
                   />
-                  {isLoading || isValidating ? 'Aggiornando...' : 'Aggiorna'}
+                  {isLoading || isValidating ? 'Aggiornando…' : 'Aggiorna'}
                 </Button>
               </div>
             </div>
@@ -152,8 +153,8 @@ export default function SeoCompetitorsPage() {
             <SeoSubNav />
 
             {error && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
+              <Alert variant="destructive" role="alert">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
                   {error.message || 'Errore nel caricamento'}
                 </AlertDescription>
@@ -169,67 +170,67 @@ export default function SeoCompetitorsPage() {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="h-[300px] animate-pulse rounded bg-muted" />
+                  <div className="h-[300px] animate-pulse rounded bg-muted motion-reduce:animate-none" />
                 ) : domainAggregates.length === 0 ? (
                   <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
                     Nessun dato competitor nel periodo selezionato
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart
-                      data={domainAggregates}
-                      layout="vertical"
-                      margin={{ top: 4, right: 20, left: 0, bottom: 4 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        className="stroke-border"
-                        horizontal={false}
-                      />
-                      <XAxis
-                        type="number"
-                        domain={[0, 100]}
-                        tick={{ fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v) => `${v}%`}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="domain"
-                        width={150}
-                        tick={{ fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          const d = payload[0].payload as any;
-                          return (
-                            <div className="rounded-lg border bg-background px-3 py-2 shadow-sm">
-                              <p className="text-sm font-semibold">
-                                {d.fullDomain}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Impression Share:{' '}
-                                {d.impressionShare.toFixed(1)}%
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Overlap: {d.overlapRate.toFixed(1)}%
-                              </p>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar
-                        dataKey="impressionShare"
-                        fill="hsl(var(--primary))"
-                        radius={[0, 4, 4, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                      <BarChart
+                        data={domainAggregates}
+                        layout="vertical"
+                        margin={{ top: 4, right: 20, left: 0, bottom: 4 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          className="stroke-border"
+                          horizontal={false}
+                        />
+                        <XAxis
+                          type="number"
+                          domain={[0, 100]}
+                          tick={{ fontSize: 11 }}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(v) => `${v}%`}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="domain"
+                          width={150}
+                          tick={{ fontSize: 11 }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <RechartsTooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const d = payload[0].payload as any;
+                            return (
+                              <div className="rounded-lg border bg-background px-3 py-2 shadow-sm">
+                                <p className="text-sm font-semibold">
+                                  {d.fullDomain}
+                                </p>
+                                <p className="text-xs text-muted-foreground tabular-nums">
+                                  Impression Share:{' '}
+                                  {d.impressionShare.toFixed(1)}%
+                                </p>
+                                <p className="text-xs text-muted-foreground tabular-nums">
+                                  Overlap: {d.overlapRate.toFixed(1)}%
+                                </p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar
+                          dataKey="impressionShare"
+                          fill="hsl(var(--primary))"
+                          radius={[0, 4, 4, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
                 )}
               </CardContent>
             </Card>
@@ -255,7 +256,7 @@ export default function SeoCompetitorsPage() {
                       <TableRow key={i}>
                         {Array.from({ length: 6 }).map((_, j) => (
                           <TableCell key={j}>
-                            <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                            <div className="h-4 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
                           </TableCell>
                         ))}
                       </TableRow>
@@ -276,7 +277,7 @@ export default function SeoCompetitorsPage() {
                           {c.competitor_domain}
                         </TableCell>
                         <TableCell>{c.keyword || '—'}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {c.impression_share != null ? (
                             <span
                               className={cn(
@@ -294,18 +295,18 @@ export default function SeoCompetitorsPage() {
                             '—'
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {c.overlap_rate != null
                             ? formatPercent(c.overlap_rate)
                             : '—'}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           {c.avg_position != null
                             ? formatPosition(c.avg_position)
                             : '—'}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {c.report_date}
+                        <TableCell className="whitespace-nowrap tabular-nums">
+                          {new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(c.report_date))}
                         </TableCell>
                       </TableRow>
                     ))
@@ -326,10 +327,11 @@ export default function SeoCompetitorsPage() {
                     size="sm"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
+                    aria-label="Pagina precedente"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </Button>
-                  <span className="text-sm">
+                  <span className="text-sm tabular-nums">
                     {page} / {totalPages}
                   </span>
                   <Button
@@ -337,8 +339,9 @@ export default function SeoCompetitorsPage() {
                     size="sm"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
+                    aria-label="Pagina successiva"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </div>

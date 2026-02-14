@@ -8,10 +8,14 @@ import {
   fetchCampaignPerformance,
   fetchAuctionInsights,
 } from '@/lib/seo-ads/google-ads-client';
+import { isSearchConsoleConfigured, fetchOrganicPerformance } from '@/lib/seo-ads/search-console-client';
+import { isGA4Configured, fetchTrafficBySource } from '@/lib/seo-ads/ga4-client';
 import {
   createSeoKeyword,
   upsertCampaignPerformance,
   upsertCompetitorInsights,
+  upsertOrganicRanking,
+  upsertSiteAnalytics,
 } from '@/lib/seo-ads/queries';
 import type { SeoKeyword } from '@/types/seo-ads';
 
@@ -146,7 +150,60 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Bidirectional cleanup: deactivate CRM keywords not found in Google Ads
+    // 3. Sync Search Console organic rankings
+    let organicCount = 0;
+    if (isSearchConsoleConfigured()) {
+      try {
+        const organicRows = await fetchOrganicPerformance(dateFrom, dateTo, 
+          activeKeywords.map(kw => kw.keyword)
+        );
+
+        const mappedOrganic = organicRows
+          .map(row => {
+            const kw = keywordMap.get(row.keyword.toLowerCase());
+            if (!kw) return null;
+            return {
+              keyword_id: kw.id,
+              avg_position: row.position,
+              clicks: row.clicks,
+              impressions: row.impressions,
+              ctr: row.ctr,
+              page_url: row.page || null,
+              report_date: dateTo, // Use end date for the report
+            };
+          })
+          .filter((r): r is NonNullable<typeof r> => r !== null);
+
+        organicCount = await upsertOrganicRanking(mappedOrganic);
+      } catch (err) {
+        console.error('[Sync] Search Console error (non-blocking):', err);
+      }
+    }
+
+    // 4. Sync GA4 site analytics
+    let analyticsCount = 0;
+    if (isGA4Configured()) {
+      try {
+        const trafficData = await fetchTrafficBySource(dateFrom, dateTo);
+
+        const analyticsRows = trafficData.map(row => ({
+          source: row.source,
+          medium: row.medium || null,
+          sessions: row.sessions,
+          page_views: row.pageViews,
+          bounce_rate: row.bounceRate,
+          avg_session_duration_seconds: Math.round(row.avgSessionDuration),
+          form_submissions: row.formSubmissions,
+          report_date: dateTo,
+        }));
+
+        analyticsCount = await upsertSiteAnalytics(analyticsRows);
+      } catch (err) {
+        console.error('[Sync] GA4 error (non-blocking):', err);
+      }
+    }
+
+    // 5. Bidirectional cleanup: deactivate CRM keywords not found in Google Ads
     const adsKeywordTexts = new Set(
       adsRows
         .filter(r => r.keyword_text.trim())
@@ -165,7 +222,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Delete orphaned campaign performance rows for deactivated keywords
+    // 6. Delete orphaned campaign performance rows for deactivated keywords
     if (deactivated > 0) {
       await query(
         `DELETE FROM seo_campaign_performance
@@ -181,6 +238,8 @@ export async function POST(request: NextRequest) {
       date_to: dateTo,
       campaigns: { fetched: adsRows.length, synced: campaignCount, autoCreated },
       competitors: { synced: competitorCount },
+      organic: { synced: organicCount },
+      analytics: { synced: analyticsCount },
       cleanup: { deactivated },
     });
   } catch (error: unknown) {

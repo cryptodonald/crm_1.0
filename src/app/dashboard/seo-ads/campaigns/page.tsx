@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AppLayoutCustom } from '@/components/layout/app-layout-custom';
@@ -216,8 +216,8 @@ export default function SeoCampaignsPage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary" />
-          <p className="text-sm text-muted-foreground">Caricamento...</p>
+          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary motion-reduce:animate-none" />
+          <p className="text-sm text-muted-foreground">Caricamento…</p>
         </div>
       </div>
     );
@@ -250,10 +250,10 @@ export default function SeoCampaignsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-pretty">
                   Campaign Performance
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-pretty">
                   Analisi dettagliata delle campagne Google Ads
                 </p>
               </div>
@@ -265,7 +265,7 @@ export default function SeoCampaignsPage() {
                   onClick={() => downloadCsv(campaigns)}
                   disabled={campaigns.length === 0}
                 >
-                  <Download className="mr-2 h-4 w-4" />
+                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
                   Esporta CSV
                 </Button>
                 <Button
@@ -275,9 +275,10 @@ export default function SeoCampaignsPage() {
                   disabled={refreshing}
                 >
                   <RefreshCw
-                    className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+                    className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin motion-reduce:animate-none' : ''}`}
+                    aria-hidden="true"
                   />
-                  {syncing ? 'Sincronizzando...' : refreshing ? 'Aggiornando...' : 'Aggiorna'}
+                  {syncing ? 'Sincronizzando…' : refreshing ? 'Aggiornando…' : 'Aggiorna'}
                 </Button>
               </div>
             </div>
@@ -285,8 +286,8 @@ export default function SeoCampaignsPage() {
             <SeoSubNav />
 
             {(error || syncError) && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
+              <Alert variant="destructive" role="alert">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
                   {syncError || error?.message || 'Errore nel caricamento'}
                 </AlertDescription>
@@ -317,9 +318,11 @@ export default function SeoCampaignsPage() {
             {/* Filter + Column Visibility */}
             <div className="flex items-center gap-3">
               <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
-                  placeholder="Cerca campagna..."
+                  placeholder="Cerca campagna…"
+                  aria-label="Cerca campagna"
+                  spellCheck={false}
                   value={campaignSearch}
                   onChange={(e) => { setCampaignSearch(e.target.value); setPage(1); }}
                   className="pl-9"
@@ -327,8 +330,8 @@ export default function SeoCampaignsPage() {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
+                <Button variant="outline" size="sm">
+                    <SlidersHorizontal className="mr-2 h-4 w-4" aria-hidden="true" />
                     Colonne
                   </Button>
                 </DropdownMenuTrigger>
@@ -366,7 +369,7 @@ export default function SeoCampaignsPage() {
                         <TableCell />
                         {Array.from({ length: visibleColumns.size }).map((_, j) => (
                           <TableCell key={j}>
-                            <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                            <div className="h-4 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
                           </TableCell>
                         ))}
                       </TableRow>
@@ -393,15 +396,21 @@ export default function SeoCampaignsPage() {
                         const isRowLoading = dailyLoading.has(rowKey);
 
                         return (
-                          <>
-                          <TableRow key={c.id} className={`cursor-pointer ${isWastedSpend ? 'bg-destructive/5' : ''} ${isExpanded ? 'bg-accent/40' : ''}`} onClick={() => toggleDrillDown(c)}>
+                          <Fragment key={c.id}>
+                          <TableRow
+                            className={`cursor-pointer ${isWastedSpend ? 'bg-destructive/5' : ''} ${isExpanded ? 'bg-accent/40' : ''}`}
+                            onClick={() => toggleDrillDown(c)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDrillDown(c); } }}
+                            tabIndex={0}
+                            role="row"
+                          >
                             <TableCell className="w-8 px-2">
                               {isRowLoading ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />
                               ) : isExpanded ? (
-                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                               ) : (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                               )}
                             </TableCell>
                             {isCol('keyword') && (
@@ -446,42 +455,42 @@ export default function SeoCampaignsPage() {
                               </TableCell>
                             )}
                             {isCol('impressions') && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-right tabular-nums">
                                 {formatNumber(c.impressions)}
                               </TableCell>
                             )}
                             {isCol('clicks') && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-right tabular-nums">
                                 {formatNumber(c.clicks)}
                               </TableCell>
                             )}
                             {isCol('ctr') && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-right tabular-nums">
                                 {formatPercent(ctr, 2)}
                               </TableCell>
                             )}
                             {isCol('cpc') && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-right tabular-nums">
                                 €{microsToEuros(cpc)}
                               </TableCell>
                             )}
                             {isCol('cost') && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-right tabular-nums">
                                 €{microsToEuros(c.cost_micros)}
                               </TableCell>
                             )}
                             {isCol('conversions') && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-right tabular-nums">
                                 {c.conversions ?? '—'}
                               </TableCell>
                             )}
                             {isCol('cost_per_conversion') && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-right tabular-nums">
                                 {c.cost_per_conversion_micros ? `€${microsToEuros(c.cost_per_conversion_micros)}` : '—'}
                               </TableCell>
                             )}
                             {isCol('conversion_rate') && (
-                              <TableCell className="text-right">
+                              <TableCell className="text-right tabular-nums">
                                 {c.conversion_rate ? formatPercent(c.conversion_rate, 2) : '—'}
                               </TableCell>
                             )}
@@ -564,15 +573,15 @@ export default function SeoCampaignsPage() {
                                   {isCol('ad_group_name') && <TableCell />}
                                   {isCol('match_type') && <TableCell />}
                                   {isCol('keyword_status') && <TableCell />}
-                                  {isCol('impressions') && <TableCell className="text-right">{formatNumber(d.impressions)}</TableCell>}
-                                  {isCol('clicks') && <TableCell className="text-right">{formatNumber(d.clicks)}</TableCell>}
-                                  {isCol('ctr') && <TableCell className="text-right">{formatPercent(dCtr, 2)}</TableCell>}
-                                  {isCol('cpc') && <TableCell className="text-right">€{microsToEuros(dCpc)}</TableCell>}
-                                  {isCol('cost') && <TableCell className="text-right">€{microsToEuros(d.cost_micros)}</TableCell>}
-                                  {isCol('conversions') && <TableCell className="text-right">{d.conversions ?? '—'}</TableCell>}
-                                  {isCol('cost_per_conversion') && <TableCell className="text-right">{d.cost_per_conversion_micros ? `€${microsToEuros(d.cost_per_conversion_micros)}` : '—'}</TableCell>}
-                                  {isCol('conversion_rate') && <TableCell className="text-right">{d.conversion_rate ? formatPercent(d.conversion_rate, 2) : '—'}</TableCell>}
-                                  {isCol('quality_score') && <TableCell className="text-right">{d.quality_score != null ? `${d.quality_score}/10` : '—'}</TableCell>}
+                          {isCol('impressions') && <TableCell className="text-right tabular-nums">{formatNumber(d.impressions)}</TableCell>}
+                                  {isCol('clicks') && <TableCell className="text-right tabular-nums">{formatNumber(d.clicks)}</TableCell>}
+                                  {isCol('ctr') && <TableCell className="text-right tabular-nums">{formatPercent(dCtr, 2)}</TableCell>}
+                                  {isCol('cpc') && <TableCell className="text-right tabular-nums">€{microsToEuros(dCpc)}</TableCell>}
+                                  {isCol('cost') && <TableCell className="text-right tabular-nums">€{microsToEuros(d.cost_micros)}</TableCell>}
+                                  {isCol('conversions') && <TableCell className="text-right tabular-nums">{d.conversions ?? '—'}</TableCell>}
+                                  {isCol('cost_per_conversion') && <TableCell className="text-right tabular-nums">{d.cost_per_conversion_micros ? `€${microsToEuros(d.cost_per_conversion_micros)}` : '—'}</TableCell>}
+                                  {isCol('conversion_rate') && <TableCell className="text-right tabular-nums">{d.conversion_rate ? formatPercent(d.conversion_rate, 2) : '—'}</TableCell>}
+                                  {isCol('quality_score') && <TableCell className="text-right tabular-nums">{d.quality_score != null ? `${d.quality_score}/10` : '—'}</TableCell>}
                                   {isCol('expected_ctr') && <TableCell />}
                                   {isCol('landing_page_exp') && <TableCell />}
                                   {isCol('ad_relevance') && <TableCell />}
@@ -591,7 +600,7 @@ export default function SeoCampaignsPage() {
                               </TableCell>
                             </TableRow>
                           )}
-                          </>
+                          </Fragment>
                         );
                       })}
 
@@ -679,10 +688,11 @@ export default function SeoCampaignsPage() {
                     size="sm"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
+                    aria-label="Pagina precedente"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </Button>
-                  <span className="text-sm">
+                  <span className="text-sm tabular-nums">
                     {page} / {totalPages}
                   </span>
                   <Button
@@ -690,8 +700,9 @@ export default function SeoCampaignsPage() {
                     size="sm"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
+                    aria-label="Pagina successiva"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
