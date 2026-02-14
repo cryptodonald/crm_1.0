@@ -24,7 +24,7 @@ const updateAnalysisSchema = z.object({
   weight_kg: z.number().int().min(30).max(250).optional(),
   height_cm: z.number().int().min(100).max(230).optional(),
   body_shape: z.enum(['v_shape', 'a_shape', 'normal', 'h_shape', 'round']).optional(),
-  sleep_position: z.enum(['side', 'supine', 'prone', 'mixed']).optional(),
+  sleep_position: z.array(z.enum(['side', 'supine', 'prone'])).optional(),
   firmness_preference: z.enum(['soft', 'neutral', 'firm']).optional(),
   health_issues: z.array(z.enum([
     'lordosis', 'kyphosis', 'lower_back_pain',
@@ -130,7 +130,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         height_cm: updatedAnalysis.height_cm,
         sex: updatedAnalysis.sex ?? undefined,
         body_shape: updatedAnalysis.body_shape ?? undefined,
-        sleep_position: updatedAnalysis.sleep_position ?? undefined,
+        sleep_position: updatedAnalysis.sleep_position ?? [],
         firmness_preference: updatedAnalysis.firmness_preference,
         health_issues: updatedAnalysis.health_issues,
         circulation_issues: updatedAnalysis.circulation_issues,

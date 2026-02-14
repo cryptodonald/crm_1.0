@@ -573,7 +573,7 @@ export interface CalendarEventFilters {
 // ============================================================================
 
 export type BodyShape = 'v_shape' | 'a_shape' | 'normal' | 'h_shape' | 'round';
-export type SleepPosition = 'side' | 'supine' | 'prone' | 'mixed';
+export type SleepPosition = 'side' | 'supine' | 'prone';
 export type FirmnessPreference = 'soft' | 'neutral' | 'firm';
 export type HealthIssue =
   | 'lordosis'
@@ -598,7 +598,7 @@ export interface LeadAnalysis {
   weight_kg: number;
   height_cm: number;
   body_shape: BodyShape | null;
-  sleep_position: SleepPosition | null;
+  sleep_position: SleepPosition[];
   firmness_preference: FirmnessPreference;
   health_issues: HealthIssue[];
   circulation_issues: boolean;
@@ -651,7 +651,7 @@ export interface LeadAnalysisCreateInput {
   weight_kg: number;
   height_cm: number;
   body_shape?: BodyShape;
-  sleep_position?: SleepPosition;
+  sleep_position?: SleepPosition[];
   firmness_preference?: FirmnessPreference;
   health_issues?: HealthIssue[];
   circulation_issues?: boolean;

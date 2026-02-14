@@ -55,7 +55,6 @@ const SLEEP_LABELS: Record<string, string> = {
   side: 'Laterale',
   supine: 'Supino',
   prone: 'Prono',
-  mixed: 'Misto',
 };
 
 // ============================================================================
@@ -232,9 +231,9 @@ export function AnalysisSection({ leadId, leadName }: AnalysisSectionProps) {
                                 {BODY_SHAPE_LABELS[analysis.body_shape]}
                               </span>
                             )}
-                            {analysis.sleep_position && (
+                            {analysis.sleep_position && analysis.sleep_position.length > 0 && (
                               <span className="hidden sm:inline">
-                                {SLEEP_LABELS[analysis.sleep_position]}
+                                {analysis.sleep_position.map(p => SLEEP_LABELS[p] || p).join(', ')}
                               </span>
                             )}
                           </div>

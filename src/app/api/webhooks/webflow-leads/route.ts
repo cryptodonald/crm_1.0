@@ -28,6 +28,8 @@ import crypto from 'crypto';
 import { createLead, queryOne } from '@/lib/postgres';
 import type { Lead, LeadCreateInput } from '@/types/database';
 import { Resend } from 'resend';
+import { attributeLead } from '@/lib/seo-ads/attribution';
+import { createLeadAttribution } from '@/lib/seo-ads/queries';
 
 const SITO_SOURCE_ID = 'bb9111b7-d513-4388-8b3c-4bc86967828b';
 
@@ -235,6 +237,44 @@ if (Object.keys(custom).length > 0) {
 
     const lead = await createLead(input);
     console.log(`[Webflow Webhook] Lead created: ${lead.id} - ${name}`);
+
+    // 6. Automatic SEO/Ads attribution (UTM + GCLID from hidden form fields)
+    try {
+      const gclid = getField(formData, 'gclid', 'GCLID') || undefined;
+      const utmSource = getField(formData, 'utm_source', 'UTM_Source', 'utmSource') || undefined;
+      const utmMedium = getField(formData, 'utm_medium', 'UTM_Medium', 'utmMedium') || undefined;
+      const utmCampaign = getField(formData, 'utm_campaign', 'UTM_Campaign', 'utmCampaign') || undefined;
+      const utmKeyword = getField(formData, 'utm_keyword', 'UTM_Keyword', 'utmKeyword') || undefined;
+      const landingPage = getField(formData, 'landing_page', 'page_url', 'pageUrl') || undefined;
+
+      if (gclid || utmSource || utmKeyword || landingPage) {
+        const attribution = await attributeLead({
+          gclid,
+          utm_source: utmSource,
+          utm_medium: utmMedium,
+          utm_campaign: utmCampaign,
+          utm_keyword: utmKeyword,
+          landing_page_url: landingPage,
+        });
+
+        await createLeadAttribution({
+          lead_id: lead.id,
+          keyword_id: attribution.keyword_id ?? undefined,
+          source: attribution.source,
+          confidence: attribution.confidence,
+          gclid,
+          landing_page_url: landingPage,
+          utm_source: utmSource,
+          utm_medium: utmMedium,
+          utm_campaign: utmCampaign,
+          utm_keyword: utmKeyword,
+        });
+
+        console.log(`[Webflow Webhook] Attribution: ${attribution.source} (${attribution.confidence})`);
+      }
+    } catch (attrErr) {
+      console.error('[Webflow Webhook] Attribution failed (non-blocking):', attrErr);
+    }
 
 // Send email notification
 try {

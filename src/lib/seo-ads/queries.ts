@@ -407,6 +407,60 @@ export async function getCampaignDailyTrend(
   }));
 }
 
+/**
+ * Daily drill-down for a specific keyword+campaign+ad_group row.
+ * Returns individual daily rows (not aggregated).
+ */
+export async function getCampaignKeywordDaily(
+  keywordId: UUID,
+  campaignName: string,
+  adGroupName: string,
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<SeoCampaignPerformance[]> {
+  const whereClauses = [
+    'cp.keyword_id = $1',
+    'cp.campaign_name = $2',
+    'cp.ad_group_name = $3',
+  ];
+  const params: unknown[] = [keywordId, campaignName, adGroupName];
+  let paramIndex = 4;
+
+  if (dateFrom) {
+    whereClauses.push(`cp.report_date >= $${paramIndex}`);
+    params.push(dateFrom);
+    paramIndex++;
+  }
+  if (dateTo) {
+    whereClauses.push(`cp.report_date <= $${paramIndex}`);
+    params.push(dateTo);
+    paramIndex++;
+  }
+
+  const sql = `
+    SELECT
+      cp.*,
+      sk.keyword
+    FROM seo_campaign_performance cp
+    LEFT JOIN seo_keywords sk ON cp.keyword_id = sk.id
+    WHERE ${whereClauses.join(' AND ')}
+    ORDER BY cp.report_date DESC
+    LIMIT 90
+  `;
+
+  const rawData = await query<SeoCampaignPerformance>(sql, params);
+  return rawData.map(row => ({
+    ...row,
+    cost_micros: Number(row.cost_micros),
+    impressions: Number(row.impressions),
+    clicks: Number(row.clicks),
+    conversions: row.conversions != null ? Number(row.conversions) : null,
+    quality_score: row.quality_score != null ? Number(row.quality_score) : null,
+    cost_per_conversion_micros: Number(row.cost_per_conversion_micros ?? 0),
+    conversion_rate: Number(row.conversion_rate ?? 0),
+  }));
+}
+
 export async function upsertCampaignPerformance(
   rows: Array<{
     keyword_id: UUID;
@@ -917,89 +971,70 @@ export async function upsertCompetitorInsights(
 // DASHBOARD KPIs (Aggregated)
 // ============================================================================
 
-export async function getDashboardKPIs(
-  periodStart: string,
-  periodEnd: string
-): Promise<SeoDashboardKPIs> {
-  // Google Ads aggregated metrics
-  const adsSql = `
-    SELECT
-      COALESCE(SUM(cost_micros), 0)::bigint as total_spend,
-      COALESCE(SUM(clicks), 0) as total_clicks,
-      COALESCE(SUM(impressions), 0) as total_impressions,
-      CASE WHEN SUM(clicks) > 0
-        THEN (SUM(cost_micros) / SUM(clicks))::bigint
-        ELSE 0
-      END as avg_cpc,
-      COALESCE(SUM(conversions), 0) as total_conversions
-    FROM seo_campaign_performance
-    WHERE report_date BETWEEN $1 AND $2
-  `;
-  const ads = await queryOne<{
-    total_spend: string;
-    total_clicks: string;
-    total_impressions: string;
-    avg_cpc: string;
-    total_conversions: string;
-  }>(adsSql, [periodStart, periodEnd]);
+/**
+ * Compute raw KPI numbers for a given period.
+ * Used by getDashboardKPIs for both current and previous period.
+ */
+async function computeRawKPIs(periodStart: string, periodEnd: string) {
+  const [ads, organic, analytics, roi] = await Promise.all([
+    queryOne<{
+      total_spend: string; total_clicks: string; total_impressions: string;
+      avg_cpc: string; total_conversions: string; avg_qs: string | null;
+    }>(`
+      SELECT
+        COALESCE(SUM(cost_micros), 0)::bigint as total_spend,
+        COALESCE(SUM(clicks), 0) as total_clicks,
+        COALESCE(SUM(impressions), 0) as total_impressions,
+        CASE WHEN SUM(clicks) > 0
+          THEN (SUM(cost_micros) / SUM(clicks))::bigint ELSE 0
+        END as avg_cpc,
+        COALESCE(SUM(conversions), 0) as total_conversions,
+        AVG(quality_score) FILTER (WHERE quality_score IS NOT NULL) as avg_qs
+      FROM seo_campaign_performance
+      WHERE report_date BETWEEN $1 AND $2
+    `, [periodStart, periodEnd]),
 
-  // Organic aggregated metrics
-  const organicSql = `
-    SELECT
-      COALESCE(AVG(avg_position), 0)::numeric(5,2) as avg_position,
-      COALESCE(SUM(clicks), 0) as total_clicks,
-      COALESCE(SUM(impressions), 0) as total_impressions,
-      CASE WHEN SUM(impressions) > 0
-        THEN (SUM(clicks)::numeric / SUM(impressions))::numeric(5,4)
-        ELSE 0
-      END as avg_ctr
-    FROM seo_organic_rankings
-    WHERE report_date BETWEEN $1 AND $2
-  `;
-  const organic = await queryOne<{
-    avg_position: string;
-    total_clicks: string;
-    total_impressions: string;
-    avg_ctr: string;
-  }>(organicSql, [periodStart, periodEnd]);
+    queryOne<{
+      avg_position: string; total_clicks: string;
+      total_impressions: string; avg_ctr: string;
+    }>(`
+      SELECT
+        COALESCE(AVG(avg_position), 0)::numeric(5,2) as avg_position,
+        COALESCE(SUM(clicks), 0) as total_clicks,
+        COALESCE(SUM(impressions), 0) as total_impressions,
+        CASE WHEN SUM(impressions) > 0
+          THEN (SUM(clicks)::numeric / SUM(impressions))::numeric(5,4) ELSE 0
+        END as avg_ctr
+      FROM seo_organic_rankings
+      WHERE report_date BETWEEN $1 AND $2
+    `, [periodStart, periodEnd]),
 
-  // Site analytics aggregated
-  const analyticsSql = `
-    SELECT
-      COALESCE(SUM(sessions), 0) as total_sessions,
-      COALESCE(SUM(page_views), 0) as total_page_views,
-      COALESCE(AVG(bounce_rate), 0)::numeric(5,4) as avg_bounce_rate,
-      COALESCE(SUM(form_submissions), 0) as total_form_submissions
-    FROM seo_site_analytics
-    WHERE report_date BETWEEN $1 AND $2
-  `;
-  const analytics = await queryOne<{
-    total_sessions: string;
-    total_page_views: string;
-    avg_bounce_rate: string;
-    total_form_submissions: string;
-  }>(analyticsSql, [periodStart, periodEnd]);
+    queryOne<{
+      total_sessions: string; total_page_views: string;
+      avg_bounce_rate: string; total_form_submissions: string;
+    }>(`
+      SELECT
+        COALESCE(SUM(sessions), 0) as total_sessions,
+        COALESCE(SUM(page_views), 0) as total_page_views,
+        COALESCE(AVG(bounce_rate), 0)::numeric(5,4) as avg_bounce_rate,
+        COALESCE(SUM(form_submissions), 0) as total_form_submissions
+      FROM seo_site_analytics
+      WHERE report_date BETWEEN $1 AND $2
+    `, [periodStart, periodEnd]),
 
-  // Attribution / ROI
-  const roiSql = `
-    SELECT
-      COUNT(*) as total_leads,
-      COALESCE(SUM(deal_value_cents), 0)::bigint as total_deal_value
-    FROM seo_lead_attribution
-    WHERE created_at >= $1 AND created_at <= $2
-  `;
-  const roi = await queryOne<{
-    total_leads: string;
-    total_deal_value: string;
-  }>(roiSql, [periodStart, periodEnd]);
+    queryOne<{ total_leads: string; total_deal_value: string }>(`
+      SELECT
+        COUNT(*) as total_leads,
+        COALESCE(SUM(deal_value_cents), 0)::bigint as total_deal_value
+      FROM seo_lead_attribution
+      WHERE created_at >= $1 AND created_at <= $2
+    `, [periodStart, periodEnd]),
+  ]);
 
   const totalSpend = parseInt(ads?.total_spend || '0', 10);
   const totalLeads = parseInt(roi?.total_leads || '0', 10);
   const totalDealValue = parseInt(roi?.total_deal_value || '0', 10);
-
-  // Cost per lead (micros) and ROAS
   const costPerLead = totalLeads > 0 ? Math.round(totalSpend / totalLeads) : 0;
-  // ROAS: convert deal_value_cents to micros for comparison (cents * 10000 = micros)
   const dealValueMicros = totalDealValue * 10000;
   const roas = totalSpend > 0 ? dealValueMicros / totalSpend : 0;
 
@@ -1009,22 +1044,66 @@ export async function getDashboardKPIs(
     ads_total_impressions: parseInt(ads?.total_impressions || '0', 10),
     ads_avg_cpc_micros: parseInt(ads?.avg_cpc || '0', 10),
     ads_total_conversions: parseInt(ads?.total_conversions || '0', 10),
-
+    ads_avg_quality_score: ads?.avg_qs != null ? Math.round(parseFloat(ads.avg_qs) * 10) / 10 : null,
     organic_avg_position: parseFloat(organic?.avg_position || '0'),
     organic_total_clicks: parseInt(organic?.total_clicks || '0', 10),
     organic_total_impressions: parseInt(organic?.total_impressions || '0', 10),
     organic_avg_ctr: parseFloat(organic?.avg_ctr || '0'),
-
     total_sessions: parseInt(analytics?.total_sessions || '0', 10),
     total_page_views: parseInt(analytics?.total_page_views || '0', 10),
     avg_bounce_rate: parseFloat(analytics?.avg_bounce_rate || '0'),
     total_form_submissions: parseInt(analytics?.total_form_submissions || '0', 10),
-
     total_leads_attributed: totalLeads,
     total_deal_value_cents: totalDealValue,
     cost_per_lead_micros: costPerLead,
-    roas: Math.round(roas * 100) / 100, // 2 decimals
+    roas: Math.round(roas * 100) / 100,
+  };
+}
 
+/** Compute % change: (current - previous) / previous. Returns null if previous is 0. */
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0) return current > 0 ? 1 : null;
+  return (current - previous) / Math.abs(previous);
+}
+
+export async function getDashboardKPIs(
+  periodStart: string,
+  periodEnd: string
+): Promise<SeoDashboardKPIs> {
+  // Compute previous period (same duration, shifted back)
+  const start = new Date(periodStart);
+  const end = new Date(periodEnd);
+  const durationMs = end.getTime() - start.getTime();
+  const prevEnd = new Date(start.getTime() - 1); // day before current start
+  const prevStart = new Date(prevEnd.getTime() - durationMs);
+  const prevStartStr = prevStart.toISOString().split('T')[0];
+  const prevEndStr = prevEnd.toISOString().split('T')[0];
+
+  const [current, previous] = await Promise.all([
+    computeRawKPIs(periodStart, periodEnd),
+    computeRawKPIs(prevStartStr, prevEndStr),
+  ]);
+
+  // Compute changes for key metrics
+  const changes: Record<string, number | null> = {
+    ads_total_spend_micros: pctChange(current.ads_total_spend_micros, previous.ads_total_spend_micros),
+    ads_total_clicks: pctChange(current.ads_total_clicks, previous.ads_total_clicks),
+    ads_total_impressions: pctChange(current.ads_total_impressions, previous.ads_total_impressions),
+    ads_avg_cpc_micros: pctChange(current.ads_avg_cpc_micros, previous.ads_avg_cpc_micros),
+    ads_total_conversions: pctChange(current.ads_total_conversions, previous.ads_total_conversions),
+    organic_avg_position: pctChange(current.organic_avg_position, previous.organic_avg_position),
+    organic_total_clicks: pctChange(current.organic_total_clicks, previous.organic_total_clicks),
+    total_leads_attributed: pctChange(current.total_leads_attributed, previous.total_leads_attributed),
+    cost_per_lead_micros: pctChange(current.cost_per_lead_micros, previous.cost_per_lead_micros),
+    roas: pctChange(current.roas, previous.roas),
+    total_sessions: pctChange(current.total_sessions, previous.total_sessions),
+    total_form_submissions: pctChange(current.total_form_submissions, previous.total_form_submissions),
+    total_deal_value_cents: pctChange(current.total_deal_value_cents, previous.total_deal_value_cents),
+  };
+
+  return {
+    ...current,
+    changes,
     period_start: periodStart,
     period_end: periodEnd,
   };

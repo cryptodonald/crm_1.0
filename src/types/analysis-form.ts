@@ -30,9 +30,9 @@ export const analysisFormSchema = z.object({
     error: 'Seleziona la forma del corpo',
   }),
 
-  sleep_position: z.enum(['side', 'supine', 'prone', 'mixed'], {
-    error: 'Seleziona la posizione di sonno',
-  }),
+  sleep_position: z
+    .array(z.enum(['side', 'supine', 'prone']))
+    .min(1, 'Seleziona almeno una posizione di sonno'),
 
   firmness_preference: z.enum(['soft', 'neutral', 'firm']).default('neutral'),
 

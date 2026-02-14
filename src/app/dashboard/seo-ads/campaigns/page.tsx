@@ -40,8 +40,12 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   SlidersHorizontal,
   TrendingDown,
+  Download,
+  Loader2,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -49,6 +53,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { downloadCsv } from '@/lib/seo-ads/csv-export';
+import type { SeoCampaignPerformance } from '@/types/seo-ads';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -117,6 +123,10 @@ export default function SeoCampaignsPage() {
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(
     () => new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.key))
   );
+  // Drill-down state: track expanded rows + their daily data
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [dailyData, setDailyData] = useState<Record<string, SeoCampaignPerformance[]>>({});
+  const [dailyLoading, setDailyLoading] = useState<Set<string>>(new Set());
 
   const { date_from, date_to } = presetToDates(datePreset);
 
@@ -141,6 +151,35 @@ export default function SeoCampaignsPage() {
   }, []);
 
   const isCol = useCallback((key: ColumnKey) => visibleColumns.has(key), [visibleColumns]);
+
+  // Toggle drill-down: fetch daily data on first expand
+  const toggleDrillDown = useCallback(async (c: SeoCampaignPerformance) => {
+    const rowKey = `${c.keyword_id}|${c.campaign_name}|${c.ad_group_name}`;
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(rowKey)) { next.delete(rowKey); } else { next.add(rowKey); }
+      return next;
+    });
+    // Fetch only if not already loaded
+    if (!dailyData[rowKey]) {
+      setDailyLoading(prev => new Set(prev).add(rowKey));
+      try {
+        const params = new URLSearchParams({
+          keyword_id: c.keyword_id,
+          campaign_name: c.campaign_name,
+          ad_group_name: c.ad_group_name,
+        });
+        if (date_from) params.set('date_from', date_from);
+        if (date_to) params.set('date_to', date_to);
+        const res = await fetch(`/api/seo-ads/campaigns/daily?${params}`);
+        if (res.ok) {
+          const json = await res.json();
+          setDailyData(prev => ({ ...prev, [rowKey]: json.rows }));
+        }
+      } catch { /* silently fail */ }
+      setDailyLoading(prev => { const n = new Set(prev); n.delete(rowKey); return n; });
+    }
+  }, [dailyData, date_from, date_to]);
 
   // On-demand sync: calls Google Ads API then refreshes SWR
   const handleSync = useCallback(async () => {
@@ -220,6 +259,15 @@ export default function SeoCampaignsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <SeoDateFilter value={datePreset} onChange={(v) => { setDatePreset(v); setPage(1); }} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => downloadCsv(campaigns)}
+                  disabled={campaigns.length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Esporta CSV
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -303,6 +351,7 @@ export default function SeoCampaignsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8" />{/* expand toggle */}
                     {ALL_COLUMNS.filter(c => visibleColumns.has(c.key)).map(col => (
                       <TableHead key={col.key} className={col.align === 'right' ? 'text-right' : undefined}>
                         {col.label}
@@ -314,6 +363,7 @@ export default function SeoCampaignsPage() {
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
+                        <TableCell />
                         {Array.from({ length: visibleColumns.size }).map((_, j) => (
                           <TableCell key={j}>
                             <div className="h-4 w-full animate-pulse rounded bg-muted" />
@@ -324,7 +374,7 @@ export default function SeoCampaignsPage() {
                   ) : campaigns.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={visibleColumns.size}
+                        colSpan={visibleColumns.size + 1}
                         className="h-24 text-center text-muted-foreground"
                       >
                         Nessun dato campagne nel periodo selezionato
@@ -337,9 +387,23 @@ export default function SeoCampaignsPage() {
                         const cpc = c.clicks > 0 ? c.cost_micros / c.clicks : 0;
                         // Wasted spend: 0 conversions with cost > €50 (google-ads audit checklist)
                         const isWastedSpend = (c.conversions === 0 || c.conversions === null) && c.cost_micros > 50_000_000;
+                        const rowKey = `${c.keyword_id}|${c.campaign_name}|${c.ad_group_name}`;
+                        const isExpanded = expandedRows.has(rowKey);
+                        const rowDaily = dailyData[rowKey];
+                        const isRowLoading = dailyLoading.has(rowKey);
 
                         return (
-                          <TableRow key={c.id} className={isWastedSpend ? 'bg-destructive/5' : undefined}>
+                          <>
+                          <TableRow key={c.id} className={`cursor-pointer ${isWastedSpend ? 'bg-destructive/5' : ''} ${isExpanded ? 'bg-accent/40' : ''}`} onClick={() => toggleDrillDown(c)}>
+                            <TableCell className="w-8 px-2">
+                              {isRowLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              ) : isExpanded ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </TableCell>
                             {isCol('keyword') && (
                               <TableCell className="font-medium max-w-[200px] truncate">
                                 <span className="flex items-center gap-1.5">
@@ -483,12 +547,58 @@ export default function SeoCampaignsPage() {
                               <TableCell>{c.bid_strategy ?? '—'}</TableCell>
                             )}
                           </TableRow>
+                          {/* Drill-down daily rows */}
+                          {isExpanded && rowDaily && rowDaily.length > 0 && (
+                            rowDaily.map((d) => {
+                              const dCtr = d.impressions > 0 ? d.clicks / d.impressions : 0;
+                              const dCpc = d.clicks > 0 ? d.cost_micros / d.clicks : 0;
+                              return (
+                                <TableRow key={d.id} className="bg-muted/30 text-xs">
+                                  <TableCell />{/* expand col spacer */}
+                                  {isCol('keyword') && (
+                                    <TableCell className="pl-6 text-muted-foreground">
+                                      {new Date(d.report_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </TableCell>
+                                  )}
+                                  {isCol('campaign_name') && <TableCell />}
+                                  {isCol('ad_group_name') && <TableCell />}
+                                  {isCol('match_type') && <TableCell />}
+                                  {isCol('keyword_status') && <TableCell />}
+                                  {isCol('impressions') && <TableCell className="text-right">{formatNumber(d.impressions)}</TableCell>}
+                                  {isCol('clicks') && <TableCell className="text-right">{formatNumber(d.clicks)}</TableCell>}
+                                  {isCol('ctr') && <TableCell className="text-right">{formatPercent(dCtr, 2)}</TableCell>}
+                                  {isCol('cpc') && <TableCell className="text-right">€{microsToEuros(dCpc)}</TableCell>}
+                                  {isCol('cost') && <TableCell className="text-right">€{microsToEuros(d.cost_micros)}</TableCell>}
+                                  {isCol('conversions') && <TableCell className="text-right">{d.conversions ?? '—'}</TableCell>}
+                                  {isCol('cost_per_conversion') && <TableCell className="text-right">{d.cost_per_conversion_micros ? `€${microsToEuros(d.cost_per_conversion_micros)}` : '—'}</TableCell>}
+                                  {isCol('conversion_rate') && <TableCell className="text-right">{d.conversion_rate ? formatPercent(d.conversion_rate, 2) : '—'}</TableCell>}
+                                  {isCol('quality_score') && <TableCell className="text-right">{d.quality_score != null ? `${d.quality_score}/10` : '—'}</TableCell>}
+                                  {isCol('expected_ctr') && <TableCell />}
+                                  {isCol('landing_page_exp') && <TableCell />}
+                                  {isCol('ad_relevance') && <TableCell />}
+                                  {isCol('serving_status') && <TableCell />}
+                                  {isCol('campaign_type') && <TableCell />}
+                                  {isCol('bid_strategy') && <TableCell />}
+                                </TableRow>
+                              );
+                            })
+                          )}
+                          {isExpanded && rowDaily && rowDaily.length === 0 && (
+                            <TableRow className="bg-muted/30">
+                              <TableCell />
+                              <TableCell colSpan={visibleColumns.size} className="text-center text-xs text-muted-foreground py-2">
+                                Nessun dato giornaliero disponibile
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          </>
                         );
                       })}
 
                       {/* Totals row */}
                       {campaigns.length > 1 && (
                         <TableRow className="bg-muted/50 font-semibold">
+                          <TableCell />{/* expand col spacer */}
                           {isCol('keyword') && <TableCell>Totale</TableCell>}
                           {isCol('campaign_name') && <TableCell />}
                           {isCol('ad_group_name') && <TableCell />}

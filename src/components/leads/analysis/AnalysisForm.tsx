@@ -43,7 +43,7 @@ import {
 import { cn } from '@/lib/utils';
 import { BodySilhouette } from './BodySilhouette';
 import { analysisFormSchema, type AnalysisFormData } from '@/types/analysis-form';
-import type { HealthIssue, LeadAnalysisCreateInput } from '@/types/database';
+import type { HealthIssue, SleepPosition, LeadAnalysisCreateInput } from '@/types/database';
 
 // ============================================================================
 // Constants
@@ -61,7 +61,6 @@ const SLEEP_POSITIONS = [
   { value: 'side' as const, label: 'Laterale', icon: Moon, desc: 'Sul fianco' },
   { value: 'supine' as const, label: 'Supino', icon: ArrowUpDown, desc: 'Sulla schiena' },
   { value: 'prone' as const, label: 'Prono', icon: ArrowUpDown, desc: 'A pancia in giù' },
-  { value: 'mixed' as const, label: 'Misto', icon: BedDouble, desc: 'Cambio frequente' },
 ];
 
 const FIRMNESS_OPTIONS = [
@@ -120,7 +119,7 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
       person_label: 'Partner 1',
       sex: 'male',
       body_shape: 'normal',
-      sleep_position: 'side',
+      sleep_position: ['side'],
       firmness_preference: 'neutral',
       health_issues: [],
       circulation_issues: false,
@@ -134,6 +133,7 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
   const watchSex = form.watch('sex');
   const watchBodyShape = form.watch('body_shape');
   const watchHealthIssues = form.watch('health_issues');
+  const watchSleepPositions = form.watch('sleep_position');
 
   const handleFormSubmit = async (data: AnalysisFormData) => {
     await onSubmit({
@@ -161,6 +161,17 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
       ? current.filter((i) => i !== issue)
       : [...current, issue];
     form.setValue('health_issues', next, { shouldValidate: false });
+  };
+
+  const handleToggleSleepPosition = (pos: SleepPosition) => {
+    const current = form.getValues('sleep_position');
+    const next = current.includes(pos)
+      ? current.filter((p) => p !== pos)
+      : [...current, pos];
+    // Almeno una posizione deve essere selezionata
+    if (next.length > 0) {
+      form.setValue('sleep_position', next, { shouldValidate: false });
+    }
   };
 
   return (
@@ -327,24 +338,27 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
                   )}
                 />
 
-                {/* Sleep Position */}
+                {/* Sleep Position (multi-select) */}
                 <FormField
                   control={form.control}
                   name="sleep_position"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       <FormLabel>Posizione di sonno</FormLabel>
-                      <div className="grid grid-cols-2 gap-2">
+                      <FormDescription>
+                        Seleziona una o più posizioni abituali.
+                      </FormDescription>
+                      <div className="grid grid-cols-3 gap-2">
                         {SLEEP_POSITIONS.map((pos) => {
                           const Icon = pos.icon;
-                          const isSelected = field.value === pos.value;
+                          const isSelected = watchSleepPositions?.includes(pos.value);
                           return (
                             <button
                               key={pos.value}
                               type="button"
-                              role="radio"
+                              role="checkbox"
                               aria-checked={isSelected}
-                              onClick={() => field.onChange(pos.value)}
+                              onClick={() => handleToggleSleepPosition(pos.value)}
                               className={cn(
                                 'flex items-center gap-2 rounded-md border px-3 py-2.5 text-sm font-medium',
                                 'transition-colors duration-150 cursor-pointer',

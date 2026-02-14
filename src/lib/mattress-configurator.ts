@@ -216,15 +216,17 @@ function computeModifiers(
 ): number {
   let total = 0;
 
-  // Sleep position
-  if (input.sleep_position === 'side') {
-    total += getSetting(settings, `${category}.side_sleeper`);
-  } else if (input.sleep_position === 'prone') {
-    total += getSetting(settings, `${category}.prone_sleeper`);
-  } else if (input.sleep_position === 'supine') {
-    total += getSetting(settings, `${category}.supine_sleeper`);
+  // Sleep position(s) — average modifiers when multiple selected
+  const positions = input.sleep_position ?? [];
+  if (positions.length > 0) {
+    let posModSum = 0;
+    for (const pos of positions) {
+      if (pos === 'side') posModSum += getSetting(settings, `${category}.side_sleeper`);
+      else if (pos === 'prone') posModSum += getSetting(settings, `${category}.prone_sleeper`);
+      else if (pos === 'supine') posModSum += getSetting(settings, `${category}.supine_sleeper`);
+    }
+    total += posModSum / positions.length;
   }
-  // mixed = 0
 
   // Firmness preference
   if (input.firmness_preference === 'soft') {
@@ -306,7 +308,8 @@ function computeShoulderCylinder(
   const heavyThreshold = getSetting(settings, 'shoulder_rules.heavy_threshold_kg');
 
   const isNarrowShoulders = input.body_shape === 'a_shape' || input.body_shape === 'normal';
-  const isSide = input.sleep_position === 'side';
+  const positions = input.sleep_position ?? [];
+  const isSide = positions.includes('side');
 
   // Very light + side + narrow shoulders → no cylinder (empty cavity)
   if (input.weight_kg < lightThreshold && isSide && isNarrowShoulders) {
@@ -404,12 +407,13 @@ function computePillow(input: LeadAnalysisCreateInput): {
     inserts = 2;
   }
 
-  // Side sleeper needs higher pillow
-  if (input.sleep_position === 'side') {
+  // Sleep position adjustments (averaged if multiple)
+  const positions = input.sleep_position ?? [];
+  if (positions.includes('side')) {
     inserts = Math.min(4, inserts + 1);
   }
-  // Prone sleeper needs lower pillow
-  if (input.sleep_position === 'prone') {
+  if (positions.includes('prone') && !positions.includes('side')) {
+    // Only lower pillow if prone-only (side takes priority for height)
     inserts = Math.max(0, inserts - 1);
   }
 

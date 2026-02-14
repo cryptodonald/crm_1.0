@@ -41,7 +41,7 @@ export default function SeoAdsDashboardPage() {
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const { date_from, date_to } = presetToDates(datePreset);
-  const { kpis, isLoading, isValidating, error, mutate } = useSeoDashboard(date_from, date_to);
+  const { kpis, dailyTrend, isLoading, isValidating, error, mutate } = useSeoDashboard(date_from, date_to);
   const refreshing = isLoading || isValidating || syncing;
 
   // On-demand sync: calls Google Ads API then refreshes SWR
@@ -87,13 +87,9 @@ export default function SeoAdsDashboardPage() {
 
   if (!session) return null;
 
-  // Build mock trend data from KPIs (real trend data would come from a separate endpoint)
-  const trendData = kpis
-    ? [
-        { date: date_from, value: 0 },
-        { date: date_to, value: kpis.ads_total_spend_micros / 1_000_000 },
-      ]
-    : [];
+  // Real daily trend data from API
+  const spendTrend = dailyTrend.map(d => ({ date: d.date, value: d.spend_micros / 1_000_000 }));
+  const clicksTrend = dailyTrend.map(d => ({ date: d.date, value: d.clicks }));
 
   return (
     <AppLayoutCustom>
@@ -147,12 +143,13 @@ export default function SeoAdsDashboardPage() {
                 title="Costo per Lead"
                 value={kpis ? `€${microsToEuros(kpis.cost_per_lead_micros)}` : '—'}
                 icon={DollarSign}
+                change={kpis?.changes?.cost_per_lead_micros}
                 invertTrend
                 loading={isLoading}
               />
               <SeoKpiCard
                 title="Quality Score Medio"
-                value={kpis ? formatNumber(kpis.ads_total_conversions) : '—'}
+                value={kpis?.ads_avg_quality_score != null ? `${kpis.ads_avg_quality_score}/10` : '—'}
                 icon={Star}
                 loading={isLoading}
               />
@@ -160,12 +157,14 @@ export default function SeoAdsDashboardPage() {
                 title="Lead Attribuiti"
                 value={kpis ? formatNumber(kpis.total_leads_attributed) : '—'}
                 icon={Users}
+                change={kpis?.changes?.total_leads_attributed}
                 loading={isLoading}
               />
               <SeoKpiCard
                 title="CPC Medio"
                 value={kpis ? `€${microsToEuros(kpis.ads_avg_cpc_micros)}` : '—'}
                 icon={MousePointerClick}
+                change={kpis?.changes?.ads_avg_cpc_micros}
                 invertTrend
                 loading={isLoading}
               />
@@ -177,6 +176,7 @@ export default function SeoAdsDashboardPage() {
                 title="Posizione Organica Media"
                 value={kpis ? formatPosition(kpis.organic_avg_position) : '—'}
                 icon={Globe}
+                change={kpis?.changes?.organic_avg_position}
                 invertTrend
                 loading={isLoading}
               />
@@ -188,18 +188,21 @@ export default function SeoAdsDashboardPage() {
                     : '—'
                 }
                 icon={Percent}
+                change={kpis?.changes?.ads_total_clicks}
                 loading={isLoading}
               />
               <SeoKpiCard
                 title="ROAS"
                 value={kpis ? `${kpis.roas.toFixed(2)}x` : '—'}
                 icon={TrendingUp}
+                change={kpis?.changes?.roas}
                 loading={isLoading}
               />
               <SeoKpiCard
                 title="Budget Speso"
                 value={kpis ? `€${microsToEuros(kpis.ads_total_spend_micros)}` : '—'}
                 icon={Wallet}
+                change={kpis?.changes?.ads_total_spend_micros}
                 loading={isLoading}
               />
             </div>
@@ -207,23 +210,18 @@ export default function SeoAdsDashboardPage() {
             {/* Trend Charts */}
             <div className="grid gap-4 md:grid-cols-2">
               <SeoTrendChart
-                title="Spesa Ads (€)"
-                data={trendData}
+                title="Spesa Giornaliera (€)"
+                data={spendTrend}
                 valueFormatter={(v) => `€${v.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`}
+                height={200}
                 loading={isLoading}
               />
               <SeoTrendChart
-                title="Click Totali"
-                data={
-                  kpis
-                    ? [
-                        { date: date_from, value: 0 },
-                        { date: date_to, value: kpis.ads_total_clicks + kpis.organic_total_clicks },
-                      ]
-                    : []
-                }
+                title="Click Giornalieri"
+                data={clicksTrend}
                 color="hsl(var(--chart-2))"
                 valueFormatter={(v) => formatNumber(v)}
+                height={200}
                 loading={isLoading}
               />
             </div>

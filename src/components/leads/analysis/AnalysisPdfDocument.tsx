@@ -35,7 +35,7 @@ const s = StyleSheet.create({
 });
 
 const BODY_LABELS: Record<string, string> = { v_shape: 'V-Shape', a_shape: 'A-Shape', normal: 'Normale', h_shape: 'H-Shape', round: 'Rotondo' };
-const SLEEP_LABELS: Record<string, string> = { side: 'Laterale', supine: 'Supino', prone: 'Prono', mixed: 'Misto' };
+const SLEEP_LABELS: Record<string, string> = { side: 'Laterale', supine: 'Supino', prone: 'Prono' };
 const FIRMNESS_LABELS: Record<string, string> = { soft: 'Accogliente', neutral: 'Neutro', firm: 'Sostenuto' };
 const HEALTH_LABELS: Record<string, string> = { lower_back_pain: 'Dolore lombare', shoulder_pain: 'Dolore spalle', hip_pain: 'Dolore anche', sciatica: 'Sciatica', lordosis: 'Lordosi', kyphosis: 'Cifosi', fibromyalgia: 'Fibromialgia' };
 const BASE_LABELS: Record<string, string> = { soft: 'Soft', medium: 'Medium', hard: 'Hard' };
@@ -125,7 +125,11 @@ export function AnalysisPdfDocument({ analysis, leadName }: Props) {
               <InfoRow label="Forma corpo" value={BODY_LABELS[analysis.body_shape || 'normal']} />
             </View>
             <View style={{ flex: 1 }}>
-              <InfoRow label="Posizione sonno" value={SLEEP_LABELS[analysis.sleep_position || 'mixed']} />
+              <InfoRow label="Posizione sonno" value={
+                Array.isArray(analysis.sleep_position) && analysis.sleep_position.length > 0
+                  ? analysis.sleep_position.map(p => SLEEP_LABELS[p] || p).join(', ')
+                  : 'N/D'
+              } />
               <InfoRow label="Preferenza" value={FIRMNESS_LABELS[analysis.firmness_preference]} />
               <InfoRow
                 label="Problematiche"

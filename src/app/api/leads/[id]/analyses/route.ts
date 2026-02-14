@@ -24,7 +24,7 @@ const createAnalysisSchema = z.object({
   weight_kg: z.number().int().min(30).max(250),
   height_cm: z.number().int().min(100).max(230),
   body_shape: z.enum(['v_shape', 'a_shape', 'normal', 'h_shape', 'round']).optional(),
-  sleep_position: z.enum(['side', 'supine', 'prone', 'mixed']).optional(),
+  sleep_position: z.array(z.enum(['side', 'supine', 'prone'])).optional(),
   firmness_preference: z.enum(['soft', 'neutral', 'firm']).optional(),
   health_issues: z.array(z.enum([
     'lordosis', 'kyphosis', 'lower_back_pain',

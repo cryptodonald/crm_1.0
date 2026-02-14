@@ -199,7 +199,8 @@ export async function getLeads(filters: LeadFilters = {}): Promise<PaginatedResp
   }
 
   if (assigned_to) {
-    whereClauses.push(`$${paramIndex} = ANY(assigned_to)`);
+    // Use @> operator to leverage GIN index on assigned_to array
+    whereClauses.push(`assigned_to @> ARRAY[$${paramIndex}]`);
     params.push(assigned_to);
     paramIndex++;
   }
@@ -951,7 +952,7 @@ export async function createAnalysis(
     input.weight_kg,
     input.height_cm,
     input.body_shape ?? null,
-    input.sleep_position ?? null,
+    input.sleep_position ?? [],
     input.firmness_preference ?? 'neutral',
     input.health_issues ?? [],
     input.circulation_issues ?? false,

@@ -277,6 +277,7 @@ export interface SeoDashboardKPIs {
   ads_total_impressions: number;
   ads_avg_cpc_micros: number;
   ads_total_conversions: number;
+  ads_avg_quality_score: number | null;
 
   // Organic aggregati
   organic_avg_position: number;
@@ -295,6 +296,9 @@ export interface SeoDashboardKPIs {
   total_deal_value_cents: number;
   cost_per_lead_micros: number;
   roas: number; // deal_value / ad_spend
+
+  // Variazioni % vs periodo precedente (null se non disponibile)
+  changes: Record<string, number | null>;
 
   // Periodo
   period_start: string;

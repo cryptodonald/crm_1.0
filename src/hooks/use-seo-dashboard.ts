@@ -31,7 +31,10 @@ export function useSeoDashboard(periodStart?: string, periodEnd?: string) {
 
   const url = `/api/seo-ads/dashboard${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR<{ kpis: SeoDashboardKPIs }>(
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
+    kpis: SeoDashboardKPIs;
+    dailyTrend: { date: string; spend_micros: number; clicks: number; impressions: number; conversions: number }[];
+  }>(
     url,
     fetcher,
     {
@@ -43,6 +46,7 @@ export function useSeoDashboard(periodStart?: string, periodEnd?: string) {
 
   return {
     kpis: data?.kpis || null,
+    dailyTrend: data?.dailyTrend || [],
     isLoading,
     isValidating,
     error,

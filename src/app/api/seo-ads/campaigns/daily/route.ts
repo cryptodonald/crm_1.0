@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { checkRateLimit } from '@/lib/ratelimit';
-import { getDashboardKPIs, getCampaignDailyTrend } from '@/lib/seo-ads/queries';
+import { getCampaignKeywordDaily } from '@/lib/seo-ads/queries';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,23 +20,28 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const keywordId = searchParams.get('keyword_id');
+    const campaignName = searchParams.get('campaign_name');
+    const adGroupName = searchParams.get('ad_group_name');
 
-    // Default: last 30 days
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const periodStart = searchParams.get('period_start') || thirtyDaysAgo.toISOString().split('T')[0];
-    const periodEnd = searchParams.get('period_end') || now.toISOString().split('T')[0];
+    if (!keywordId || !campaignName || !adGroupName) {
+      return NextResponse.json(
+        { error: 'keyword_id, campaign_name and ad_group_name are required', code: 'VALIDATION_ERROR' },
+        { status: 400 },
+      );
+    }
 
-    const [kpis, dailyTrend] = await Promise.all([
-      getDashboardKPIs(periodStart, periodEnd),
-      getCampaignDailyTrend({ date_from: periodStart, date_to: periodEnd }),
-    ]);
-    return NextResponse.json({ kpis, dailyTrend });
+    const dateFrom = searchParams.get('date_from') || undefined;
+    const dateTo = searchParams.get('date_to') || undefined;
+
+    const rows = await getCampaignKeywordDaily(keywordId, campaignName, adGroupName, dateFrom, dateTo);
+
+    return NextResponse.json({ rows });
   } catch (error: unknown) {
-    console.error('[API] GET /api/seo-ads/dashboard error:', error);
+    console.error('[API] GET /api/seo-ads/campaigns/daily error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal error', code: 'FETCH_ERROR' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
