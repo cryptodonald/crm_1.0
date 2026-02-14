@@ -73,12 +73,14 @@ export function useSeoCampaigns(filters?: {
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<{
     campaigns: SeoCampaignPerformance[];
+    dailyTrend: { date: string; spend_micros: number; clicks: number; impressions: number; conversions: number }[];
     total: number;
     pagination: PaginatedResponse<SeoCampaignPerformance>['pagination'];
   }>(url, fetcher, { revalidateOnFocus: false, dedupingInterval: 5000 });
 
   return {
     campaigns: data?.campaigns || [],
+    dailyTrend: data?.dailyTrend || [],
     total: data?.total || 0,
     pagination: data?.pagination,
     isLoading,

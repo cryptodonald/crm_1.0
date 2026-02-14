@@ -34,7 +34,7 @@ import type {
 // ============================================================================
 
 const KEYWORD_SORT_COLS = ['created_at', 'updated_at', 'keyword', 'cluster', 'priority'] as const;
-const CAMPAIGN_SORT_COLS = ['report_date', 'campaign_name', 'clicks', 'impressions', 'cost_micros'] as const;
+const CAMPAIGN_SORT_COLS = ['keyword', 'campaign_name', 'clicks', 'impressions', 'cost_micros', 'conversions', 'quality_score'] as const;
 const ORGANIC_SORT_COLS = ['report_date', 'avg_position', 'clicks', 'impressions'] as const;
 const ANALYTICS_SORT_COLS = ['report_date', 'source', 'sessions', 'page_views'] as const;
 const ATTRIBUTION_SORT_COLS = ['created_at', 'source', 'confidence'] as const;
@@ -226,7 +226,7 @@ export async function getCampaignPerformance(
     sort_by, sort_order = 'desc',
   } = filters;
 
-  const sortCol = validateSortColumn(sort_by, CAMPAIGN_SORT_COLS, 'report_date');
+  const sortCol = validateSortColumn(sort_by, CAMPAIGN_SORT_COLS, 'impressions');
   const offset = (page - 1) * limit;
   const whereClauses: string[] = [];
   const params: unknown[] = [];
@@ -260,16 +260,69 @@ export async function getCampaignPerformance(
     ? `WHERE ${whereClauses.join(' AND ')}`
     : '';
 
-  const countSql = `SELECT COUNT(*) as total FROM seo_campaign_performance cp ${whereClause}`;
-  const countResult = await queryOne<{ total: string }>(countSql, params);
+  // Sort mapping: column name → SQL expression for aggregated query
+  const sortMap: Record<string, string> = {
+    keyword: 'sk.keyword',
+    campaign_name: 'cp.campaign_name',
+    clicks: 'SUM(cp.clicks)',
+    impressions: 'SUM(cp.impressions)',
+    cost_micros: 'SUM(cp.cost_micros)',
+    conversions: 'SUM(cp.conversions)',
+    quality_score: '(array_agg(cp.quality_score ORDER BY cp.report_date DESC))[1]',
+  };
+  const sortExpr = sortMap[sortCol] || 'SUM(cp.impressions)';
+
+  // Count distinct keyword groups (not daily rows)
+  const countSql = `
+    SELECT COUNT(*) as total FROM (
+      SELECT 1 FROM seo_campaign_performance cp
+      ${whereClause}
+      GROUP BY cp.keyword_id, cp.campaign_name, cp.ad_group_name
+    ) sub
+  `;
+  const countParams = [...params]; // copy params without limit/offset
+  const countResult = await queryOne<{ total: string }>(countSql, countParams);
   const total = parseInt(countResult?.total || '0', 10);
 
+  // Aggregated query: one row per keyword+campaign+ad_group
   const dataSql = `
-    SELECT cp.*, sk.keyword
+    SELECT
+      MIN(cp.id) as id,
+      cp.keyword_id,
+      cp.campaign_name,
+      cp.ad_group_name,
+      sk.keyword,
+      SUM(cp.impressions)::integer as impressions,
+      SUM(cp.clicks)::integer as clicks,
+      SUM(cp.cost_micros)::bigint as cost_micros,
+      SUM(cp.conversions)::integer as conversions,
+      -- Latest non-metric values (most recent date first)
+      (array_agg(cp.match_type ORDER BY cp.report_date DESC))[1] as match_type,
+      (array_agg(cp.keyword_status ORDER BY cp.report_date DESC))[1] as keyword_status,
+      (array_agg(cp.serving_status ORDER BY cp.report_date DESC))[1] as serving_status,
+      (array_agg(cp.quality_score ORDER BY cp.report_date DESC))[1] as quality_score,
+      (array_agg(cp.expected_ctr ORDER BY cp.report_date DESC))[1] as expected_ctr,
+      (array_agg(cp.landing_page_exp ORDER BY cp.report_date DESC))[1] as landing_page_exp,
+      (array_agg(cp.ad_relevance ORDER BY cp.report_date DESC))[1] as ad_relevance,
+      (array_agg(cp.campaign_type ORDER BY cp.report_date DESC))[1] as campaign_type,
+      (array_agg(cp.bid_strategy ORDER BY cp.report_date DESC))[1] as bid_strategy,
+      -- Recalculated from totals
+      CASE WHEN SUM(cp.conversions) > 0
+        THEN (SUM(cp.cost_micros) / SUM(cp.conversions))::bigint
+        ELSE 0
+      END as cost_per_conversion_micros,
+      CASE WHEN SUM(cp.clicks) > 0
+        THEN ROUND(SUM(cp.conversions)::numeric / SUM(cp.clicks), 4)
+        ELSE 0
+      END as conversion_rate,
+      MAX(cp.report_date) as report_date,
+      MAX(cp.created_at) as created_at,
+      MAX(cp.updated_at) as updated_at
     FROM seo_campaign_performance cp
     LEFT JOIN seo_keywords sk ON cp.keyword_id = sk.id
     ${whereClause}
-    ORDER BY cp.${sortCol} ${sort_order === 'asc' ? 'ASC' : 'DESC'}
+    GROUP BY cp.keyword_id, cp.campaign_name, cp.ad_group_name, sk.keyword
+    ORDER BY ${sortExpr} ${sort_order === 'asc' ? 'ASC' : 'DESC'} NULLS LAST
     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `;
   params.push(limit, offset);
@@ -292,6 +345,66 @@ export async function getCampaignPerformance(
     data,
     pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
   };
+}
+
+/**
+ * Daily trend data for charts (spend + clicks per day).
+ * Separate from the aggregated keyword table.
+ */
+export async function getCampaignDailyTrend(
+  filters: Pick<SeoCampaignFilters, 'keyword_id' | 'campaign_name' | 'date_from' | 'date_to'> = {}
+): Promise<{ date: string; spend_micros: number; clicks: number; impressions: number; conversions: number }[]> {
+  const { keyword_id, campaign_name, date_from, date_to } = filters;
+  const whereClauses: string[] = [];
+  const params: unknown[] = [];
+  let paramIndex = 1;
+
+  if (keyword_id) {
+    whereClauses.push(`keyword_id = $${paramIndex}`);
+    params.push(keyword_id);
+    paramIndex++;
+  }
+  if (campaign_name) {
+    whereClauses.push(`campaign_name ILIKE $${paramIndex}`);
+    params.push(`%${campaign_name}%`);
+    paramIndex++;
+  }
+  if (date_from) {
+    whereClauses.push(`report_date >= $${paramIndex}`);
+    params.push(date_from);
+    paramIndex++;
+  }
+  if (date_to) {
+    whereClauses.push(`report_date <= $${paramIndex}`);
+    params.push(date_to);
+    paramIndex++;
+  }
+
+  const whereClause = whereClauses.length > 0
+    ? `WHERE ${whereClauses.join(' AND ')}`
+    : '';
+
+  const sql = `
+    SELECT
+      report_date as date,
+      SUM(cost_micros)::bigint as spend_micros,
+      SUM(clicks)::integer as clicks,
+      SUM(impressions)::integer as impressions,
+      SUM(conversions)::integer as conversions
+    FROM seo_campaign_performance
+    ${whereClause}
+    GROUP BY report_date
+    ORDER BY report_date ASC
+  `;
+
+  const rows = await query<{ date: string; spend_micros: string; clicks: number; impressions: number; conversions: number }>(sql, params);
+  return rows.map(r => ({
+    date: r.date,
+    spend_micros: Number(r.spend_micros),
+    clicks: Number(r.clicks),
+    impressions: Number(r.impressions),
+    conversions: Number(r.conversions),
+  }));
 }
 
 export async function upsertCampaignPerformance(

@@ -11,6 +11,7 @@ import { LeadTimeline } from '@/components/leads/lead-timeline';
 import { LeadActivitiesTimeline } from '@/components/leads/lead-activities-timeline';
 import { AddNoteDialog } from '@/components/leads/add-note-dialog';
 import { NewActivityModal } from '@/components/activities/new-activity-modal';
+import { AnalysisSection } from '@/components/leads/analysis/AnalysisSection';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import {
 import { useMarketingSources } from '@/hooks/use-marketing-sources';
 import { useNotes } from '@/hooks/use-notes';
 import { useActivities, useDeleteActivity } from '@/hooks/use-activities';
+import { useLeadAnalyses } from '@/hooks/use-lead-analyses';
 import useSWR, { mutate } from 'swr';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -64,6 +66,7 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
   const { notes } = useNotes(id);
   const { activities } = useActivities(id);
   const { deleteActivity } = useDeleteActivity();
+  const { analyses } = useLeadAnalyses(id);
 
   // Get source info (safe even when lead is null)
   const fonteId = lead?.source_id;
@@ -330,6 +333,9 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
           </div>
         );
 
+      case 'analysis':
+        return <AnalysisSection leadId={id} />;
+
       default:
         return null;
     }
@@ -409,6 +415,7 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
                         activityCount={activities?.length || 0}
                         orderCount={0}
                         fileCount={0}
+                        analysisCount={analyses?.length || 0}
                       />
                     </div>
                   </ResizablePanel>

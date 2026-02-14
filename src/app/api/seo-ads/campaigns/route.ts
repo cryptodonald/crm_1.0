@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { checkRateLimit } from '@/lib/ratelimit';
-import { getCampaignPerformance } from '@/lib/seo-ads/queries';
+import { getCampaignPerformance, getCampaignDailyTrend } from '@/lib/seo-ads/queries';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,9 +31,18 @@ export async function GET(request: NextRequest) {
       sort_order: (searchParams.get('sort_order') as 'asc' | 'desc') || undefined,
     };
 
-    const result = await getCampaignPerformance(filters);
+    const [result, dailyTrend] = await Promise.all([
+      getCampaignPerformance(filters),
+      getCampaignDailyTrend({
+        keyword_id: filters.keyword_id,
+        campaign_name: filters.campaign_name,
+        date_from: filters.date_from,
+        date_to: filters.date_to,
+      }),
+    ]);
     return NextResponse.json({
       campaigns: result.data,
+      dailyTrend,
       total: result.pagination.total,
       pagination: result.pagination,
     });

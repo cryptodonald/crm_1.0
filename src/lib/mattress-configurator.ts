@@ -20,10 +20,6 @@ import type {
   LumbarCylinderType,
   PillowCervicalSide,
   MattressModel,
-  BodyShape,
-  SleepPosition,
-  FirmnessPreference,
-  HealthIssue,
 } from '@/types/database';
 
 // ============================================================================

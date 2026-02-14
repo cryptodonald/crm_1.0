@@ -406,38 +406,16 @@ Retention: 1 year
 - `src/types/database.ts`: TypeScript interfaces per tutte le tabelle
 - `README.md`: Quick start, stack, env vars
 - `.env.example`: Template environment variables
-- `.warp/skills/`: AI Agent skills (vedi sezione "AI Skills" sotto)
+- `.agents/skills/`: AI Agent skills (vedi sezione "AI Skills" sotto)
 
-### AI Skills (`.warp/skills/`)
+### AI Skills (`.agents/skills/`)
 
 Skill installate da [skills.sh](https://skills.sh/) — knowledge base specializzate per l'AI agent.
-Per leggere una skill: `read_skill` con `skill_path` = `.warp/skills/<nome>/SKILL.md`.
+Per leggere una skill: `read_skill` con `skill_path` = `.agents/skills/<nome>/SKILL.md`.
 
-#### UI & Design
-- **`react-best-practices`** — React 19 patterns, hooks, Server Components, performance (vercel-labs)
-- **`frontend-design`** — UI/UX design principles, layout, typography, color theory (anthropics)
-- **`web-design-guidelines`** — Web design standards, accessibility, responsive (vercel-labs)
-- **`shadcn-ui`** — shadcn/ui patterns, Radix primitives, component customization (giuseppe-trisciuoglio)
-- **`tailwind-css-patterns`** — Tailwind CSS v4 patterns, utilities, responsive design (giuseppe-trisciuoglio)
-
-#### Next.js & React
-- **`composition-patterns`** — React composition, Server/Client boundaries, streaming (vercel-labs)
-- **`next-best-practices`** — Next.js App Router, file conventions, RSC, data patterns, error handling (vercel-labs)
-  - Reference files: `async-patterns.md`, `data-patterns.md`, `directives.md`, `error-handling.md`, `file-conventions.md`, `route-handlers.md`, `rsc-boundaries.md`
-- **`next-cache-components`** — Next.js caching, revalidation, `use cache`, `cacheLife`, `cacheTag` (vercel-labs)
-
-#### TypeScript & Backend
-- **`typescript-advanced-types`** — Generics, conditional types, mapped types, type guards (wshobson)
-- **`nodejs-backend-patterns`** — Node.js API patterns, middleware, error handling (wshobson)
-- **`architecture-patterns`** — Software architecture, layered design, SOLID, DDD (wshobson)
-- **`api-design-principles`** — RESTful API design, versioning, pagination, error responses (wshobson)
-
-#### Quando Usare le Skills
-- **Prima di creare componenti React**: Leggi `react-best-practices` e `composition-patterns`
-- **Per UI/styling**: Leggi `shadcn-ui` e `tailwind-css-patterns`
-- **Per nuove API routes**: Leggi `api-design-principles` e `nodejs-backend-patterns`
-- **Per Next.js patterns**: Leggi `next-best-practices` e `next-cache-components`
-- **Per TypeScript complesso**: Leggi `typescript-advanced-types`
+- **`web-design-guidelines`** — Review UI code for Web Interface Guidelines compliance (vercel-labs)
+- **`ui-ux-pro-max`** — Design intelligence: 50+ stili, 97 palette, 57 font pairings, 99 UX guidelines, script Python per design system (nextlevelbuilder)
+- **`find-skills`** — Cerca e installa nuove skill dall'ecosistema skills.sh (vercel-labs)
 
 ### Stack Details
 

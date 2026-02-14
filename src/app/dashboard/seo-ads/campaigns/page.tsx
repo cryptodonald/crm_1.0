@@ -47,7 +47,7 @@ const ITEMS_PER_PAGE = 20;
 
 // All available columns with labels
 type ColumnKey =
-  | 'keyword' | 'campaign_name' | 'ad_group_name' | 'report_date'
+  | 'keyword' | 'campaign_name' | 'ad_group_name'
   | 'impressions' | 'clicks' | 'ctr' | 'cpc' | 'cost' | 'conversions' | 'quality_score'
   | 'match_type' | 'keyword_status' | 'serving_status'
   | 'expected_ctr' | 'landing_page_exp' | 'ad_relevance'
@@ -57,25 +57,46 @@ const ALL_COLUMNS: { key: ColumnKey; label: string; defaultVisible: boolean; ali
   { key: 'keyword', label: 'Keyword', defaultVisible: true },
   { key: 'campaign_name', label: 'Campagna', defaultVisible: true },
   { key: 'ad_group_name', label: 'Ad Group', defaultVisible: false },
-  { key: 'report_date', label: 'Data', defaultVisible: true },
-  { key: 'match_type', label: 'Match Type', defaultVisible: true },
+  { key: 'match_type', label: 'Tipo Corrispondenza', defaultVisible: true },
   { key: 'keyword_status', label: 'Stato', defaultVisible: true },
   { key: 'impressions', label: 'Impression', defaultVisible: true, align: 'right' },
   { key: 'clicks', label: 'Click', defaultVisible: true, align: 'right' },
   { key: 'ctr', label: 'CTR', defaultVisible: true, align: 'right' },
-  { key: 'cpc', label: 'CPC', defaultVisible: true, align: 'right' },
+  { key: 'cpc', label: 'CPC medio', defaultVisible: true, align: 'right' },
   { key: 'cost', label: 'Costo', defaultVisible: true, align: 'right' },
   { key: 'conversions', label: 'Conv.', defaultVisible: true, align: 'right' },
   { key: 'cost_per_conversion', label: 'Costo/Conv.', defaultVisible: true, align: 'right' },
   { key: 'conversion_rate', label: 'Tasso Conv.', defaultVisible: true, align: 'right' },
-  { key: 'quality_score', label: 'QS', defaultVisible: true, align: 'right' },
-  { key: 'expected_ctr', label: 'CTR Atteso', defaultVisible: true },
-  { key: 'landing_page_exp', label: 'Landing Page', defaultVisible: true },
-  { key: 'ad_relevance', label: 'Rilevanza Ad', defaultVisible: true },
+  { key: 'quality_score', label: 'Punteggio di qualità', defaultVisible: true, align: 'right' },
+  { key: 'expected_ctr', label: 'CTR Previsto', defaultVisible: true },
+  { key: 'landing_page_exp', label: 'Esper. Pagina Dest.', defaultVisible: true },
+  { key: 'ad_relevance', label: 'Pertinenza Annuncio', defaultVisible: true },
   { key: 'serving_status', label: 'Serving', defaultVisible: false },
   { key: 'campaign_type', label: 'Tipo Camp.', defaultVisible: false },
   { key: 'bid_strategy', label: 'Strategia Bid', defaultVisible: false },
 ];
+
+// Translate Google Ads enum values to Italian
+const QUALITY_LABELS: Record<string, string> = {
+  ABOVE_AVERAGE: 'Sopra la media',
+  AVERAGE: 'Nella media',
+  BELOW_AVERAGE: 'Sotto la media',
+};
+const MATCH_TYPE_LABELS: Record<string, string> = {
+  BROAD: 'Generica',
+  PHRASE: 'A frase',
+  EXACT: 'Esatta',
+};
+const STATUS_LABELS: Record<string, string> = {
+  ENABLED: 'Attiva',
+  PAUSED: 'In pausa',
+  REMOVED: 'Rimossa',
+};
+const SERVING_LABELS: Record<string, string> = {
+  ELIGIBLE: 'Idoneo',
+  RARELY_SERVED: 'Raramente mostrato',
+  NOT_ELIGIBLE: 'Non idoneo',
+};
 
 export default function SeoCampaignsPage() {
   const router = useRouter();
@@ -92,7 +113,7 @@ export default function SeoCampaignsPage() {
 
   const { date_from, date_to } = presetToDates(datePreset);
 
-  const { campaigns, total, isLoading, isValidating, error, mutate } = useSeoCampaigns({
+  const { campaigns, dailyTrend, total, isLoading, isValidating, error, mutate } = useSeoCampaigns({
     date_from,
     date_to,
     campaign_name: campaignSearch || undefined,
@@ -158,20 +179,9 @@ export default function SeoCampaignsPage() {
 
   if (!session) return null;
 
-  // Aggregate for trend chart — group by report_date
-  const dailyMap = new Map<string, { spend: number; clicks: number }>();
-  campaigns.forEach((c) => {
-    const existing = dailyMap.get(c.report_date) || { spend: 0, clicks: 0 };
-    existing.spend += c.cost_micros;
-    existing.clicks += c.clicks;
-    dailyMap.set(c.report_date, existing);
-  });
-  const spendTrend = Array.from(dailyMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, d]) => ({ date, value: d.spend / 1_000_000 }));
-  const clicksTrend = Array.from(dailyMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, d]) => ({ date, value: d.clicks }));
+  // Trend chart data from API (daily aggregated)
+  const spendTrend = dailyTrend.map(d => ({ date: d.date, value: d.spend_micros / 1_000_000 }));
+  const clicksTrend = dailyTrend.map(d => ({ date: d.date, value: d.clicks }));
 
   // Totals row
   const totals = campaigns.reduce(
@@ -286,27 +296,11 @@ export default function SeoCampaignsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {isCol('keyword') && <TableHead>Keyword</TableHead>}
-                    {isCol('campaign_name') && <TableHead>Campagna</TableHead>}
-                    {isCol('ad_group_name') && <TableHead>Ad Group</TableHead>}
-                    {isCol('report_date') && <TableHead>Data</TableHead>}
-                    {isCol('match_type') && <TableHead>Match Type</TableHead>}
-                    {isCol('keyword_status') && <TableHead>Stato</TableHead>}
-                    {isCol('impressions') && <TableHead className="text-right">Impression</TableHead>}
-                    {isCol('clicks') && <TableHead className="text-right">Click</TableHead>}
-                    {isCol('ctr') && <TableHead className="text-right">CTR</TableHead>}
-                    {isCol('cpc') && <TableHead className="text-right">CPC</TableHead>}
-                    {isCol('cost') && <TableHead className="text-right">Costo</TableHead>}
-                    {isCol('conversions') && <TableHead className="text-right">Conv.</TableHead>}
-                    {isCol('cost_per_conversion') && <TableHead className="text-right">Costo/Conv.</TableHead>}
-                    {isCol('conversion_rate') && <TableHead className="text-right">Tasso Conv.</TableHead>}
-                    {isCol('quality_score') && <TableHead className="text-right">QS</TableHead>}
-                    {isCol('expected_ctr') && <TableHead>CTR Atteso</TableHead>}
-                    {isCol('landing_page_exp') && <TableHead>Landing Page</TableHead>}
-                    {isCol('ad_relevance') && <TableHead>Rilevanza Ad</TableHead>}
-                    {isCol('serving_status') && <TableHead>Serving</TableHead>}
-                    {isCol('campaign_type') && <TableHead>Tipo Camp.</TableHead>}
-                    {isCol('bid_strategy') && <TableHead>Strategia Bid</TableHead>}
+                    {ALL_COLUMNS.filter(c => visibleColumns.has(c.key)).map(col => (
+                      <TableHead key={col.key} className={col.align === 'right' ? 'text-right' : undefined}>
+                        {col.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -352,19 +346,14 @@ export default function SeoCampaignsPage() {
                                 {c.ad_group_name}
                               </TableCell>
                             )}
-                            {isCol('report_date') && (
-                              <TableCell className="whitespace-nowrap">
-                                {new Date(c.report_date).toLocaleDateString('it-IT')}
-                              </TableCell>
-                            )}
                             {isCol('match_type') && (
-                              <TableCell>{c.match_type ?? '—'}</TableCell>
+                              <TableCell>{c.match_type ? (MATCH_TYPE_LABELS[c.match_type] ?? c.match_type) : '—'}</TableCell>
                             )}
                             {isCol('keyword_status') && (
                               <TableCell>
                                 {c.keyword_status ? (
                                   <Badge variant={c.keyword_status === 'ENABLED' ? 'primary' : 'secondary'}>
-                                    {c.keyword_status}
+                                    {STATUS_LABELS[c.keyword_status] ?? c.keyword_status}
                                   </Badge>
                                 ) : '—'}
                               </TableCell>
@@ -432,7 +421,7 @@ export default function SeoCampaignsPage() {
                               <TableCell>
                                 {c.expected_ctr ? (
                                   <Badge variant={c.expected_ctr === 'ABOVE_AVERAGE' ? 'primary' : c.expected_ctr === 'AVERAGE' ? 'secondary' : 'destructive'}>
-                                    {c.expected_ctr}
+                                    {QUALITY_LABELS[c.expected_ctr] ?? c.expected_ctr}
                                   </Badge>
                                 ) : '—'}
                               </TableCell>
@@ -441,7 +430,7 @@ export default function SeoCampaignsPage() {
                               <TableCell>
                                 {c.landing_page_exp ? (
                                   <Badge variant={c.landing_page_exp === 'ABOVE_AVERAGE' ? 'primary' : c.landing_page_exp === 'AVERAGE' ? 'secondary' : 'destructive'}>
-                                    {c.landing_page_exp}
+                                    {QUALITY_LABELS[c.landing_page_exp] ?? c.landing_page_exp}
                                   </Badge>
                                 ) : '—'}
                               </TableCell>
@@ -450,7 +439,7 @@ export default function SeoCampaignsPage() {
                               <TableCell>
                                 {c.ad_relevance ? (
                                   <Badge variant={c.ad_relevance === 'ABOVE_AVERAGE' ? 'primary' : c.ad_relevance === 'AVERAGE' ? 'secondary' : 'destructive'}>
-                                    {c.ad_relevance}
+                                    {QUALITY_LABELS[c.ad_relevance] ?? c.ad_relevance}
                                   </Badge>
                                 ) : '—'}
                               </TableCell>
@@ -459,7 +448,7 @@ export default function SeoCampaignsPage() {
                               <TableCell>
                                 {c.serving_status ? (
                                   <Badge variant={c.serving_status === 'ELIGIBLE' ? 'primary' : 'destructive'}>
-                                    {c.serving_status}
+                                    {SERVING_LABELS[c.serving_status] ?? c.serving_status}
                                   </Badge>
                                 ) : '—'}
                               </TableCell>
@@ -480,7 +469,6 @@ export default function SeoCampaignsPage() {
                           {isCol('keyword') && <TableCell>Totale</TableCell>}
                           {isCol('campaign_name') && <TableCell />}
                           {isCol('ad_group_name') && <TableCell />}
-                          {isCol('report_date') && <TableCell />}
                           {isCol('match_type') && <TableCell />}
                           {isCol('keyword_status') && <TableCell />}
                           {isCol('impressions') && (
@@ -517,8 +505,20 @@ export default function SeoCampaignsPage() {
                               {formatNumber(totals.conversions)}
                             </TableCell>
                           )}
-                          {isCol('cost_per_conversion') && <TableCell />}
-                          {isCol('conversion_rate') && <TableCell />}
+                          {isCol('cost_per_conversion') && (
+                            <TableCell className="text-right">
+                              {totals.conversions > 0
+                                ? `€${microsToEuros(totals.cost_micros / totals.conversions)}`
+                                : '—'}
+                            </TableCell>
+                          )}
+                          {isCol('conversion_rate') && (
+                            <TableCell className="text-right">
+                              {totals.clicks > 0
+                                ? formatPercent(totals.conversions / totals.clicks, 2)
+                                : '—'}
+                            </TableCell>
+                          )}
                           {isCol('quality_score') && <TableCell />}
                           {isCol('expected_ctr') && <TableCell />}
                           {isCol('landing_page_exp') && <TableCell />}

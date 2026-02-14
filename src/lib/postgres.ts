@@ -35,6 +35,11 @@ import type {
   TaskFilters,
   PaginatedResponse,
   UUID,
+  LeadAnalysis,
+  LeadAnalysisConfig,
+  LeadAnalysisCreateInput,
+  LeadAnalysisUpdateInput,
+  AlgorithmSetting,
 } from '@/types/database';
 
 // ============================================================================
@@ -857,6 +862,303 @@ export async function deleteColorPreference(
   `;
   
   await query(sql, [dbEntityType, entityValue]);
+}
+
+// ============================================================================
+// LEAD ANALYSES
+// ============================================================================
+
+/**
+ * Get all analyses for a lead (with configs)
+ */
+export async function getAnalysesByLeadId(leadId: UUID): Promise<LeadAnalysis[]> {
+  const analysesSql = `
+    SELECT * FROM lead_analyses
+    WHERE lead_id = $1
+    ORDER BY created_at DESC
+  `;
+  const analyses = await query<LeadAnalysis>(analysesSql, [leadId]);
+
+  if (analyses.length === 0) return [];
+
+  const analysisIds = analyses.map(a => a.id);
+  const configsSql = `
+    SELECT * FROM lead_analysis_configs
+    WHERE analysis_id = ANY($1)
+    ORDER BY model
+  `;
+  const configs = await query<LeadAnalysisConfig>(configsSql, [analysisIds]);
+
+  // Attach configs to their analyses
+  const configsByAnalysis = new Map<string, LeadAnalysisConfig[]>();
+  for (const c of configs) {
+    const arr = configsByAnalysis.get(c.analysis_id) || [];
+    arr.push(c);
+    configsByAnalysis.set(c.analysis_id, arr);
+  }
+
+  return analyses.map(a => ({
+    ...a,
+    configs: configsByAnalysis.get(a.id) || [],
+  }));
+}
+
+/**
+ * Get a single analysis by ID (with configs)
+ */
+export async function getAnalysisById(analysisId: UUID): Promise<LeadAnalysis | null> {
+  const analysis = await queryOne<LeadAnalysis>(
+    'SELECT * FROM lead_analyses WHERE id = $1',
+    [analysisId],
+  );
+  if (!analysis) return null;
+
+  const configs = await query<LeadAnalysisConfig>(
+    'SELECT * FROM lead_analysis_configs WHERE analysis_id = $1 ORDER BY model',
+    [analysisId],
+  );
+
+  return { ...analysis, configs };
+}
+
+/**
+ * Create a new analysis (without configs — configs are inserted separately)
+ */
+export async function createAnalysis(
+  input: LeadAnalysisCreateInput,
+  createdBy?: UUID,
+): Promise<LeadAnalysis> {
+  const sql = `
+    INSERT INTO lead_analyses (
+      lead_id, person_label, sex, weight_kg, height_cm,
+      body_shape, sleep_position, firmness_preference,
+      health_issues, circulation_issues, snoring_apnea,
+      reads_watches_in_bed, mattress_width_cm, mattress_length_cm,
+      created_by
+    ) VALUES (
+      $1, $2, $3, $4, $5,
+      $6, $7, $8,
+      $9, $10, $11,
+      $12, $13, $14,
+      $15
+    )
+    RETURNING *
+  `;
+  const params = [
+    input.lead_id,
+    input.person_label ?? 'Partner 1',
+    input.sex ?? null,
+    input.weight_kg,
+    input.height_cm,
+    input.body_shape ?? null,
+    input.sleep_position ?? null,
+    input.firmness_preference ?? 'neutral',
+    input.health_issues ?? [],
+    input.circulation_issues ?? false,
+    input.snoring_apnea ?? false,
+    input.reads_watches_in_bed ?? false,
+    input.mattress_width_cm ?? null,
+    input.mattress_length_cm ?? null,
+    createdBy ?? null,
+  ];
+
+  const result = await queryOne<LeadAnalysis>(sql, params);
+  if (!result) throw new Error('Failed to create analysis');
+  return result;
+}
+
+/**
+ * Update an analysis
+ */
+export async function updateAnalysis(
+  analysisId: UUID,
+  input: LeadAnalysisUpdateInput,
+): Promise<LeadAnalysis> {
+  const setClauses: string[] = [];
+  const params: unknown[] = [];
+  let idx = 1;
+
+  const fields: Array<{ key: keyof LeadAnalysisUpdateInput; value: unknown }> = [
+    { key: 'person_label', value: input.person_label },
+    { key: 'sex', value: input.sex },
+    { key: 'weight_kg', value: input.weight_kg },
+    { key: 'height_cm', value: input.height_cm },
+    { key: 'body_shape', value: input.body_shape },
+    { key: 'sleep_position', value: input.sleep_position },
+    { key: 'firmness_preference', value: input.firmness_preference },
+    { key: 'health_issues', value: input.health_issues },
+    { key: 'circulation_issues', value: input.circulation_issues },
+    { key: 'snoring_apnea', value: input.snoring_apnea },
+    { key: 'reads_watches_in_bed', value: input.reads_watches_in_bed },
+    { key: 'mattress_width_cm', value: input.mattress_width_cm },
+    { key: 'mattress_length_cm', value: input.mattress_length_cm },
+  ];
+
+  for (const { key, value } of fields) {
+    if (value !== undefined) {
+      setClauses.push(`${key} = $${idx}`);
+      params.push(value);
+      idx++;
+    }
+  }
+
+  if (setClauses.length === 0) {
+    throw new Error('No fields to update');
+  }
+
+  params.push(analysisId);
+  const sql = `
+    UPDATE lead_analyses
+    SET ${setClauses.join(', ')}
+    WHERE id = $${idx}
+    RETURNING *
+  `;
+
+  const result = await queryOne<LeadAnalysis>(sql, params);
+  if (!result) throw new Error('Analysis not found');
+  return result;
+}
+
+/**
+ * Delete an analysis (cascades to configs)
+ */
+export async function deleteAnalysis(analysisId: UUID): Promise<void> {
+  const result = await query(
+    'DELETE FROM lead_analyses WHERE id = $1 RETURNING id',
+    [analysisId],
+  );
+  if (result.length === 0) throw new Error('Analysis not found');
+}
+
+/**
+ * Insert configs for an analysis (batch insert for ONE/PLUS/PRO)
+ */
+export async function insertAnalysisConfigs(
+  configs: Array<{
+    analysis_id: UUID;
+    model: string;
+    base_density: string;
+    topper_level: number;
+    cylinder_shoulders: string | null;
+    cylinder_lumbar: string | null;
+    cylinder_legs: string | null;
+    recommend_motorized_base: boolean;
+    recommend_pillow: boolean;
+    pillow_height_inserts: number | null;
+    pillow_cervical_side: string | null;
+    is_manual_override: boolean;
+    algorithm_scores: Record<string, unknown> | object;
+  }>,
+): Promise<LeadAnalysisConfig[]> {
+  const results: LeadAnalysisConfig[] = [];
+
+  for (const c of configs) {
+    const sql = `
+      INSERT INTO lead_analysis_configs (
+        analysis_id, model, base_density, topper_level,
+        cylinder_shoulders, cylinder_lumbar, cylinder_legs,
+        recommend_motorized_base, recommend_pillow,
+        pillow_height_inserts, pillow_cervical_side,
+        is_manual_override, algorithm_scores
+      ) VALUES (
+        $1, $2, $3, $4,
+        $5, $6, $7,
+        $8, $9,
+        $10, $11,
+        $12, $13
+      )
+      ON CONFLICT (analysis_id, model) DO UPDATE SET
+        base_density = EXCLUDED.base_density,
+        topper_level = EXCLUDED.topper_level,
+        cylinder_shoulders = EXCLUDED.cylinder_shoulders,
+        cylinder_lumbar = EXCLUDED.cylinder_lumbar,
+        cylinder_legs = EXCLUDED.cylinder_legs,
+        recommend_motorized_base = EXCLUDED.recommend_motorized_base,
+        recommend_pillow = EXCLUDED.recommend_pillow,
+        pillow_height_inserts = EXCLUDED.pillow_height_inserts,
+        pillow_cervical_side = EXCLUDED.pillow_cervical_side,
+        is_manual_override = EXCLUDED.is_manual_override,
+        algorithm_scores = EXCLUDED.algorithm_scores
+      RETURNING *
+    `;
+    const row = await queryOne<LeadAnalysisConfig>(sql, [
+      c.analysis_id, c.model, c.base_density, c.topper_level,
+      c.cylinder_shoulders, c.cylinder_lumbar, c.cylinder_legs,
+      c.recommend_motorized_base, c.recommend_pillow,
+      c.pillow_height_inserts, c.pillow_cervical_side,
+      c.is_manual_override, JSON.stringify(c.algorithm_scores),
+    ]);
+    if (row) results.push(row);
+  }
+
+  return results;
+}
+
+/**
+ * Update a single config (manual override)
+ */
+export async function updateAnalysisConfig(
+  configId: UUID,
+  updates: Partial<Pick<
+    LeadAnalysisConfig,
+    'base_density' | 'topper_level' | 'cylinder_shoulders' | 'cylinder_lumbar' | 'cylinder_legs'
+  >>,
+): Promise<LeadAnalysisConfig> {
+  const setClauses: string[] = ['is_manual_override = true'];
+  const params: unknown[] = [];
+  let idx = 1;
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (value !== undefined) {
+      setClauses.push(`${key} = $${idx}`);
+      params.push(value);
+      idx++;
+    }
+  }
+
+  params.push(configId);
+  const sql = `
+    UPDATE lead_analysis_configs
+    SET ${setClauses.join(', ')}
+    WHERE id = $${idx}
+    RETURNING *
+  `;
+
+  const result = await queryOne<LeadAnalysisConfig>(sql, params);
+  if (!result) throw new Error('Config not found');
+  return result;
+}
+
+// ============================================================================
+// ALGORITHM SETTINGS
+// ============================================================================
+
+/**
+ * Get all algorithm settings
+ */
+export async function getAlgorithmSettings(): Promise<AlgorithmSetting[]> {
+  return query<AlgorithmSetting>(
+    'SELECT * FROM algorithm_settings ORDER BY category, key',
+  );
+}
+
+/**
+ * Update an algorithm setting
+ */
+export async function updateAlgorithmSetting(
+  id: UUID,
+  value: number,
+  updatedBy?: UUID,
+): Promise<AlgorithmSetting> {
+  const sql = `
+    UPDATE algorithm_settings
+    SET value = $1, updated_by = $2
+    WHERE id = $3
+    RETURNING *
+  `;
+  const result = await queryOne<AlgorithmSetting>(sql, [value, updatedBy ?? null, id]);
+  if (!result) throw new Error('Setting not found');
+  return result;
 }
 
 // ============================================================================

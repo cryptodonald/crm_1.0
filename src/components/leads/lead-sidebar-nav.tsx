@@ -7,6 +7,7 @@ import {
   Activity,
   ShoppingCart,
   Paperclip,
+  Stethoscope,
 } from 'lucide-react';
 
 export type LeadSection =
@@ -14,7 +15,8 @@ export type LeadSection =
   | 'notes'
   | 'activities'
   | 'orders'
-  | 'files';
+  | 'files'
+  | 'analysis';
 
 interface LeadSidebarNavProps {
   activeSection: LeadSection;
@@ -23,6 +25,7 @@ interface LeadSidebarNavProps {
   noteCount?: number;
   orderCount?: number;
   fileCount?: number;
+  analysisCount?: number;
 }
 
 const NAV_ITEMS = [
@@ -55,6 +58,12 @@ const NAV_ITEMS = [
     icon: Paperclip,
     countKey: 'fileCount' as const,
   },
+  {
+    id: 'analysis' as LeadSection,
+    label: 'Analisi',
+    icon: Stethoscope,
+    countKey: 'analysisCount' as const,
+  },
 ];
 
 export function LeadSidebarNav({
@@ -64,12 +73,14 @@ export function LeadSidebarNav({
   noteCount = 0,
   orderCount = 0,
   fileCount = 0,
+  analysisCount = 0,
 }: LeadSidebarNavProps) {
   const counts = {
     activityCount,
     noteCount,
     orderCount,
     fileCount,
+    analysisCount,
   };
 
   return (
