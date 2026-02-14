@@ -451,6 +451,39 @@ Per leggere una skill: `read_skill` con `skill_path` = `.agents/skills/<nome>/SK
 - **Storage**: Vercel Blob
 - **Deployment**: Vercel
 
+### Body Model Service (Repo Separata)
+
+Il backend 3D body model è in una **repo GitHub separata**: `cryptodonald/doctorbed-body-model`.
+
+**Architettura deploy:**
+- **Frontend CRM** (questa repo) → deploy su **Vercel**
+- **Backend body model** (`body-model-service/`) → deploy su **Railway**
+
+**Regole critiche:**
+- `body-model-service/` è in `.gitignore` — NON deve finire nel repo CRM
+- Push su questa repo → deploya SOLO Vercel (frontend)
+- Push su `doctorbed-body-model` → deploya SOLO Railway (backend Python)
+- Il collegamento tra i due è la env var `BODY_MODEL_SERVICE_URL` su Vercel
+
+**Directory locale:**
+```
+crm_1.0/
+├── body-model-service/    # ← repo separata (doctorbed-body-model), ignorata da git CRM
+│   ├── main.py            # FastAPI
+│   ├── anny_generator.py  # Anny body model (Apache 2.0)
+│   ├── pointcloud_generator.py
+│   ├── Dockerfile
+│   └── anny/              # Anny library (NAVER Labs Europe)
+└── src/                   # ← repo CRM (Vercel)
+    ├── app/api/body-model/ # Proxy route → Railway
+    └── components/body-model/ # React Three Fiber viewer
+```
+
+**Env var Vercel:**
+```
+BODY_MODEL_SERVICE_URL=https://<railway-url>.up.railway.app
+```
+
 ### Known Constraints
 
 1. **Postgres pooling**: Use `POSTGRES_URL` (pooled) per API routes, `POSTGRES_URL_NON_POOLING` per migrations

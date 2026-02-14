@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next */
 /out/
 
 # production
@@ -50,3 +51,6 @@ tmp/
 *.bak*
 *.backup
 *.disabled
+
+# body model backend (separate repo: doctorbed-body-model)
+/body-model-service
