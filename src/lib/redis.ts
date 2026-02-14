@@ -95,3 +95,73 @@ export const passwordResetTokens = {
     return storedToken === token;
   },
 };
+
+/**
+ * Login Attempt Tracking (Account Lockout)
+ * 
+ * Tracks failed login attempts per email.
+ * After 5 failed attempts within 15 minutes, account is locked.
+ */
+export const loginAttempts = {
+  /** Max failed attempts before lockout */
+  MAX_ATTEMPTS: 5,
+  /** Lockout window in seconds (15 minutes) */
+  LOCKOUT_TTL: 900,
+
+  /**
+   * Check if account is locked
+   */
+  async check(email: string): Promise<{ locked: boolean; attempts: number }> {
+    const client = getRedis();
+    if (!client) return { locked: false, attempts: 0 };
+
+    try {
+      const key = `login-attempts:${email.toLowerCase()}`;
+      const raw = await client.get(key);
+      const attempts = raw ? parseInt(String(raw), 10) : 0;
+
+      return { locked: attempts >= this.MAX_ATTEMPTS, attempts };
+    } catch (error) {
+      console.error('[Redis] Error checking login attempts:', error);
+      return { locked: false, attempts: 0 };
+    }
+  },
+
+  /**
+   * Increment failed attempt counter (TTL: 15 min from first attempt)
+   */
+  async increment(email: string): Promise<number> {
+    const client = getRedis();
+    if (!client) return 0;
+
+    try {
+      const key = `login-attempts:${email.toLowerCase()}`;
+      const attempts = await client.incr(key);
+
+      // Set TTL on first attempt
+      if (attempts === 1) {
+        await client.expire(key, this.LOCKOUT_TTL);
+      }
+
+      return attempts;
+    } catch (error) {
+      console.error('[Redis] Error incrementing login attempts:', error);
+      return 0;
+    }
+  },
+
+  /**
+   * Clear failed attempts on successful login
+   */
+  async clear(email: string): Promise<void> {
+    const client = getRedis();
+    if (!client) return;
+
+    try {
+      const key = `login-attempts:${email.toLowerCase()}`;
+      await client.del(key);
+    } catch (error) {
+      console.error('[Redis] Error clearing login attempts:', error);
+    }
+  },
+};

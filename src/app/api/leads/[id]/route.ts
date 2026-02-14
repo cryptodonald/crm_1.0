@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { z } from 'zod';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getLeadById, updateLead, deleteLead } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { LeadUpdateInput } from '@/types/database';
+
+const uuidSchema = z.string().uuid('Invalid UUID format');
+
+const updateLeadSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  phone: z.string().max(30).nullish(),
+  email: z.string().email('Invalid email').max(255).nullish(),
+  city: z.string().max(100).nullish(),
+  address: z.string().max(500).nullish(),
+  postal_code: z.union([z.number().int(), z.string(), z.null()]).optional(),
+  gender: z.string().max(20).nullish(),
+  needs: z.string().max(10000).nullish(),
+  status: z.string().max(50).nullish(),
+  source_id: z.string().uuid().nullish(),
+  assigned_to: z.union([z.array(z.string().uuid()), z.string().uuid(), z.null()]).optional(),
+  referral_lead_id: z.string().uuid().nullish(),
+}).refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -71,14 +89,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
-    const body = await request.json();
 
-    // Basic validation
-    if (Object.keys(body).length === 0) {
-      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    // Validate UUID path param
+    const idResult = uuidSchema.safeParse(id);
+    if (!idResult.success) {
+      return NextResponse.json({ error: 'Invalid lead ID format' }, { status: 400 });
     }
 
-    // Map to Postgres schema (accept snake_case)
+    const body = await request.json();
+    const validation = updateLeadSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: validation.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    // Map validated data to Postgres schema (body is safe after Zod validation)
     const input: LeadUpdateInput = {};
     if (body.name !== undefined) input.name = body.name;
     if (body.phone !== undefined) input.phone = body.phone;

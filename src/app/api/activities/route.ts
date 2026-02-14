@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { z } from 'zod';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { getActivities, createActivity, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { ActivityCreateInput, ActivityType, ActivityStatus } from '@/types/database';
 // import { triggerOnCreate } from '@/lib/automation-engine'; // TODO: Migra automations dopo
+
+const createActivitySchema = z.object({
+  title: z.string().min(1, 'title is required').max(500),
+  type: z.string().max(50).nullish(),
+  activity_date: z.string().nullish(),
+  lead_id: z.string().uuid().nullish(),
+  assigned_to: z.string().uuid().nullish(),
+  status: z.string().max(50).optional(),
+  notes: z.string().max(10000).nullish(),
+  estimated_duration: z.number().int().min(0).max(10000).nullish(),
+  duration_minutes: z.number().int().min(0).max(10000).nullish(),
+  outcome: z.string().max(5000).nullish(),
+  objective: z.string().max(5000).nullish(),
+  priority: z.string().max(20).nullish(),
+  sync_to_google: z.boolean().optional(),
+});
 
 /**
  * GET /api/activities
@@ -99,18 +116,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
-    // Parse body
+    // Parse & validate body
     const body = await request.json();
+    const validation = createActivitySchema.safeParse(body);
 
-    // Validation
-    if (!body.title || typeof body.title !== 'string' || body.title.trim().length === 0) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'title is required', code: 'VALIDATION_ERROR' },
+        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: validation.error.flatten() },
         { status: 400 }
       );
     }
 
-    // Map input to Postgres schema
+    // Map validated input to Postgres schema (body is safe after Zod validation)
     const input: ActivityCreateInput = {
       title: body.title,
       type: body.type || null,

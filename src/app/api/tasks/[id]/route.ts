@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { z } from 'zod';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getTaskById, updateTask, deleteTask } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { TaskUpdateInput } from '@/types/database';
+
+const updateTaskSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().max(10000).nullish(),
+  status: z.string().max(50).optional(),
+  priority: z.string().max(20).optional(),
+  due_date: z.string().nullish(),
+  assigned_to_id: z.string().uuid().nullish(),
+}).refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 
 /**
  * GET /api/tasks/[id]
@@ -85,8 +95,16 @@ export async function PATCH(
     }
 
     const body = await request.json();
+    const validation = updateTaskSchema.safeParse(body);
 
-    // Map to Postgres schema
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: validation.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    // Map validated data to Postgres schema (body is safe after Zod validation)
     const input: TaskUpdateInput = {};
     if (body.title !== undefined) input.title = body.title;
     if (body.description !== undefined) input.description = body.description;

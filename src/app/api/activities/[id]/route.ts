@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { z } from 'zod';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { getActivityById, updateActivity, deleteActivity, getUserByEmail } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { ActivityUpdateInput } from '@/types/database';
 // import { triggerOnUpdate, triggerOnDelete } from '@/lib/automation-engine'; // TODO: Migra automations dopo
+
+const updateActivitySchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  type: z.string().max(50).nullish(),
+  activity_date: z.string().nullish(),
+  lead_id: z.string().uuid().nullish(),
+  assigned_to: z.string().uuid().nullish(),
+  status: z.string().max(50).nullish(),
+  notes: z.string().max(10000).nullish(),
+  estimated_duration: z.number().int().min(0).max(10000).nullish(),
+  duration_minutes: z.number().int().min(0).max(10000).nullish(),
+  outcome: z.string().max(5000).nullish(),
+  objective: z.string().max(5000).nullish(),
+  priority: z.string().max(20).nullish(),
+}).refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 
 /**
  * GET /api/activities/[id]
@@ -73,13 +89,16 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+    const validation = updateActivitySchema.safeParse(body);
 
-    // Validation
-    if (Object.keys(body).length === 0) {
-      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: validation.error.flatten() },
+        { status: 400 }
+      );
     }
 
-    // Map to Postgres schema
+    // Map validated data to Postgres schema (body is safe after Zod validation)
     const input: ActivityUpdateInput = {};
     if (body.title !== undefined) input.title = body.title;
     if (body.type !== undefined) input.type = body.type;

@@ -1,9 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { z } from 'zod';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getLeads, createLead } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { LeadCreateInput, LeadStatus } from '@/types/database';
+
+// Zod validation schemas
+const createLeadSchema = z.object({
+  name: z.string().min(1, 'name is required').max(200),
+  phone: z.string().max(30).nullish(),
+  email: z.string().email('Invalid email').max(255).nullish(),
+  city: z.string().max(100).nullish(),
+  address: z.string().max(500).nullish(),
+  postal_code: z.union([z.number().int(), z.string(), z.null()]).optional(),
+  gender: z.string().max(20).nullish(),
+  needs: z.string().max(10000).nullish(),
+  status: z.string().max(50).optional(),
+  source_id: z.string().uuid().nullish(),
+  assigned_to: z.union([z.array(z.string().uuid()), z.string().uuid(), z.null()]).optional(),
+  referral_lead_id: z.string().uuid().nullish(),
+});
 
 /**
  * GET /api/leads
@@ -144,18 +161,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse body
+    // Parse & validate body
     const body = await request.json();
+    const validation = createLeadSchema.safeParse(body);
 
-    // Validation (basic - use Zod in Step 7)
-    if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'name is required', code: 'VALIDATION_ERROR' },
+        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: validation.error.flatten() },
         { status: 400 }
       );
     }
 
-    // Map input to Postgres schema
+    // Map validated input to Postgres schema (body is safe after Zod validation)
     const input: LeadCreateInput = {
       name: body.name,
       phone: body.phone || null,

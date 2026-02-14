@@ -4,6 +4,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import bcrypt from 'bcryptjs';
 import { env } from '@/env';
 import { getUserByEmail } from '@/lib/postgres';
+import { loginAttempts } from '@/lib/redis';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { User as PostgresUser } from '@/types/database';
 
@@ -68,10 +69,17 @@ export const authOptions: AuthOptions = {
         }
 
         try {
+          // Check account lockout (5 failed attempts → 15 min lock)
+          const lockStatus = await loginAttempts.check(credentials.email);
+          if (lockStatus.locked) {
+            throw new Error('Account bloccato per troppi tentativi. Riprova tra 15 minuti.');
+          }
+
           // Find user by email in Postgres
           const user = await getUserByEmail(credentials.email);
 
           if (!user) {
+            await loginAttempts.increment(credentials.email);
             throw new Error('CredentialsSignin');
           }
 
@@ -91,8 +99,12 @@ export const authOptions: AuthOptions = {
           );
 
           if (!isPasswordValid) {
+            await loginAttempts.increment(credentials.email);
             throw new Error('CredentialsSignin');
           }
+
+          // Successful login → clear failed attempts
+          await loginAttempts.clear(credentials.email);
 
           // Return user object for JWT
           // Map Postgres fields to NextAuth user object

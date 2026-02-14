@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { z } from 'zod';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getTasks, createTask } from '@/lib/postgres';
 import { checkRateLimit } from '@/lib/ratelimit';
 import type { TaskCreateInput, TaskStatus, Priority } from '@/types/database';
+
+const createTaskSchema = z.object({
+  title: z.string().min(1, 'title is required').max(500),
+  description: z.string().max(10000).nullish(),
+  type: z.string().min(1, 'type is required').max(50),
+  status: z.string().max(50).optional(),
+  priority: z.string().max(20).optional(),
+  due_date: z.string().nullish(),
+  created_by_id: z.string().uuid().nullish(),
+  assigned_to_id: z.string().uuid().nullish(),
+  lead_id: z.string().uuid().nullish(),
+  activity_id: z.string().uuid().nullish(),
+});
 
 /**
  * GET /api/tasks
@@ -118,25 +132,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse body
+    // Parse & validate body
     const body = await request.json();
+    const validation = createTaskSchema.safeParse(body);
 
-    // Validation
-    if (!body.title || typeof body.title !== 'string' || body.title.trim().length === 0) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'title is required', code: 'VALIDATION_ERROR' },
+        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: validation.error.flatten() },
         { status: 400 }
       );
     }
 
-    if (!body.type) {
-      return NextResponse.json(
-        { error: 'type is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      );
-    }
-
-    // Map input to Postgres schema
+    // Map validated input to Postgres schema (body is safe after Zod validation)
     const input: TaskCreateInput = {
       title: body.title,
       description: body.description || null,
