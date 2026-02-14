@@ -93,12 +93,14 @@ export async function get<T>(key: string): Promise<T | null> {
   try {
     const value = await redis.get(key);
     if (value === null) {
-      console.log(`[Cache] MISS: ${key}`);
+      if (process.env.NODE_ENV === 'development') console.log(`[Cache] MISS: ${key}`);
       return null;
     }
     const parsed = typeof value === 'string' ? JSON.parse(value) : value;
-    const sizeKB = JSON.stringify(parsed).length / 1024;
-    console.log(`[Cache] HIT: ${key} (${sizeKB.toFixed(1)}KB)`);
+    if (process.env.NODE_ENV === 'development') {
+      const sizeKB = JSON.stringify(parsed).length / 1024;
+      console.log(`[Cache] HIT: ${key} (${sizeKB.toFixed(1)}KB)`);
+    }
     return parsed;
   } catch (error) {
     console.error('[Cache] Get error:', { key, error });
@@ -118,7 +120,7 @@ export async function set<T>(
 
   try {
     await redis.set(key, JSON.stringify(value), { ex: ttlSeconds });
-    console.log(`[Cache] SET: ${key} (TTL: ${ttlSeconds}s)`);
+    if (process.env.NODE_ENV === 'development') console.log(`[Cache] SET: ${key} (TTL: ${ttlSeconds}s)`);
   } catch (error) {
     console.error('[Cache] Set error:', { key, error });
   }
@@ -160,12 +162,12 @@ export async function invalidate(pattern: string): Promise<void> {
 
       if (keys.length > 0) {
         await redis.del(...keys);
-        console.log(`[Cache] Invalidated ${keys.length} keys matching: ${pattern}`);
+        if (process.env.NODE_ENV === 'development') console.log(`[Cache] Invalidated ${keys.length} keys matching: ${pattern}`);
       }
     } else {
       // Single key invalidation
       await redis.del(pattern);
-      console.log(`[Cache] Invalidated key: ${pattern}`);
+      if (process.env.NODE_ENV === 'development') console.log(`[Cache] Invalidated key: ${pattern}`);
     }
   } catch (error) {
     console.error('[Cache] Invalidation error:', { pattern, error });
@@ -180,7 +182,7 @@ export async function invalidateMany(keys: string[]): Promise<void> {
 
   try {
     await redis.del(...keys);
-    console.log(`[Cache] Invalidated ${keys.length} keys`);
+    if (process.env.NODE_ENV === 'development') console.log(`[Cache] Invalidated ${keys.length} keys`);
   } catch (error) {
     console.error('[Cache] Invalidate many error:', { keys, error });
   }

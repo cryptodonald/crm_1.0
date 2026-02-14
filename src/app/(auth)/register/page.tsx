@@ -22,7 +22,7 @@ export default function RegisterPage() {
     }
     
     setIsLoading(true);
-    console.log('Register:', { name, email, password });
+    // TODO: Implement actual registration API call
     setTimeout(() => setIsLoading(false), 1000);
   };
 

@@ -220,7 +220,7 @@ if (Object.keys(custom).length > 0) {
     // Check for duplicates
     const existing = await findExistingLead(phone, email, name, city);
     if (existing) {
-      console.log(`[Webflow Webhook] Duplicate: ${name} (${existing.phone || existing.email || existing.id})`);
+      console.log(`[Webflow Webhook] Duplicate detected for lead ID: ${existing.id}`);
       return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
     }
 

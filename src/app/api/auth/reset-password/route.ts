@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     // Delete token from Redis (one-time use)
     await passwordResetTokens.delete(email);
 
-    console.log(`[Password Reset] Password updated for: ${email}`);
+    console.log('[Password Reset] Password updated successfully');
 
     return NextResponse.json({
       success: true,

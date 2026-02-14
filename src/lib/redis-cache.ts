@@ -77,13 +77,13 @@ export async function cachedQuery<T>(
     
     if (cached !== null) {
       metrics.hits++;
-      console.log(`[Cache HIT] ${key} (hit rate: ${getCacheMetrics().hitRate})`);
+      if (process.env.NODE_ENV === 'development') console.log(`[Cache HIT] ${key} (hit rate: ${getCacheMetrics().hitRate})`);
       return cached as T;
     }
     
     // 2. Cache miss → query database
     metrics.misses++;
-    console.log(`[Cache MISS] ${key} (hit rate: ${getCacheMetrics().hitRate})`);
+    if (process.env.NODE_ENV === 'development') console.log(`[Cache MISS] ${key} (hit rate: ${getCacheMetrics().hitRate})`);
     
     const data = await queryFn();
     
@@ -127,12 +127,12 @@ export async function invalidateCache(pattern: string) {
       
       if (keys.length > 0) {
         await redis.del(...keys);
-        console.log(`[Cache INVALIDATE] ${keys.length} keys matching "${pattern}"`);
+        if (process.env.NODE_ENV === 'development') console.log(`[Cache INVALIDATE] ${keys.length} keys matching "${pattern}"`);
       }
     } else {
       // Chiave singola
       await redis.del(pattern);
-      console.log(`[Cache INVALIDATE] ${pattern}`);
+      if (process.env.NODE_ENV === 'development') console.log(`[Cache INVALIDATE] ${pattern}`);
     }
     
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

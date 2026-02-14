@@ -36,7 +36,6 @@ export async function POST(request: Request) {
     // Always return success (security best practice)
     // Don't reveal if email exists to prevent email enumeration attacks
     if (!user) {
-      console.log(`[Password Reset] Email not found: ${email}`);
       return NextResponse.json({
         success: true,
         message: 'Se l\'email esiste, riceverai un link di reset',
@@ -45,7 +44,6 @@ export async function POST(request: Request) {
 
     // Check if user is active
     if (!user.active) {
-      console.log(`[Password Reset] Inactive user: ${email}`);
       // Still return success to not reveal account status
       return NextResponse.json({
         success: true,
@@ -84,7 +82,7 @@ export async function POST(request: Request) {
     } else {
       // TODO: Send email in production
       // await sendPasswordResetEmail(email, resetUrl);
-      console.log(`[Password Reset] Token generated for: ${email}`);
+      console.log('[Password Reset] Token generated');
     }
 
     return NextResponse.json({

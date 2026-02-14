@@ -41,7 +41,6 @@ function ResetPasswordContent() {
     }
     
     setIsLoading(true);
-    console.log('Reset password with token:', token);
     
     setTimeout(() => {
       setIsLoading(false);
