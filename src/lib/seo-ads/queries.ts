@@ -287,7 +287,7 @@ export async function getCampaignPerformance(
   // Aggregated query: one row per keyword+campaign+ad_group
   const dataSql = `
     SELECT
-      MIN(cp.id) as id,
+      MIN(cp.id::text)::uuid as id,
       cp.keyword_id,
       cp.campaign_name,
       cp.ad_group_name,

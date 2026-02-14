@@ -270,7 +270,7 @@ export async function fetchAuctionInsights(
         metrics.auction_insight_search_overlap_rate,
         metrics.auction_insight_search_position_above_rate,
         segments.date
-      FROM campaign_audience_view
+      FROM auction_insight
       WHERE ${dateFilter}
         AND campaign.status = 'ENABLED'
       LIMIT 500
