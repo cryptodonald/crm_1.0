@@ -7,7 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * Handles both GLB mesh and point cloud endpoints.
  */
 
-const BODY_MODEL_SERVICE_URL = process.env.BODY_MODEL_SERVICE_URL || 'http://localhost:8000';
+const rawUrl = process.env.BODY_MODEL_SERVICE_URL || 'http://localhost:8000';
+const BODY_MODEL_SERVICE_URL = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
 export async function POST(request: NextRequest) {
   try {
