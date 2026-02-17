@@ -581,7 +581,6 @@ export type HealthIssue =
   | 'lower_back_pain'
   | 'shoulder_pain'
   | 'hip_pain'
-  | 'sciatica'
   | 'fibromyalgia';
 
 export type MattressModel = 'one' | 'plus' | 'pro';
@@ -590,6 +589,8 @@ export type CylinderType = 'none' | 'super_soft_6' | 'soft_8' | 'medium_8' | 'fi
 export type LumbarCylinderType = 'soft_8' | 'medium_8' | 'firm_8';
 export type PillowCervicalSide = 'gentle' | 'pronounced';
 
+export type BodyType = 'slim' | 'average' | 'athletic' | 'heavy';
+
 export interface LeadAnalysis {
   id: UUID;
   lead_id: UUID;
@@ -597,6 +598,8 @@ export interface LeadAnalysis {
   sex: 'male' | 'female' | null;
   weight_kg: number;
   height_cm: number;
+  age_years: number | null;
+  body_type: BodyType | null;
   body_shape: BodyShape | null;
   sleep_position: SleepPosition[];
   firmness_preference: FirmnessPreference;
@@ -650,6 +653,8 @@ export interface LeadAnalysisCreateInput {
   sex?: 'male' | 'female';
   weight_kg: number;
   height_cm: number;
+  age_years?: number;
+  body_type?: BodyType;
   body_shape?: BodyShape;
   sleep_position?: SleepPosition[];
   firmness_preference?: FirmnessPreference;

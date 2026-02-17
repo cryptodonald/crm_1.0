@@ -14,7 +14,7 @@ interface BodySilhouetteProps {
 // Map health issues to body zones
 const ZONE_ISSUES: Record<string, HealthIssue[]> = {
   shoulders: ['shoulder_pain', 'kyphosis'],
-  lumbar: ['lower_back_pain', 'lordosis', 'sciatica'],
+  lumbar: ['lower_back_pain', 'lordosis'],
   hips: ['hip_pain'],
 };
 

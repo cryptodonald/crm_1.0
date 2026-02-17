@@ -86,6 +86,7 @@ export function useLeadAnalyses(leadId: string | undefined): UseLeadAnalysesRetu
     // Aggiorna cache: aggiungi in testa
     mutateAllAnalyses((current) => {
       if (!current) return [analysis];
+      if (!Array.isArray(current)) return current;
       return [analysis, ...current];
     });
 
@@ -95,7 +96,7 @@ export function useLeadAnalyses(leadId: string | undefined): UseLeadAnalysesRetu
   const deleteAnalysisById = async (analysisId: string): Promise<void> => {
     // Optimistic: rimuovi immediatamente
     mutateAllAnalyses((current) => {
-      if (!current) return current;
+      if (!current || !Array.isArray(current)) return current;
       return current.filter((a) => a.id !== analysisId);
     });
 

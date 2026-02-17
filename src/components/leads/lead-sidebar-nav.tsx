@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Paperclip,
   Stethoscope,
+  ScanLine,
 } from 'lucide-react';
 
 export type LeadSection =
@@ -16,7 +17,8 @@ export type LeadSection =
   | 'activities'
   | 'orders'
   | 'files'
-  | 'analysis';
+  | 'analysis'
+  | 'body-model';
 
 interface LeadSidebarNavProps {
   activeSection: LeadSection;
@@ -63,6 +65,11 @@ const NAV_ITEMS = [
     label: 'Analisi',
     icon: Stethoscope,
     countKey: 'analysisCount' as const,
+  },
+  {
+    id: 'body-model' as LeadSection,
+    label: 'Modello 3D',
+    icon: ScanLine,
   },
 ];
 

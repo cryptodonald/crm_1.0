@@ -44,13 +44,14 @@ export function BodyModelPanel({
     initialParams?.body_type ?? 'average',
   );
   const [pose, setPose] = useState<BodyPose>(initialParams?.pose ?? 'standing');
+  const [ageYears, setAgeYears] = useState(initialParams?.age_years ?? 40);
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverrides>(
     initialParams?.zone_overrides ?? { ...DEFAULT_ZONE_OVERRIDES },
   );
 
   // Toggles
   const [showMesh, setShowMesh] = useState(true);
-  const [showPointCloud, setShowPointCloud] = useState(true);
+  const [showPointCloud, setShowPointCloud] = useState(false);
 
   // Build params
   const params: BodyModelParams = useMemo(
@@ -60,9 +61,10 @@ export function BodyModelPanel({
       gender,
       body_type: bodyType,
       pose,
+      age_years: ageYears,
       zone_overrides: zoneOverrides,
     }),
-    [heightCm, weightKg, gender, bodyType, pose, zoneOverrides],
+    [heightCm, weightKg, gender, bodyType, pose, ageYears, zoneOverrides],
   );
 
   // Fetch data
@@ -121,23 +123,26 @@ export function BodyModelPanel({
           </Button>
         </div>
 
-        {/* Pose toggle */}
-        <div className="absolute top-3 right-3">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() =>
-              setPose((p) => (p === 'standing' ? 'supine' : 'standing'))
-            }
-            className="h-7 gap-1.5 text-xs bg-black/50 hover:bg-black/70 border-0"
-          >
-            {pose === 'standing' ? (
-              <User className="size-3" />
-            ) : (
-              <BedDouble className="size-3" />
-            )}
-            {pose === 'standing' ? 'In piedi' : 'Supino'}
-          </Button>
+        {/* Pose selector */}
+        <div className="absolute top-3 right-3 flex gap-1.5">
+          {(['standing', 'supine', 'prone', 'lateral', 'hybrid'] as const).map((p) => (
+            <Button
+              key={p}
+              variant="secondary"
+              size="sm"
+              onClick={() => setPose(p)}
+              className={cn(
+                "h-7 px-2 text-[10px] bg-black/50 hover:bg-black/70 border-0",
+                pose === p && "bg-blue-600/70 hover:bg-blue-600/80"
+              )}
+            >
+              {p === 'standing' && 'Piedi'}
+              {p === 'supine' && 'Supino'}
+              {p === 'prone' && 'Prono'}
+              {p === 'lateral' && 'Laterale'}
+              {p === 'hybrid' && 'Ibrido'}
+            </Button>
+          ))}
         </div>
 
         {/* Stats badge */}
@@ -229,6 +234,21 @@ export function BodyModelPanel({
                       : 'Robusto'}
               </Button>
             ))}
+          </div>
+
+          {/* Age */}
+          <div>
+            <label className="text-xs text-muted-foreground">
+              Età: {ageYears} anni
+            </label>
+            <input
+              type="range"
+              min={20}
+              max={80}
+              value={ageYears}
+              onChange={(e) => setAgeYears(Number(e.target.value))}
+              className="w-full accent-blue-500"
+            />
           </div>
         </div>
 

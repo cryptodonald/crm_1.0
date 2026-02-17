@@ -28,7 +28,7 @@ const updateAnalysisSchema = z.object({
   firmness_preference: z.enum(['soft', 'neutral', 'firm']).optional(),
   health_issues: z.array(z.enum([
     'lordosis', 'kyphosis', 'lower_back_pain',
-    'shoulder_pain', 'hip_pain', 'sciatica', 'fibromyalgia',
+    'shoulder_pain', 'hip_pain', 'fibromyalgia',
   ])).optional(),
   circulation_issues: z.boolean().optional(),
   snoring_apnea: z.boolean().optional(),

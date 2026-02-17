@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -37,17 +38,25 @@ import {
   Moon,
   ArrowUpDown,
   Heart,
-  BedDouble,
   Info,
+  Dumbbell,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BodySilhouette } from './BodySilhouette';
+import { GLBViewer } from '@/components/body-model/GLBViewer';
 import { analysisFormSchema, type AnalysisFormData } from '@/types/analysis-form';
 import type { HealthIssue, SleepPosition, LeadAnalysisCreateInput } from '@/types/database';
 
 // ============================================================================
 // Constants
 // ============================================================================
+
+const BODY_TYPES = [
+  { value: 'slim' as const, label: 'Esile', desc: 'Poco grasso e poca massa muscolare' },
+  { value: 'average' as const, label: 'Normale', desc: 'Composizione corporea media' },
+  { value: 'athletic' as const, label: 'Atletico', desc: 'Massa muscolare elevata' },
+  { value: 'heavy' as const, label: 'Robusto', desc: 'Corporatura pesante / BMI alto' },
+];
 
 const BODY_SHAPES = [
   { value: 'v_shape' as const, label: 'V-Shape', desc: 'Spalle larghe, fianchi stretti' },
@@ -73,7 +82,6 @@ const HEALTH_ISSUES = [
   { value: 'lower_back_pain' as const, label: 'Dolore lombare' },
   { value: 'shoulder_pain' as const, label: 'Dolore spalle' },
   { value: 'hip_pain' as const, label: 'Dolore anche' },
-  { value: 'sciatica' as const, label: 'Sciatica' },
   { value: 'lordosis' as const, label: 'Lordosi' },
   { value: 'kyphosis' as const, label: 'Cifosi' },
   { value: 'fibromyalgia' as const, label: 'Fibromialgia' },
@@ -118,6 +126,7 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
     defaultValues: {
       person_label: 'Partner 1',
       sex: 'male',
+      body_type: 'average',
       body_shape: 'normal',
       sleep_position: ['side'],
       firmness_preference: 'neutral',
@@ -134,6 +143,49 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
   const watchBodyShape = form.watch('body_shape');
   const watchHealthIssues = form.watch('health_issues');
   const watchSleepPositions = form.watch('sleep_position');
+  const watchWeightKg = form.watch('weight_kg');
+  const watchHeightCm = form.watch('height_cm');
+  const watchBodyType = form.watch('body_type');
+  const watchAgeYears = form.watch('age_years');
+
+  // 3D model preview state
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const generatePreview = async () => {
+    if (!watchWeightKg || !watchHeightCm) return;
+    setPreviewLoading(true);
+    try {
+      const res = await fetch('/api/body-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gender: watchSex || 'neutral',
+          height_cm: watchHeightCm,
+          weight_kg: watchWeightKg,
+          body_type: watchBodyType || 'average',
+          age_years: watchAgeYears || 40,
+          // body_shape → zone_overrides per il modello 3D
+          ...(watchBodyShape && watchBodyShape !== 'normal' && {
+            zone_overrides: {
+              v_shape: { shoulders: 0.45, chest: 0.3, waist: -0.15, hips: -0.25 },
+              a_shape: { shoulders: -0.25, hips: 0.4, thighs: 0.3, waist: 0.15 },
+              h_shape: { shoulders: 0.15, waist: 0.1, hips: 0.15 },
+              round: { waist: 0.45, hips: 0.35, thighs: 0.25, chest: 0.2 },
+            }[watchBodyShape],
+          }),
+        }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(URL.createObjectURL(blob));
+    } catch {
+      // silent fail for preview
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   const handleFormSubmit = async (data: AnalysisFormData) => {
     await onSubmit({
@@ -141,6 +193,8 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
       sex: data.sex,
       weight_kg: data.weight_kg,
       height_cm: data.height_cm,
+      age_years: data.age_years,
+      body_type: data.body_type,
       body_shape: data.body_shape,
       sleep_position: data.sleep_position,
       firmness_preference: data.firmness_preference,
@@ -235,7 +289,80 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
                   />
                 </div>
 
-                {/* Peso + Altezza */}
+                {/* Muscolatura */}
+                <FormField
+                  control={form.control}
+                  name="body_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <Dumbbell className="size-3.5 text-muted-foreground" />
+                        Muscolatura
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="size-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Un BMI alto può indicare massa grassa o muscolare.
+                            Seleziona la costituzione per una stima più accurata.
+                          </TooltipContent>
+                        </Tooltip>
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Seleziona" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {BODY_TYPES.map((bt) => (
+                            <SelectItem key={bt.value} value={bt.value}>
+                              <span className="font-medium">{bt.label}</span>
+                              <span className="text-muted-foreground ml-2 text-xs">
+                                {bt.desc}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Età + Peso + Altezza */}
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="age_years"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <Calendar className="size-3.5 text-muted-foreground" />
+                          Età
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={18}
+                            max={100}
+                            placeholder="45"
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              field.onChange(v === '' ? undefined : Number(v));
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -517,92 +644,47 @@ export function AnalysisForm({ onSubmit, isSubmitting, defaultValues }: Analysis
                   ))}
                 </div>
 
-                <Separator />
-
-                {/* Mattress dimensions */}
-                <div>
-                  <FormLabel className="flex items-center gap-1.5 mb-3">
-                    <BedDouble className="size-3.5 text-muted-foreground" />
-                    Misure materasso (opzionale)
-                  </FormLabel>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="mattress_width_cm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs text-muted-foreground">
-                            Larghezza (cm)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min={60}
-                              max={200}
-                              placeholder="80"
-                              value={field.value ?? ''}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                field.onChange(v === '' ? undefined : Number(v));
-                              }}
-                              onBlur={field.onBlur}
-                              name={field.name}
-                              ref={field.ref}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="mattress_length_cm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs text-muted-foreground">
-                            Lunghezza (cm)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min={160}
-                              max={220}
-                              placeholder="200"
-                              value={field.value ?? ''}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                field.onChange(v === '' ? undefined : Number(v));
-                              }}
-                              onBlur={field.onBlur}
-                              name={field.name}
-                              ref={field.ref}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
 
           {/* ============================================================ */}
-          {/* RIGHT COLUMN: Body Silhouette */}
+          {/* RIGHT COLUMN: 3D Body Model Preview */}
           {/* ============================================================ */}
           <div className="hidden lg:block">
             <Card className="sticky top-6">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-center">Silhouette</CardTitle>
+                <CardTitle className="text-sm text-center">Modello 3D</CardTitle>
               </CardHeader>
-              <CardContent>
-                <BodySilhouette
-                  sex={watchSex || 'male'}
-                  bodyShape={watchBodyShape || 'normal'}
-                  healthIssues={watchHealthIssues || []}
-                  onToggleIssue={handleToggleHealthIssue}
-                />
+              <CardContent className="space-y-3">
+                {previewUrl ? (
+                  <GLBViewer url={previewUrl} highlightedZones={watchHealthIssues} />
+                ) : (
+                  <div className="flex items-center justify-center h-[400px] rounded-lg bg-muted text-muted-foreground text-sm">
+                    {previewLoading
+                      ? 'Generazione...'
+                      : 'Inserisci peso e altezza, poi genera l\u2019anteprima'}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={previewLoading || !watchWeightKg || !watchHeightCm}
+                  onClick={generatePreview}
+                >
+                  {previewLoading ? (
+                    <>
+                      <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                      Generazione...
+                    </>
+                  ) : previewUrl ? (
+                    'Aggiorna Modello 3D'
+                  ) : (
+                    'Genera Anteprima 3D'
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </div>

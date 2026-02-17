@@ -12,6 +12,7 @@ import { LeadActivitiesTimeline } from '@/components/leads/lead-activities-timel
 import { AddNoteDialog } from '@/components/leads/add-note-dialog';
 import { NewActivityModal } from '@/components/activities/new-activity-modal';
 import { AnalysisSection } from '@/components/leads/analysis/AnalysisSection';
+import { BodyModelSection } from '@/components/body-model/BodyModelSection';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -335,6 +336,9 @@ export default function LeadDetailPage({ params }: LeadDetailPageProps) {
 
       case 'analysis':
         return <AnalysisSection leadId={id} />;
+
+      case 'body-model':
+        return <BodyModelSection leadId={id} leadName={lead.name ?? undefined} />;
 
       default:
         return null;

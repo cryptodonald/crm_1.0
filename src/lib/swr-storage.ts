@@ -11,6 +11,10 @@ import type { SWRConfiguration } from 'swr';
 const STORAGE_KEY = 'crm-swr-cache';
 const CACHE_VERSION = '1.0';
 const MAX_CACHE_AGE_MS = 1000 * 60 * 60 * 24; // 24 hours
+const MAX_CACHE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB safety limit
+
+/** Keys matching these prefixes are too large for localStorage */
+const EXCLUDE_PREFIXES = ['glb:', 'pc:', 'blob:'];
 
 interface CachedData {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,6 +119,9 @@ function saveToLocalStorage(map: Map<string, any>): void {
     const now = Date.now();
 
     map.forEach((value, key) => {
+      // Skip large binary/point cloud data
+      if (EXCLUDE_PREFIXES.some((p) => key.includes(p))) return;
+
       cacheMap[key] = {
         data: value,
         timestamp: now,
@@ -122,7 +129,14 @@ function saveToLocalStorage(map: Map<string, any>): void {
       };
     });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheMap));
+    const serialized = JSON.stringify(cacheMap);
+    if (serialized.length > MAX_CACHE_SIZE_BYTES) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`[SWR Cache] Skipping save: ${(serialized.length / 1024).toFixed(0)}KB exceeds ${MAX_CACHE_SIZE_BYTES / 1024}KB limit`);
+      }
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY, serialized);
   } catch (error) {
     console.error('[SWR Cache] Failed to save to localStorage:', error);
     // Quota exceeded: try to clear old cache

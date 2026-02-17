@@ -8,13 +8,14 @@ import type { LeadAnalysis } from '@/types/database';
 interface AnalysisPdfButtonProps {
   analysis: LeadAnalysis;
   leadName?: string;
+  captureBodyModel?: () => string | null;
 }
 
 /**
  * Dynamic import di @react-pdf/renderer per evitare SSR issues.
  * Il PDF viene generato client-side e scaricato come blob.
  */
-export function AnalysisPdfButton({ analysis, leadName }: AnalysisPdfButtonProps) {
+export function AnalysisPdfButton({ analysis, leadName, captureBodyModel }: AnalysisPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownload = async () => {
@@ -23,8 +24,9 @@ export function AnalysisPdfButton({ analysis, leadName }: AnalysisPdfButtonProps
       const { pdf } = await import('@react-pdf/renderer');
       const { AnalysisPdfDocument } = await import('./AnalysisPdfDocument');
 
+      const bodyModelImageUrl = captureBodyModel?.() ?? undefined;
       const blob = await pdf(
-        AnalysisPdfDocument({ analysis, leadName }),
+        AnalysisPdfDocument({ analysis, leadName, bodyModelImageUrl }),
       ).toBlob();
 
       const url = URL.createObjectURL(blob);

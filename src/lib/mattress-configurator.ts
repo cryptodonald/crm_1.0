@@ -90,7 +90,6 @@ const DEFAULT_SETTINGS: SettingsMap = {
   'topper_modifiers.fibromyalgia': -0.3,
   'topper_modifiers.shoulder_pain': -0.2,
   'topper_modifiers.hip_pain': -0.2,
-  'topper_modifiers.sciatica': -0.2,
   'topper_modifiers.kyphosis': -0.15,
   'topper_modifiers.lower_back_pain': 0.15,
   'topper_modifiers.lordosis': 0.15,
@@ -114,7 +113,6 @@ const DEFAULT_SETTINGS: SettingsMap = {
   'lumbar_modifiers.firm_preference': 0.15,
   'lumbar_modifiers.lower_back_pain': 0.3,
   'lumbar_modifiers.lordosis': 0.25,
-  'lumbar_modifiers.sciatica': -0.15,
   'lumbar_modifiers.a_shape': 0.1,
 
   // Guardrails

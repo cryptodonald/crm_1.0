@@ -40,8 +40,8 @@ interface PointCloudOverlayProps {
 
 export function PointCloudOverlay({
   pointCloud,
-  pointSize = 1.8,
-  opacity = 0.85,
+  pointSize = 0.4,
+  opacity = 0.75,
   visible = true,
 }: PointCloudOverlayProps) {
   const { positions, colors } = useMemo(() => {
@@ -106,7 +106,7 @@ export function PointCloudOverlay({
         transparent
         opacity={opacity}
         depthWrite={false}
-        blending={THREE.AdditiveBlending}
+        blending={THREE.NormalBlending}
       />
     </Points>
   );

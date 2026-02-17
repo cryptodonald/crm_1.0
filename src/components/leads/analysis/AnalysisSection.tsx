@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,6 +20,7 @@ import { useLeadAnalyses } from '@/hooks/use-lead-analyses';
 import { AnalysisForm } from './AnalysisForm';
 import { ConfigurationCards } from './ConfigurationCards';
 import { AnalysisPdfButton } from './AnalysisPdf';
+import { AnalysisBodyModel, type AnalysisBodyModelHandle } from './AnalysisBodyModel';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -66,6 +67,7 @@ export function AnalysisSection({ leadId, leadName }: AnalysisSectionProps) {
   const [view, setView] = useState<ViewState>({ kind: 'list' });
   const [isCreating, setIsCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const bodyModelRef = useRef<AnalysisBodyModelHandle>(null);
 
   const goToList = useCallback(() => setView({ kind: 'list' }), []);
   const goToCreate = useCallback(() => setView({ kind: 'create' }), []);
@@ -133,7 +135,11 @@ export function AnalysisSection({ leadId, leadName }: AnalysisSectionProps) {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                <AnalysisPdfButton analysis={view.analysis} leadName={leadName} />
+                <AnalysisPdfButton
+                  analysis={view.analysis}
+                  leadName={leadName}
+                  captureBodyModel={() => bodyModelRef.current?.captureImage() ?? null}
+                />
                 <Button
                   variant="ghost"
                   size="icon"
@@ -145,7 +151,14 @@ export function AnalysisSection({ leadId, leadName }: AnalysisSectionProps) {
                 </Button>
               </div>
             </div>
-            <ConfigurationCards leadId={leadId} analysis={view.analysis} />
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
+              <ConfigurationCards leadId={leadId} analysis={view.analysis} />
+              <div className="hidden xl:block">
+                <div className="sticky top-6">
+                  <AnalysisBodyModel ref={bodyModelRef} analysis={view.analysis} />
+                </div>
+              </div>
+            </div>
           </>
         )}
 

@@ -26,6 +26,17 @@ export const analysisFormSchema = z.object({
     .min(100, 'Minimo 100 cm')
     .max(230, 'Massimo 230 cm'),
 
+  age_years: z
+    .number()
+    .int("L'età deve essere un numero intero")
+    .min(18, 'Minimo 18 anni')
+    .max(100, 'Massimo 100 anni')
+    .optional(),
+
+  body_type: z.enum(['slim', 'average', 'athletic', 'heavy'], {
+    error: 'Seleziona la muscolatura',
+  }),
+
   body_shape: z.enum(['v_shape', 'a_shape', 'normal', 'h_shape', 'round'], {
     error: 'Seleziona la forma del corpo',
   }),
@@ -44,7 +55,6 @@ export const analysisFormSchema = z.object({
         'lower_back_pain',
         'shoulder_pain',
         'hip_pain',
-        'sciatica',
         'fibromyalgia',
       ]),
     )
